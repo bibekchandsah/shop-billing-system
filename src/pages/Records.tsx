@@ -3,10 +3,9 @@ import type { Bill, BillItem } from '../types';
 import { collection, query, orderBy, limit, getDocs, endBefore, startAfter, limitToLast, Timestamp, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAllBills, deleteBill, updateBill, createBill } from '../services/billService';
-import { getAppSettings, isBillInFiscalYear } from '../services/settingsService';
+import { isBillInFiscalYear } from '../services/settingsService';
 import { recordBillInventory, removeBillInventory } from '../services/stockService';
 import { syncBillCustomerLedger } from '../services/customerService';
-import type { AppSettings } from '../types';
 import { formatCurrency, numberToWords } from '../utils/numberToWords';
 import { generateBillPDF } from '../utils/pdfGenerator';
 import { printBill } from '../utils/printBill';
@@ -54,7 +53,7 @@ const Records: React.FC = () => {
 
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { user } = useAuth();
-  const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd, isInActiveFY } = useFiscalYear();
+  const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd } = useFiscalYear();
 
   const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }), []);
 

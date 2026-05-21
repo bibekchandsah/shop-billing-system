@@ -23,7 +23,7 @@ import './Stock.css';
 const Stock: React.FC = () => {
   const { user } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
-  const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd, isInActiveFY } = useFiscalYear();
+  const { settings, isInActiveFY } = useFiscalYear();
 
   // Stock Lists & Ledger States
   const [particulars, setParticulars] = useState<StockParticular[]>([]);

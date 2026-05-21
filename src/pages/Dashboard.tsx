@@ -42,7 +42,7 @@ const getCustomerKey = (bill: Bill) =>
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { toasts, showError, removeToast } = useToast();
-  const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd, filterBillsByFY } = useFiscalYear();
+  const { settings, filterBillsByFY } = useFiscalYear();
 
   const [loading, setLoading] = useState(true);
   const [bills, setBills] = useState<Bill[]>([]);
