@@ -1,0 +1,203 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  sendPasswordResetEmail,
+  updateProfile,
+  type User,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase/config';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface AuthContextType {
+  user: User | null;
+  /** Base64 data-URL of the user's custom photo, or null */
+  photoData: string | null;
+  loading: boolean;
+  signInEmail: (email: string, password: string) => Promise<void>;
+  signUpEmail: (email: string, password: string, displayName: string) => Promise<void>;
+  signInGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePhoto: (file: File) => Promise<void>;
+  removePhoto: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const googleProvider = new GoogleAuthProvider();
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+/** Read file as a base64 data-URL */
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+/** Resize + compress a STATIC image to keep Firestore doc small (≤ ~200 KB) */
+const compressImage = (dataUrl: string, maxPx = 256, quality = 0.8): Promise<string> =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width  * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width  = w;
+      canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+
+/**
+ * Detect whether a file is animated (GIF, APNG, animated WebP).
+ * We check the raw bytes — canvas can't preserve animation so we skip
+ * compression for any animated format.
+ */
+const isAnimated = async (file: File): Promise<boolean> => {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+
+  // GIF: look for more than one Graphics Control Extension (0x21 0xF9)
+  if (file.type === 'image/gif') {
+    let count = 0;
+    for (let i = 0; i < bytes.length - 1; i++) {
+      if (bytes[i] === 0x21 && bytes[i + 1] === 0xF9) {
+        count++;
+        if (count > 1) return true;
+      }
+    }
+    return false;
+  }
+
+  // APNG: look for 'acTL' chunk (animation control)
+  if (file.type === 'image/png' || file.type === 'image/apng') {
+    const str = new TextDecoder().decode(bytes);
+    return str.includes('acTL');
+  }
+
+  // Animated WebP: look for 'ANIM' chunk
+  if (file.type === 'image/webp') {
+    const str = new TextDecoder().decode(bytes.slice(0, 64));
+    return str.includes('ANIM');
+  }
+
+  return false;
+};
+
+/** Path to the user profile doc */
+const userDocRef = (uid: string) => doc(db, 'users', uid);
+
+/** Load photoData from Firestore */
+const loadPhotoData = async (uid: string): Promise<string | null> => {
+  try {
+    const snap = await getDoc(userDocRef(uid));
+    return snap.exists() ? (snap.data().photoData ?? null) : null;
+  } catch {
+    return null;
+  }
+};
+
+// ── Provider ──────────────────────────────────────────────────────────────────
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user,      setUser]      = useState<User | null>(null);
+  const [photoData, setPhotoData] = useState<string | null>(null);
+  const [loading,   setLoading]   = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        const photo = await loadPhotoData(firebaseUser.uid);
+        setPhotoData(photo);
+      } else {
+        setPhotoData(null);
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  // ── Auth methods ─────────────────────────────────────────────────────────
+  const signInEmail = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const signUpEmail = async (email: string, password: string, displayName: string) => {
+    const { user } = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(user, { displayName });
+    // Create the user doc so the subcollection path exists
+    await setDoc(userDocRef(user.uid), { displayName, email: user.email, photoData: null }, { merge: true });
+  };
+
+  const signInGoogle = async () => {
+    await signInWithPopup(auth, googleProvider);
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    setPhotoData(null);
+  };
+
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
+
+  // ── Photo methods ─────────────────────────────────────────────────────────
+  const updatePhoto = async (file: File) => {
+    if (!auth.currentUser) throw new Error('Not authenticated');
+    if (!file.type.startsWith('image/')) throw new Error('Please select an image file.');
+
+    const animated = await isAnimated(file);
+
+    // Animated files (GIF, APNG, animated WebP): store raw, max 700 KB
+    // (Firestore doc limit is 1 MB; base64 adds ~33% overhead: 700 KB × 1.33 ≈ 931 KB)
+    // Static images: compress to 256×256 JPEG, max 5 MB input
+    if (animated) {
+      if (file.size > 700 * 1024)
+        throw new Error('Animated images must be smaller than 700 KB to fit in the database.');
+    } else {
+      if (file.size > 5 * 1024 * 1024)
+        throw new Error('Image must be smaller than 5 MB.');
+    }
+
+    const raw      = await fileToBase64(file);
+    // Skip canvas compression for animated files — it strips the animation
+    const photoStr = animated ? raw : await compressImage(raw);
+
+    await setDoc(userDocRef(auth.currentUser.uid), { photoData: photoStr }, { merge: true });
+    setPhotoData(photoStr);
+  };
+
+  const removePhoto = async () => {
+    if (!auth.currentUser) throw new Error('Not authenticated');
+    await updateDoc(userDocRef(auth.currentUser.uid), { photoData: null });
+    setPhotoData(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{
+      user, photoData, loading,
+      signInEmail, signUpEmail, signInGoogle,
+      logout, resetPassword,
+      updatePhoto, removePhoto,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+};

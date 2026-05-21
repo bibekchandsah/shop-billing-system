@@ -1,0 +1,262 @@
+.daily-sales-chart {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ── Header ── */
+.chart-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chart-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chart-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chart-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ── Metric Toggle ── */
+.chart-metric-toggle {
+  display: flex;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border-color);
+}
+
+.metric-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.metric-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.metric-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  box-shadow: 0 2px 6px hsla(var(--accent-primary-h, 217), 91%, 60%, 0.35);
+}
+
+/* ── Summary Stats Row ── */
+.chart-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.chart-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.chart-stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chart-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.chart-stat-value.amount {
+  color: hsl(158, 64%, 42%);
+}
+
+.chart-stat-value.qty {
+  color: hsl(217, 91%, 60%);
+}
+
+.chart-stat-value.bills {
+  color: hsl(262, 83%, 58%);
+}
+
+.chart-stat-value.avg {
+  color: hsl(38, 92%, 50%);
+}
+
+/* ── Tooltip ── */
+.chart-tooltip-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.85rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+  animation: tooltipSlide 0.15s ease;
+}
+
+@keyframes tooltipSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chart-tooltip-bar strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.tooltip-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.amount-dot {
+  background: hsl(158, 64%, 52%);
+}
+
+.qty-dot {
+  background: hsl(217, 91%, 60%);
+}
+
+.bill-dot {
+  background: hsl(262, 83%, 58%);
+}
+
+/* ── Chart Scroll Wrapper ── */
+.chart-scroll-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.chart-scroll-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chart-scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chart-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.chart-svg {
+  display: block;
+  min-width: 100%;
+}
+
+.chart-bar {
+  transition: opacity 0.15s ease, height 0.3s ease;
+}
+
+/* ── Legend ── */
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  justify-content: center;
+  padding-top: 0.25rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .chart-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart-title-row {
+    flex-direction: column;
+  }
+
+  .chart-stat-value {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .daily-sales-chart {
+    padding: 0.85rem;
+  }
+
+  .chart-stats-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .chart-tooltip-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+}

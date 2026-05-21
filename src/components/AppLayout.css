@@ -1,0 +1,66 @@
+/* ── Full-screen layout — fixed viewport, no body scroll ─────────────────── */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;           /* exactly the viewport — never taller */
+  overflow: hidden;        /* prevent the whole page from scrolling */
+  background: var(--sidebar-bg);
+}
+
+/* ── Top strip: brand + topbar on the SAME row ───────────────────────────── */
+.app-top-strip {
+  display: flex;
+  align-items: center;
+  height: 60px;
+  flex-shrink: 0;          /* never shrink — always 60px tall */
+  background: var(--sidebar-bg);
+  z-index: 200;
+}
+
+/* ── Bottom: sidebar nav + content side by side ──────────────────────────── */
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;           /* critical: allows children to shrink below content size */
+  overflow: hidden;
+}
+
+/* ── Sidebar nav panel — fixed, never scrolls with content ──────────────── */
+.sidebar-nav-panel {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  /* Sidebar has its own scroll if nav items overflow */
+  overflow-y: auto;
+  height: 100%;
+}
+
+.layout-collapsed .sidebar-nav-panel {
+  width: var(--sidebar-collapsed-width);
+}
+
+/* ── Content panel — ONLY this scrolls ───────────────────────────────────── */
+.app-content {
+  flex: 1;
+  background: var(--bg-secondary);
+  border-top-left-radius: 16px;
+  overflow-y: auto;        /* scroll here, not on body */
+  height: 100%;
+  min-width: 0;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .app-top-strip {
+    position: sticky;
+    top: 0;
+  }
+  .sidebar-nav-panel {
+    display: none;
+  }
+  .app-content {
+    border-top-left-radius: 0;
+  }
+}

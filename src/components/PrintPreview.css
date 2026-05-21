@@ -1,0 +1,292 @@
+/* ── Modal overlay ─────────────────────────────────────────────────────────── */
+.print-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  z-index: 2000;
+  padding: 1rem;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease;
+}
+
+.print-modal {
+  width: 100%;
+  max-width: 820px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  animation: slideUp 0.25s ease;
+}
+
+/* ── Toolbar ───────────────────────────────────────────────────────────────── */
+.print-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-primary);
+  border-radius: 12px 12px 0 0;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.print-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+
+.print-toolbar-left svg {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.print-toolbar-right {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Paper (the actual printable area) ────────────────────────────────────── */
+.print-paper {
+  background: #ffffff;
+  color: #111111;
+  padding: 2.5rem 3rem;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── Bill header ───────────────────────────────────────────────────────────── */
+.pb-header {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.pb-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  letter-spacing: 0.5px;
+  color: #111;
+}
+
+.pb-business-name {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+.pb-business-address {
+  font-size: 12px;
+  margin: 0.125rem 0 0;
+  color: #555;
+}
+
+/* ── Divider ───────────────────────────────────────────────────────────────── */
+.pb-divider {
+  border: none;
+  border-top: 1.5px solid #333;
+  margin: 0.875rem 0;
+}
+
+/* ── Meta section ──────────────────────────────────────────────────────────── */
+.pb-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.pb-meta-left,
+.pb-meta-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pb-meta-row {
+  display: flex;
+  gap: 0.375rem;
+  font-size: 12.5px;
+}
+
+.pb-meta-label {
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+}
+
+.pb-meta-value {
+  color: #111;
+}
+
+/* ── Items table ───────────────────────────────────────────────────────────── */
+.pb-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+  font-size: 12.5px;
+}
+
+.pb-th {
+  background: #1e3a5f;
+  color: #ffffff;
+  padding: 7px 10px;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid #1e3a5f;
+}
+
+.pb-th-particulars {
+  text-align: left;
+}
+
+.pb-th-sn  { width: 42px; }
+.pb-th-num { width: 90px; }
+
+.pb-td {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  color: #111;
+  vertical-align: middle;
+}
+
+.pb-td-center { text-align: center; }
+.pb-td-right  { text-align: right; }
+
+.pb-tr-empty .pb-td {
+  height: 26px;
+}
+
+/* tfoot total row */
+.pb-total-label {
+  text-align: right;
+  font-weight: 700;
+  font-size: 13px;
+  background: #f0f4f8;
+  border: 1px solid #ccc;
+  padding: 7px 10px;
+}
+
+.pb-total-value {
+  font-weight: 700;
+  font-size: 14px;
+  background: #f0f4f8;
+  border: 1px solid #ccc;
+  padding: 7px 10px;
+}
+
+/* ── In words ──────────────────────────────────────────────────────────────── */
+.pb-words {
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.875rem;
+  font-size: 12px;
+}
+
+.pb-words-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.pb-words-text {
+  font-style: italic;
+  color: #444;
+}
+
+/* ── Payment ───────────────────────────────────────────────────────────────── */
+.pb-payment {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.875rem;
+}
+
+.pb-payment-row {
+  display: flex;
+  gap: 0.375rem;
+  font-size: 12.5px;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+.pb-footer {
+  text-align: center;
+  font-style: italic;
+  font-size: 12px;
+  color: #555;
+  margin: 0.5rem 0 0;
+}
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+@keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px) } to { opacity: 1; transform: translateY(0) } }
+
+/* ── PRINT STYLES ──────────────────────────────────────────────────────────── */
+@media print {
+  /* Hide everything on the page */
+  body > * {
+    display: none !important;
+  }
+
+  /* Show only the printable bill */
+  #printable-bill {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    padding: 1.5cm 2cm !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt !important;
+    z-index: 99999 !important;
+  }
+
+  /* Hide toolbar */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure overlay/modal don't interfere */
+  .print-overlay,
+  .print-modal {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .print-paper {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Table borders print correctly */
+  .pb-table,
+  .pb-th,
+  .pb-td,
+  .pb-total-label,
+  .pb-total-value {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Page settings */
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm 2cm;
+  }
+}

@@ -1,0 +1,96 @@
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  category: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  address: string;
+  contactNumber: string;
+  purchaseHistory: string[];
+  currentBalance?: number;
+  lastBillNo?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BillItem {
+  sn: number;
+  particulars: string;
+  qty: number;
+  rate: number;
+  amount: number;
+}
+
+export interface Bill {
+  id: string;
+  userId: string;
+  billNo: string;
+  date: string;
+  nepaliDate: string;
+  customerName: string;
+  address: string;
+  contactNumber: string;
+  items: BillItem[];
+  totalAmount: number;
+  totalAmountInWords: string;
+  totalQty?: number;
+  paymentMethod?: 'Cash' | 'Due' | 'Mobile Payment' | 'Card' | 'Other';
+  freeDue: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type Theme = 'light' | 'dark' | 'system';
+
+export interface AppSettings {
+  theme: Theme;
+  businessName: string;
+  businessAddress: string;
+  businessContact: string;
+  billNumberFormat: 'numeric' | 'prefix';
+  billNumberPrefix: string;
+  /** BS month number (1–12) when the fiscal year starts. Default: 4 (Shrawan) */
+  fiscalYearStart: number;
+  /** BS month number (1–12) when the fiscal year ends. Default: 3 (Ashadh) */
+  fiscalYearEnd: number;
+  /** Active fiscal year label, e.g. "2080-81" */
+  activeFiscalYear: string;
+}
+
+export interface StockParticular {
+  id: string;
+  name: string;
+  currentStock: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StockLedgerEntry {
+  id: string;
+  date: string;
+  billNo?: string;
+  debit: number;
+  credit: number;
+  currentStock: number;
+  note?: string;
+  createdAt: Date;
+}
+
+export interface CustomerLedgerEntry {
+  id: string;
+  date: string;
+  particular: string;
+  billNo?: string;
+  debit: number;
+  credit: number;
+  currentBalance: number;
+  note?: string;
+  createdAt: Date;
+}

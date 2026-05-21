@@ -1,0 +1,262 @@
+.monthly-sales-chart {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ── Header ── */
+.monthly-sales-chart .chart-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.monthly-sales-chart .chart-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.monthly-sales-chart .chart-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.monthly-sales-chart .chart-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ── Metric Toggle ── */
+.monthly-sales-chart .chart-metric-toggle {
+  display: flex;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border-color);
+}
+
+.monthly-sales-chart .metric-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.monthly-sales-chart .metric-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.monthly-sales-chart .metric-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  box-shadow: 0 2px 6px hsla(var(--accent-primary-h, 217), 91%, 60%, 0.35);
+}
+
+/* ── Summary Stats Row ── */
+.monthly-sales-chart .chart-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.monthly-sales-chart .chart-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.monthly-sales-chart .chart-stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.monthly-sales-chart .chart-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.monthly-sales-chart .chart-stat-value.amount {
+  color: hsl(158, 64%, 42%);
+}
+
+.monthly-sales-chart .chart-stat-value.qty {
+  color: hsl(217, 91%, 60%);
+}
+
+.monthly-sales-chart .chart-stat-value.bills {
+  color: hsl(262, 83%, 58%);
+}
+
+.monthly-sales-chart .chart-stat-value.avg {
+  color: hsl(38, 92%, 50%);
+}
+
+/* ── Tooltip ── */
+.monthly-sales-chart .chart-tooltip-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.85rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+  animation: tooltipSlide 0.15s ease;
+}
+
+@keyframes tooltipSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.monthly-sales-chart .chart-tooltip-bar strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.monthly-sales-chart .tooltip-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.monthly-sales-chart .tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.monthly-sales-chart .amount-dot {
+  background: hsl(158, 64%, 52%);
+}
+
+.monthly-sales-chart .qty-dot {
+  background: hsl(217, 91%, 60%);
+}
+
+.monthly-sales-chart .bill-dot {
+  background: hsl(262, 83%, 58%);
+}
+
+/* ── Chart Scroll Wrapper ── */
+.monthly-sales-chart .chart-scroll-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.monthly-sales-chart .chart-scroll-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.monthly-sales-chart .chart-scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.monthly-sales-chart .chart-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.monthly-sales-chart .chart-svg {
+  display: block;
+  min-width: 100%;
+}
+
+.monthly-sales-chart .chart-bar {
+  transition: opacity 0.15s ease, height 0.3s ease;
+}
+
+/* ── Legend ── */
+.monthly-sales-chart .chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  justify-content: center;
+  padding-top: 0.25rem;
+}
+
+.monthly-sales-chart .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.monthly-sales-chart .legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .monthly-sales-chart .chart-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .monthly-sales-chart .chart-title-row {
+    flex-direction: column;
+  }
+
+  .monthly-sales-chart .chart-stat-value {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .monthly-sales-chart {
+    padding: 0.85rem;
+  }
+
+  .monthly-sales-chart .chart-stats-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .monthly-sales-chart .chart-tooltip-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+}

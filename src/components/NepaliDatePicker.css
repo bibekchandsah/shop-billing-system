@@ -1,0 +1,70 @@
+/* Wrapper */
+.ndp-wrapper {
+  display: flex;
+  flex-direction: column;
+  /* gap: 0.375rem; */
+}
+
+.ndp-required {
+  color: var(--danger);
+  margin-left: 2px;
+}
+
+/* Make the library's input match the app's .input style */
+.ndp-container .ndp-input,
+.ndp-container input[type="text"] {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.ndp-container .ndp-input:focus,
+.ndp-container input[type="text"]:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+/* Ensure the calendar inner popups sit above everything */
+.ndp-calendar,
+.nepali-datepicker-calendar {
+  z-index: 99999 !important;
+}
+
+/* Ensure the calendar popup sits above everything without giving the whole input container top z-index */
+.ndp-panel,
+.nepali-datepicker-panel,
+[class*="ndp-calendar-panel"],
+[class*="nepali-datepicker-calendar"] {
+  z-index: 99999 !important;
+}
+
+/* Smooth open animation */
+.ndp-container {
+  position: relative;
+}
+
+.ndp-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+
+
+.nepali-datepicker {
+  max-width: none;
+}

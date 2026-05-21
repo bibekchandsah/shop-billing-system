@@ -1,0 +1,825 @@
+/* ── Stock Page Layout ── */
+.customer-ledger-page {
+  padding: 1.5rem 2.25rem; /* Generous breathing room: top/bottom and left/right */
+  height: 100%; /* Stretches to the absolute bottom of the main content area */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* ── Header: Clean Title + Actions (like screenshot) ── */
+.customer-ledger-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.customer-ledger-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.customer-ledger-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.customer-ledger-header-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.customer-ledger-header-actions .btn svg { flex-shrink: 0; }
+
+.btn-refresh {
+  padding: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+/* Make the refresh button visually prominent (blue) like screenshot */
+.btn-refresh { background-color: var(--accent-primary); color: #fff; }
+.btn-refresh svg { stroke: #fff; }
+
+/* Responsive: collapse header on small screens */
+@media (max-width: 768px) {
+  .customer-ledger-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .customer-ledger-title {
+    font-size: 1.25rem;
+  }
+
+  .customer-ledger-header-actions {
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  /* Hide button text on very small screens to save space, keep icons */
+  .customer-ledger-header-actions .btn {
+    padding: 0.45rem 0.5rem;
+  }
+
+  .customer-ledger-header-actions .btn > span {
+    display: none;
+  }
+}
+
+.customer-ledger-page .container-fluid {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.customer-ledger-layout {
+  display: flex;
+  gap: 1.75rem; /* Slightly larger premium gap between columns */
+  margin-top: 0.5rem;
+  flex: 1; /* Stretch to fill parent height */
+  height: 100%;
+  overflow: hidden;
+  transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.customer-ledger-layout.customers-collapsed {
+  gap: 0px;
+}
+
+/* ── LEFT PANEL: Particulars list ── */
+.customer-list-panel {
+  flex: 0 0 360px;
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Spans full height of layout */
+  padding: 1.5rem !important;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  opacity: 1;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.customer-list-panel.collapsed {
+  flex: 0 0 0px;
+  width: 0px;
+  padding: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.customer-list-panel .panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  width: 100%;
+}
+
+.panel-header-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.customer-list-panel .panel-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.customer-add-transaction {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.875rem !important;
+  font-size: 0.8125rem !important;
+  border-radius: 8px;
+  background-color: var(--accent-primary);
+  color: white;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.customer-add-transaction:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+/* ── Search Bar ── */
+.search-bar {
+  position: relative;
+  margin-bottom: 1.25rem;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.customer-search {
+  padding-left: 2.5rem !important;
+  height: 40px;
+  font-size: 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.customer-search:focus {
+  background-color: var(--bg-primary);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+/* ── Particulars Scrollable List ── */
+.customer-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+  margin-right: -4px;
+}
+
+.customer-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  text-align: left;
+}
+
+.customer-item:hover {
+  border-color: var(--text-tertiary);
+  background-color: var(--bg-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.customer-item.active {
+  background-color: var(--bg-primary);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.customer-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--accent-primary);
+  border-radius: 0 4px 4px 0;
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 70%;
+}
+
+.item-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-updated {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.item-badges {
+  display: flex;
+  align-items: center;
+}
+
+.customer-item .badge {
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+
+/* ── RIGHT PANEL: Ledger Details ── */
+.customer-ledger-panel {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1.75rem !important;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.ledger-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  min-height: 400px;
+}
+
+.empty-graphic {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  border: 1px dashed var(--border-color);
+}
+
+.ledger-empty-state h3 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.ledger-empty-state p {
+  color: var(--text-secondary);
+  max-width: 480px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* ── Ledger Loaded State ── */
+.ledger-details-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ledger-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1.25rem;
+}
+
+.lh-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.lh-left h2 {
+  font-size: 1.625rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.lh-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 5px;
+}
+
+.dot-success {
+  background-color: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.dot-warning {
+  background-color: var(--warning);
+  box-shadow: 0 0 8px var(--warning);
+}
+
+.dot-danger {
+  background-color: var(--danger);
+  box-shadow: 0 0 8px var(--danger);
+}
+
+.status-text {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* ── Grid Metrics ── */
+.customer-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.metric-card {
+  padding: 1.25rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-card {
+  background-color: var(--bg-secondary);
+}
+
+.metric-card.highlight {
+  background-color: var(--bg-primary);
+  border-color: var(--accent-primary) !important;
+  box-shadow: var(--shadow-sm), 0 0 10px var(--accent-light);
+}
+
+.mb-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.mb-value {
+  font-size: 1.625rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.text-success {
+  color: var(--success) !important;
+}
+
+.text-danger {
+  color: var(--danger) !important;
+}
+
+.text-warning {
+  color: var(--warning) !important;
+}
+
+.text-bold {
+  font-weight: 600;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.text-left {
+  text-align: left !important;
+}
+
+/* ── Ledger Table Section ── */
+.customer-ledger-table-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+  overflow: hidden;
+}
+
+.customer-ledger-panel .table-container {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  background-color: var(--bg-primary);
+}
+
+.customer-ledger-table-section h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.customer-ledger-table {
+  font-size: 0.875rem;
+}
+
+.customer-ledger-table th {
+  padding: 0.75rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.customer-ledger-table td {
+  padding: 0.875rem;
+  vertical-align: middle;
+}
+
+.font-mono {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-size: 0.8125rem;
+}
+
+/* ── Modal & Fields customizations ── */
+.stock-modal {
+  max-width: 500px !important;
+}
+
+.tx-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.375rem;
+}
+
+.tx-type-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tx-type-btn:hover {
+  background-color: var(--bg-primary);
+  border-color: var(--text-tertiary);
+}
+
+.btn-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color);
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+/* Debit Active styling */
+.tx-type-btn.btn-debit.active {
+  border-color: var(--success);
+  background-color: var(--bg-primary);
+  color: var(--success);
+  box-shadow: 0 0 0 2px var(--success-light);
+}
+
+.tx-type-btn.btn-debit.active .btn-indicator {
+  background-color: var(--success);
+  border-color: var(--success);
+}
+
+/* Credit Active styling */
+.tx-type-btn.btn-credit.active {
+  border-color: var(--danger);
+  background-color: var(--bg-primary);
+  color: var(--danger);
+  box-shadow: 0 0 0 2px var(--danger-light);
+}
+
+.tx-type-btn.btn-credit.active .btn-indicator {
+  background-color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ── Panel Loading/Empty States ── */
+.panel-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  color: var(--text-secondary);
+  gap: 0.75rem;
+}
+
+.spinner-small {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spinner 0.8s linear infinite;
+}
+
+.panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+/* ── Responsive adjustments ── */
+@media (max-width: 991px) {
+  .customer-ledger-page {
+    height: auto;
+    overflow: visible;
+  }
+
+  .customer-ledger-layout {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .customer-list-panel {
+    flex: 1 1 auto;
+    height: auto;
+    max-height: 400px;
+  }
+  
+  .customer-ledger-panel {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+  }
+  
+  .ledger-details-container {
+    height: auto;
+    overflow: visible;
+  }
+  
+  .customer-ledger-table-section {
+    height: auto;
+    overflow: visible;
+  }
+  
+  .customer-ledger-panel .table-container {
+    max-height: 400px;
+  }
+  
+  .customer-metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .customer-ledger-page {
+    padding: 1rem 0;
+  }
+  
+  .customer-list-panel .panel-header h2 {
+    font-size: 1.125rem;
+  }
+  
+  .lh-left h2 {
+    font-size: 1.375rem;
+  }
+  
+  .ledger-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .lh-right .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Particulars & Row Action Buttons ── */
+.particular-action-buttons,
+.ledger-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.btn-icon-action,
+.btn-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.btn-icon-action:hover,
+.btn-row-action:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border-color: var(--text-tertiary);
+  transform: translateY(-1px);
+}
+
+/* Specific Hover Accent Transitions */
+.btn-edit-part:hover,
+.btn-edit-row:hover {
+  background-color: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary) !important;
+}
+
+.btn-delete-part:hover,
+.btn-delete-row:hover {
+  background-color: var(--danger-light);
+  border-color: var(--danger);
+  color: var(--danger) !important;
+}
+
+.btn-icon-action:active,
+.btn-row-action:active {
+  transform: translateY(0);
+}
+
+/* ── Sidebar Collapse & Expand Controls ── */
+.btn-collapse-customers {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.btn-collapse-customers:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+  border-color: var(--text-tertiary);
+  transform: translateY(-1px);
+}
+
+.btn-expand-customers {
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+  outline: none;
+}
+
+.btn-expand-customers:hover {
+  background-color: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateX(1px);
+}
+
+.btn-expand-customers-floating {
+  padding: 0.5rem 0.875rem !important;
+  font-size: 0.8125rem !important;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-expand-customers-floating:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+
+
+
+@media print {
+  body * { visibility: hidden; }
+  .customer-ledger-page, .customer-ledger-layout, .customer-ledger-panel, .customer-ledger-panel * { visibility: visible; }
+  .customer-ledger-panel { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; border: none; box-shadow: none; }
+  .customer-list-panel, .customer-ledger-header, .top-bar, .sidebar, .no-print, .btn, .customer-add-transaction, .customer-summary-actions { display: none !important; }
+  .ledger-table-wrap { overflow: visible; }
+  .table { width: 100%; border-collapse: collapse; }
+  .table th, .table td { border: 1px solid #ccc; padding: 8px; }
+  .print-date-wrapper { display: none !important; }
+}
+.print-date-wrapper { margin-right: 10px; }
+.print-date-wrapper .ndp-container { margin-bottom: 0; }

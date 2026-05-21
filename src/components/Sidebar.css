@@ -1,0 +1,266 @@
+/* ── Sidebar-specific color tokens ───────────────────────────────────────── */
+:root {
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Light: sidebar slightly darker than page */
+  --sidebar-bg:           #f0f2f5;
+  --sidebar-text:         #374151;
+  --sidebar-text-muted:   #6b7280;
+  --sidebar-border:       #e5e7eb;
+  --sidebar-item-hover:   #e5e7eb;
+  --sidebar-item-active-bg: #dbeafe;
+  --sidebar-item-active-color: #2563eb;
+  --sidebar-pill:         #2563eb;
+  --tooltip-bg:           #1f2937;
+  --tooltip-text:         #ffffff;
+}
+
+.dark {
+  /* Dark: sidebar noticeably darker than content */
+  --sidebar-bg:           #111318;
+  --sidebar-text:         #c9d1d9;
+  --sidebar-text-muted:   #6e7681;
+  --sidebar-border:       #21262d;
+  --sidebar-item-hover:   #1c2128;
+  --sidebar-item-active-bg: #1e3a5f;
+  --sidebar-item-active-color: #58a6ff;
+  --sidebar-pill:         #58a6ff;
+  --tooltip-bg:           #e5e7eb;
+  --tooltip-text:         #111827;
+}
+
+/* ── Top strip brand section ─────────────────────────────────────────────── */
+.strip-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  padding: 0 0.875rem;
+  height: 60px;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.strip-brand-collapsed {
+  width: 85px;
+  justify-content: flex-start;
+  gap: 0.375rem;
+  padding: 0 0.5rem;
+}
+
+.strip-brand-collapsed .sidebar-collapse-btn {
+  margin-left: 0;
+}
+
+.strip-brand-collapsed .sidebar-brand {
+  flex: 0 0 auto;
+}
+
+.strip-brand-collapsed .sidebar-brand-icon {
+  width: 34px;
+  height: 34px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.125rem 0.875rem 1rem;
+  border-bottom: 1px solid var(--sidebar-border);
+  min-height: 64px;
+  flex-shrink: 0;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
+  color: var(--sidebar-text);
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-brand-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--sidebar-item-active-bg);
+  color: var(--sidebar-item-active-color);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--sidebar-text);
+}
+
+.sidebar-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--sidebar-text-muted);
+  cursor: pointer;
+  padding: 0.375rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.sidebar-collapse-btn:hover {
+  background: var(--sidebar-item-hover);
+  color: var(--sidebar-text);
+}
+
+/* ── Nav ──────────────────────────────────────────────────────────────────── */
+.sidebar-nav {
+  flex: 1;
+  padding: 0.75rem 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--sidebar-text-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--sidebar-item-hover);
+  color: var(--sidebar-text);
+}
+
+.sidebar-nav-item.active {
+  background: var(--sidebar-item-active-bg);
+  color: var(--sidebar-item-active-color);
+  font-weight: 600;
+}
+
+.sidebar-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar-nav-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Active left-edge pill */
+.sidebar-active-pill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: var(--sidebar-pill);
+  border-radius: 0 3px 3px 0;
+}
+
+/* ── Nav panel (mobile drawer) ───────────────────────────────────────────── */
+.sidebar-nav-panel {
+  background: var(--sidebar-bg);
+}
+
+/* ── Mobile overlay ───────────────────────────────────────────────────────── */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 199;
+}
+
+@media (max-width: 768px) {
+  .sidebar-nav-panel {
+    display: none;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width) !important;
+    z-index: 200;
+    box-shadow: var(--shadow-xl);
+  }
+  .sidebar-nav-panel-open {
+    display: flex;
+    flex-direction: column;
+  }
+  .strip-brand {
+    display: none;
+  }
+}
+
+/* ── Premium Tooltip styling ─────────────────────────────────────────── */
+.premium-tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  pointer-events: none; /* transparent to pointer interactions */
+  opacity: 0;
+  transform: translateX(-4px) translateY(-50%) scale(0.95);
+  transition: opacity 0.15s ease, transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+}
+
+.premium-tooltip::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -4px;
+  transform: translateY(-50%);
+  border-width: 5px 5px 5px 0;
+  border-style: solid;
+  border-color: transparent var(--tooltip-bg) transparent transparent;
+  transition: border-color 0.2s ease;
+}
+
+.premium-tooltip.visible {
+  opacity: 1;
+  transform: translateX(8px) translateY(-50%) scale(1);
+}
+

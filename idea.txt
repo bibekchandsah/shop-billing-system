@@ -1,0 +1,295 @@
+npm install
+npm run dev
+
+echo "# shop-billing-system" >> README.md
+git init
+git add .
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/bibekchandsah/shop-billing-system.git
+git push -u origin main
+
+git remote add origin https://github.com/bibekchandsah/shop-billing-system.git
+git branch -M main
+git push -u origin main
+
+💻 Quick Commands
+npm run dev      # Start dev server (already running)
+npm run build    # Build for production
+npm run preview  # Preview production build
+
+🎯 Bill Design:
+----------------------------------------------------------
+                    Estimate Bill
+                Garuda, Rautahat, Nepal
+
+Bill No: BILL-0001          Date: 2080-10-01
+Customer Name: John Doe
+Address: Kathmandu          Contact: 9876543210
+
+S.N.  Particulars    Qty.   Rate      Amount
+1     Rice           10     50.00     500.00
+2     Dal            5      120.00    600.00
+
+                    Total Qty: 15 Total Amount:    Rs. 1,100.00
+
+In Words: One Thousand One Hundred Rupees Only
+
+Note: Thank you!
+
+    Thank you for your business! Please come again.
+--------------------------------------------------------------
+
+nepali date library
+number to words in amount
+printing pdf of bill
+saving data in database
+creating user interface for billing system
+generating reports for sales and inventory
+exporting data to excel or csv format
+implementing search functionality for products and customers
+Designing a responsive layout for the billing system
+
+
+Design:
+1. User Interface: The billing system will have a user-friendly interface that allows users to easily navigate through different sections such as product management, customer management, and billing. The interface will be designed to be responsive, ensuring that it works well on both desktop and mobile devices.    
+2. Product Management: The system will have a dedicated section for managing products, where users can add, edit, and delete products. Each product will have attributes such as name, price, quantity, and category. The system will also allow users to search for products based on their name, category, or price range. This will help users quickly find the products they need when creating bills or managing inventory.
+3. Customer Management: The billing system will include a customer management module where users can add, edit, and delete customer information. Each customer will have attributes such as name, contact details, and purchase history. The system will also allow users to search for customers based on their name or contact information.
+4. Billing: The billing module will enable users to create and manage bills for customers. Users can add products to the bill, specify quantities, and calculate the total amount. The system will also allow users to apply discounts and taxes to the bill. Once the bill is generated, users can print it as a PDF or save it in the database for future reference.
+5. Reporting: The billing system will have a reporting feature that allows users to generate reports for sales and inventory. Users can view sales reports based on different time periods, such as daily, weekly, or monthly. The inventory report will show the current stock levels of products and alert users when stock is low.
+6. Exporting Data: The system will provide an option to export data to Excel or CSV format. This will allow users to easily analyze and manipulate the data outside of the billing system. Users can export product lists, customer lists, and sales reports for further analysis.
+7. Search Functionality: The billing system will implement a search functionality that allows users to quickly find products and customers. Users can search for products based on their name, category, or price range. Similarly, users can search for customers based on their name or contact information. This will help users save time and improve efficiency when managing their billing system.
+8. Nepali Date Library: The billing system will incorporate a Nepali date library to handle date-related functionalities. This will allow users to input and display dates in the Nepali calendar format, which is commonly used in Nepal. The library will provide functions for converting between Nepali and Gregorian dates, as well as formatting dates according to Nepali conventions.
+9. Number to Words in Amount: The billing system will include a feature that converts numerical amounts into words. This will be particularly useful for generating bills and invoices, as it provides a clear representation of the total amount in both numerical and written form. The system will support multiple languages, including English and Nepali, to cater to a wider user base. Users can choose their preferred language for the number-to-words conversion, ensuring that the billing system is accessible and user-friendly for all users. words in amount will be displayed on the bill and can also be included in the PDF generation for a comprehensive billing experience. words be like "One Lakh Fifty Nine Thousand Two Hundred Thirty Four Rupees Only" for the amount of 159234. This feature will enhance the clarity and professionalism of the bills generated by the system, making it easier for customers to understand the total amount due.
+10. Printing PDF of Bill: The billing system will have the capability to generate and print bills in PDF format. This will allow users to easily share and store bills for their records. The PDF generation will include all relevant information such as customer details, product details, quantities, prices, discounts, taxes, and the total amount. Users can customize the layout and design of the PDF bill to match their branding and preferences. Additionally, the system will provide options for saving the generated PDF bills in the database for future reference or exporting them to external storage. The PDF generation will be implemented using a reliable library that supports various features such as formatting, styling, and embedding images. This will ensure that the generated bills are professional and visually appealing. Users will also have the option to print the PDF bills directly from the system, providing a seamless experience for managing their billing processes. Overall, the PDF generation feature will enhance the functionality and usability of the billing system, making it easier for users to create and manage their bills effectively.
+11. Saving Data in Database: The billing system will utilize a database to store all relevant data, including product information, customer details, bills, and reports. This will ensure that the data is organized, secure, and easily accessible for future reference. The database will be designed to handle large volumes of data efficiently and will include features such as backup and recovery to prevent data loss. Users will be able to retrieve and manage their data through the user interface, allowing for seamless integration between the billing system and the database. The database will also support data integrity and consistency, ensuring that all information is accurate and up-to-date. This will enhance the overall functionality and reliability of the billing system, providing users with a robust solution for managing their billing processes effectively.
+
+
+Estimate bill design: 
+
+                        Estimate Bill
+                    Garuda, Rautahat, Nepal
+
+Bill No: input box          Date: input box (with Nepali date library integration)
+Customer Name: input box
+Address: input box          Contact Number: input box
+
+S.N.                   Particulars    Qty.       Rate       Amount
+Automatic/maually      input box      input box  input box  calculated amount
+Automatic/maually      input box      input box  input box  calculated amount
+Automatic/maually      input box      input box  input box  calculated amount
+Automatic/maually      input box      input box  input box  calculated amount
+Automatic/maually      input box      input box  input box  calculated amount
+                                      Total Amount:         calculated amount (displayed in numerical)
+In Words: Total amount (displayed in words format)
+Payment Method: dropdown (Cash, Due, Mobile Payment, etc.)  Free Due: input box (for additional notes or instructions)
+
+            Thank you for your business! Please come again.
+
+Buttons: Add record, Generate PDF, Save Bill, Clear Form
+
+
+
+record design:
+Search by bill number, date, Customer Name,  address, contact number, total amount, or payment method
+Display search results in a table format with columns for Bill No, Date, Customer Name, Total Amount, and Payment Method
+Include options to view, edit, or delete each record in the search results & record details page
+Bill No: from estimate bill data          Date: from estimate bill data (with Nepali date library integration)      Customer Name: from estimate bill data      Address: from estimate bill data          Contact Number: from estimate bill data       Total Amount: from estimate bill data (displayed in numerical)     Payment Method: from estimate bill data      Free Due: from estimate bill data  
+
+
+
+
+✅ Core Features Implemented
+Bill Creation System
+    Auto-generated bill numbers (BILL-0001, BILL-0002...)
+    Customer information (Name, Address, Contact)
+    Dynamic item management (add/remove items)
+    Automatic calculations (qty × rate = amount)
+    Payment method selection
+    Notes/instructions field
+Bill Management:
+    Search by multiple fields
+    View detailed bill information
+    Download PDF
+    Delete bills
+    Real-time updates
+Nepali Date Support
+    Full Nepali calendar integration
+    Automatic date conversion
+    Display in both English and Nepali dates
+Number to Words
+    Converts amounts to words (e.g., "One Lakh Fifty Nine Thousand Two Hundred Thirty Four Rupees Only")
+    Indian numbering system (Lakh, Crore)
+PDF Generation
+    Professional bill format
+    Business header with your details
+    Itemized table
+    Total in numbers and words
+    Payment information
+    Thank you footer
+Database (Firebase)
+    Secure cloud storage
+    Real-time synchronization
+    Create, Read, Delete operations
+    Automatic timestamps
+Records Management
+    View all bills in table format
+    Advanced search (by bill number, customer name, date, payment method, etc.)
+    View detailed bill information
+    Download PDFs
+    Delete bills with confirmation
+User Interface
+    Modern, clean design
+    Fully responsive (works on desktop, tablet, mobile)
+    Light, Dark, and System themes
+    Smooth animations
+    Intuitive navigation
+
+📚 Complete Documentation
+    QUICK_START.md - 5-minute setup guide
+    README.md - Complete overview and setup
+    USER_GUIDE.md - Comprehensive user manual
+    FIREBASE_SETUP.md - Firebase configuration guide
+    DEPLOYMENT.md - Deployment to various platforms
+    CONTRIBUTING.md - Developer guidelines
+    PROJECT_SUMMARY.md - Technical overview
+    CHANGELOG.md - Version history
+    IMPLEMENTATION_COMPLETE.md - Implementation checklist
+    DOCUMENTATION_INDEX.md - Documentation guide
+
+Enable Firestore Database:
+    Go to Firebase Console
+    Select project: shopbillingsystem
+    Click "Firestore Database" (left sidebar)
+    Click "Create database"
+    Choose "Start in test mode"
+    Select location: asia-south1 (closest to Nepal)
+    Click "Enable"
+
+Update Firestore security rules
+    Go to Firebase Console
+    Select: shopbillingsystem
+    Click: Firestore Database → Rules tab
+    Replace everything with:
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /{document=**} {
+              allow read, write: if true;
+            }
+          }
+        }
+    Click "Publish"
+
+✅ Toast Notification System Implemented!
+upgraded  alert system to use toast notifications that appear in the bottom-right corner of the screen!
+    Toasts appear in bottom-right corner (fixed position)
+    Always visible even when scrolled down ✅
+    Multiple toasts can stack
+    Auto-dismiss after 5 seconds
+    Manual close button (X)
+    Smooth slide-in animations
+    Responsive (full width on mobile)
+🎨 Features
+    Fixed Position - Bottom-right corner, always visible
+    Auto-dismiss - Disappears after 5 seconds
+    Manual Close - Click X to close immediately
+    Stacking - Multiple toasts stack vertically
+    Animations - Smooth slide-in from right
+    Hover Effect - Slightly moves left on hover
+    Icons - Each type has a unique icon (✓, ✗, ⚠, ℹ)
+    Responsive - Adapts to mobile screens
+    Theme Support - Works with Light/Dark/System themes
+🎨 Toast Types
+    Success (Green) - "Bill saved successfully!"
+    Error (Red) - "Failed to save bill"
+    Info (Blue) - General information
+    Warning (Yellow) - Caution messages
+📱 Responsive Design
+    Desktop/Tablet:
+        Position: Bottom-right corner
+        Width: 320px minimum
+    Mobile:
+        Position: Bottom center
+        Full width with margins
+        Stacks vertically
+
+Light → Dark → System → Light → …
+The button shows the current theme's icon + label (e.g. ☀ Light, 🌙 Dark, 🖥 System). Hovering shows a tooltip with what it'll switch to next. On mobile it stretches full-width at the bottom of the nav.
+
+Button inline feedback
+Save Bill — after a successful save, the button instantly changes to a green ✓ Saved state for 2 seconds, then resets back to "Save Bill".
+Clear Form — after clearing, the button shows ✓ Cleared for 2 seconds, then resets.
+
+https://nepalidate.omkumarpandey.com.np/datepicker.html
+Polls for the CDN script to load, then calls NepaliDatePicker.init()
+Automatically sets today's BS date on mount
+Syncs dark/light mode with your theme toggle (calls setDark() whenever the theme changes)
+Clears itself when value is reset to empty (on Clear Form)
+Returns both the BS date (2081-05-15) and the equivalent AD date (2024-08-30) via onChange(bs, ad)
+
+Behaviour:
+    Click the input → Bikram Sambat calendar opens with bilingual labels
+    Pick a date → both BS and AD are stored internally
+    Theme toggle → calendar dark mode follows automatically
+    Clear Form → picker resets to today's da
+
+Address column
+The table now has an Address column between Customer Name and Contact. Long addresses are truncated with … to keep the table tidy — the full value is always visible in the view/edit modal.
+
+Edit button (amber/warning colour)
+A pencil icon button sits between View and Download in the Actions column. Clicking it opens the Edit Bill modal.
+
+Edit modal
+A full-width modal (up to 1000px) with all editable fields:
+    Bill Information — Bill No, Nepali Date picker (same picker as Create Bill, pre-filled with the existing date)
+    Customer Information — Name, Address, Contact Number
+    Items — full editable table with Add/Remove rows, auto-calculated amounts
+    Live total + In Words — updates as you type
+    Payment — Payment Method dropdown, Note/Free Due
+Clicking Save Changes calls updateBill() in Firebase, shows a success toast, closes the modal, and refreshes the table. Validation runs the same rules as Create Bill.
+
+Print button (cyan, printer icon) sits next to "Generate PDF" in the form actions. It validates the form the same way — customer name and at least one valid item required.
+
+Print Preview modal opens with:
+    A clean A4-style white bill layout showing all bill data — header, business name/address, bill meta (BS date, AD date, customer, address, contact), items table with filler rows so it always looks full, total row, amount in words, payment method, note, and the thank-you footer
+    A toolbar at the top (hidden during print) with "Print / Save PDF" and "Close" buttons
+    Clicking outside the modal closes it
+"Print / Save PDF" calls window.print() which opens the browser's native print dialog. From there the user can:
+    Send to a physical printer
+    Save as PDF (via "Save as PDF" destination in Chrome/Edge/Firefox)
+    Choose paper size, orientation, margins
+Print CSS (@media print) hides everything on the page except #printable-bill, removes all shadows/borders from the modal chrome, and sets @page to A4 portrait with 1.5cm margins. Table header background and borders are forced to print with -webkit-print-color-adjust: exact.
+
+Only BS date shown
+    Print preview: shows Date: 2081-05-15 (BS only)
+    PDF generator: shows Date: 2081-05-15 (BS only, with || '—' fallback)
+    Label on the picker changed from "Date (BS / AD)" to "Date (BS)"
+
+Bill No: BILL-0001                    Date: 2080-10-01
+Customer Name: John Doe
+Address: Kathmandu                    Contact: 9876543210
+
+Print preview (printBill.ts) — uses a CSS grid-template-columns: 1fr 1fr so Bill No and Date sit on the same line, Customer Name spans the full width, and Address and Contact share the next line with Contact right-aligned.
+
+PDF (pdfGenerator.ts) — uses jsPDF's x-coordinate positioning: labels are bold, values are normal weight. Bill No at x=15, Date label at x=130; Customer Name at x=15 spanning full width; Address at x=15, Contact label at x=130 — matching the same visual rhythm.
+
+
+┌─────────────────────────┬──────────────────────────┐
+│ Bill No: [___________]  │ Date (BS): [___________] │
+├─────────────────────────┴──────────────────────────┤
+│ Customer Name: [_________________________________] │
+├─────────────────────────┬──────────────────────────┤
+│ Address: [___________]  │ Contact Number: [______] │
+└─────────────────────────┴──────────────────────────┘
+Row 1 — Bill No on the left, Date picker on the right (grid-template-columns: 1fr 1fr)
+Row 2 — Customer Name spans the full width (no grid, just a plain form-group)
+Row 3 — Address on the left, Contact Number on the right (same two-column grid)
+On mobile (≤768px) both meta rows collapse to a single column so nothing gets cramped. The form max-width is also tightened to 1000px to keep it proportional to the bill design.
+
+ 
+
+
+today sale | bill today | today customer | stock quantity
+month sale | bill month | month customer | low stock
+total sale | toatl bill | total customer | out of stock
