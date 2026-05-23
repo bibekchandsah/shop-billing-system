@@ -88,6 +88,19 @@ const CreateBill: React.FC = () => {
     setContactNumber(digitsOnly);
   };
 
+  const toTitleCase = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/(^|[\s\-./])([a-z])/g, (_, sep: string, letter: string) => `${sep}${letter.toUpperCase()}`);
+
+  const handleCustomerNameChange = (value: string) => {
+    setCustomerName(toTitleCase(value));
+  };
+
+  const handleAddressChange = (value: string) => {
+    setAddress(toTitleCase(value));
+  };
+
   const handleItemChange = (index: number, field: keyof BillItem, value: string | number) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
@@ -410,16 +423,16 @@ const CreateBill: React.FC = () => {
           {/* ── Row 2: Customer Name (full width) ── */}
           <div className="form-group" style={{ position: 'relative', zIndex: 20 }}>
             <label className="label">Customer Name *</label>
-            <input
-              type="text"
-              className="input"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              onFocus={() => setCustomerDropdownOpen(true)}
-              onBlur={() => setCustomerDropdownOpen(false)}
-              placeholder="Enter customer name"
-              autoComplete="off"
-            />
+              <input
+                type="text"
+                className="input"
+                value={customerName}
+                onChange={(e) => handleCustomerNameChange(e.target.value)}
+                onFocus={() => setCustomerDropdownOpen(true)}
+                onBlur={() => setCustomerDropdownOpen(false)}
+                placeholder="Enter customer name"
+                autoComplete="off"
+              />
             {customerDropdownOpen && (() => {
               const matches = customers.filter(c => 
                 c.name.toLowerCase().includes(customerName.toLowerCase())
@@ -433,8 +446,8 @@ const CreateBill: React.FC = () => {
                       className="suggestion-item"
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        setCustomerName(c.name);
-                        if (c.address) setAddress(c.address);
+                        setCustomerName(toTitleCase(c.name));
+                        if (c.address) setAddress(toTitleCase(c.address));
                         if (c.contactNumber) setContactNumber(c.contactNumber);
                         setCustomerDropdownOpen(false);
                       }}
@@ -456,7 +469,7 @@ const CreateBill: React.FC = () => {
                 type="text"
                 className="input"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => handleAddressChange(e.target.value)}
                 placeholder="Enter address"
               />
             </div>
