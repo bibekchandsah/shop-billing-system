@@ -8,6 +8,7 @@ interface PrintPreviewProps {
   businessName: string;
   businessAddress: string;
   businessContact?: string;
+  printFontSize?: number;
   onClose: () => void;
 }
 
@@ -16,9 +17,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({
   businessName,
   businessAddress,
   businessContact,
+  printFontSize = 13,
   onClose,
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const totalQty = bill.items.reduce((sum, item) => sum + item.qty, 0);
 
   const handlePrint = () => {
     window.print();
@@ -62,7 +65,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({
           </div>
 
           {/* ── Printable bill ── */}
-          <div className="print-paper" ref={printRef} id="printable-bill">
+          <div className="print-paper" ref={printRef} id="printable-bill" style={{ fontSize: `${printFontSize}px`, ['--print-scale' as any]: (printFontSize / 13).toString() }}>
+            <div className="print-scale-wrap">
             {/* Header */}
             <div className="pb-header">
               <h1 className="pb-title">Estimate Bill</h1>
@@ -72,8 +76,6 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({
                 {businessContact && ` | Contact: ${businessContact}`}
               </p>
             </div>
-
-            <hr className="pb-divider" />
 
             {/* Bill meta */}
             <div className="pb-meta">
@@ -129,9 +131,9 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({
                   <tr key={item.sn}>
                     <td className="pb-td pb-td-center">{item.sn}</td>
                     <td className="pb-td">{item.particulars}</td>
-                    <td className="pb-td pb-td-right">{item.qty}</td>
-                    <td className="pb-td pb-td-right">{formatCurrency(item.rate)}</td>
-                    <td className="pb-td pb-td-right">{formatCurrency(item.amount)}</td>
+                    <td className="pb-td pb-td-center">{item.qty}</td>
+                    <td className="pb-td pb-td-center">{formatCurrency(item.rate)}</td>
+                    <td className="pb-td pb-td-center">{formatCurrency(item.amount)}</td>
                   </tr>
                 ))}
                 {/* Empty filler rows so the table always looks full */}
@@ -145,19 +147,13 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({
                       <td className="pb-td"></td>
                     </tr>
                   ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={5} className="pb-td pb-td-right" style={{ fontWeight: 'bold', background: '#f8fafc', padding: '10px 15px' }}>
-                    <span style={{ marginRight: '30px' }}>
-                      Total Qty: {bill.items.reduce((sum, item) => sum + item.qty, 0)}
-                    </span>
-                    <span>
-                      Total Amount: {formatCurrency(bill.totalAmount)}
-                    </span>
-                  </td>
+                <tr className="pb-total-row">
+                  <td colSpan={2} className="pb-total-label">Total</td>
+                  <td className="pb-total-qty">{totalQty}</td>
+                  <td className="pb-total-empty">&nbsp;</td>
+                  <td className="pb-total-value">{formatCurrency(bill.totalAmount)}</td>
                 </tr>
-              </tfoot>
+              </tbody>
             </table>
 
             {/* In words */}
@@ -182,6 +178,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({
                 <div style={{ borderTop: '1px solid #333', marginBottom: '5px' }}></div>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>Authorized Signature</div>
               </div>
+            </div>
             </div>
           </div>
           {/* end print-paper */}

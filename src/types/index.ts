@@ -56,6 +56,8 @@ export interface AppSettings {
   businessContact: string;
   billNumberFormat: 'numeric' | 'prefix';
   billNumberPrefix: string;
+  /** Base font size (px) used for printed bills and PDFs */
+  printFontSize: number;
   /** BS month number (1–12) when the fiscal year starts. Default: 4 (Shrawan) */
   fiscalYearStart: number;
   /** BS month number (1–12) when the fiscal year ends. Default: 3 (Ashadh) */

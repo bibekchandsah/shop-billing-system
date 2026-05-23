@@ -78,6 +78,8 @@ const Settings: React.FC = () => {
     return padded;
   };
 
+  const getPreviewPrintFontSize = () => settings.printFontSize ?? 13;
+
   if (loading) {
     return (
       <div className="settings-page-loading">
@@ -314,6 +316,72 @@ const Settings: React.FC = () => {
                     </strong>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Print Font Settings */}
+          <div className="settings-card card">
+            <div className="card-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 9V4h12v5" />
+                <path d="M6 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1" />
+                <path d="M6 14h12v6H6z" />
+              </svg>
+              <h2>Print Font Settings</h2>
+            </div>
+            <p className="card-desc">
+              Choose the font size used when printing bills and PDFs. The last saved size is remembered and used automatically for future prints.
+            </p>
+
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label className="label">
+                  Print Font Size: <strong>{getPreviewPrintFontSize()}px</strong>
+                </label>
+                <input
+                  type="range"
+                  className="print-font-slider"
+                  min={10}
+                  max={20}
+                  step={1}
+                  value={settings.printFontSize}
+                  onChange={e => handleFieldChange('printFontSize', Number(e.target.value))}
+                />
+                <div className="print-font-range-labels">
+                  <span>Smaller</span>
+                  <span>Larger</span>
+                </div>
+              </div>
+
+              <div className="form-group full-width">
+                <label className="label">Live Print Preview</label>
+                <div className="print-font-preview">
+                  <div className="print-font-preview-title" style={{ fontSize: `${getPreviewPrintFontSize() + 8}px` }}>
+                    Estimate Bill
+                  </div>
+                  <div className="print-font-preview-subtitle" style={{ fontSize: `${Math.max(10, getPreviewPrintFontSize() + 1)}px` }}>
+                    {settings.businessName || 'Shop Billing System'}
+                  </div>
+                  <div className="print-font-preview-meta" style={{ fontSize: `${Math.max(9, getPreviewPrintFontSize() - 1)}px` }}>
+                    Bill No: {getPreviewBillNo()} | Qty: 5 | Amount: Rs. 1,250
+                  </div>
+                  <div className="print-font-preview-table" style={{ fontSize: `${Math.max(9, getPreviewPrintFontSize() - 1)}px` }}>
+                    <div className="preview-table-row preview-table-head">
+                      <span>Particulars</span>
+                      <span>Qty</span>
+                      <span>Rate</span>
+                      <span>Amount</span>
+                    </div>
+                    <div className="preview-table-row">
+                      <span>Sample Item</span>
+                      <span className="center">2</span>
+                      <span className="center">125</span>
+                      <span className="center">250</span>
+                    </div>
+                  </div>
+                </div>
+                <small className="help-text">This preview mirrors the font size used in print and PDF output.</small>
               </div>
             </div>
           </div>

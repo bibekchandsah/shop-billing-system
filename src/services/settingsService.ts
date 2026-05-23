@@ -99,6 +99,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   businessContact: '',
   billNumberFormat: 'numeric',
   billNumberPrefix: 'BILL-',
+  printFontSize: 13,
   fiscalYearStart: 4,   // Shrawan (month 4 in BS, 1-indexed)
   fiscalYearEnd: 3,     // Ashadh (month 3 in BS, 1-indexed)
   activeFiscalYear: getDefaultActiveFiscalYear(4),
@@ -170,6 +171,7 @@ export const saveAppSettings = async (userId: string, settings: AppSettings): Pr
       businessContact: settings.businessContact || '',
       billNumberFormat: settings.billNumberFormat || 'numeric',
       billNumberPrefix: settings.billNumberPrefix || 'BILL-',
+      printFontSize: settings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
       fiscalYearStart: settings.fiscalYearStart ?? DEFAULT_SETTINGS.fiscalYearStart,
       fiscalYearEnd: settings.fiscalYearEnd ?? DEFAULT_SETTINGS.fiscalYearEnd,
       activeFiscalYear: settings.activeFiscalYear || DEFAULT_SETTINGS.activeFiscalYear,

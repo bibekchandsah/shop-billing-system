@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import {
   getAppSettings,
-  saveAppSettings,
   getFiscalYearOptions,
   getDefaultActiveFiscalYear,
   isBillInFiscalYear,
@@ -63,15 +64,27 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const setActiveFiscalYear = useCallback(
     async (fy: string) => {
-      if (!settings) return;
-      const updated = { ...settings, activeFiscalYear: fy };
-      setSettings(updated); // optimistic update
+      if (!user?.uid) return;
+
+      const updated = settings ? { ...settings, activeFiscalYear: fy } : null;
+      if (updated) {
+        setSettings(updated); // optimistic update
+      }
       try {
-        await saveAppSettings(user?.uid || '', updated);
+        await setDoc(
+          doc(db, 'users', user.uid, 'settings', 'preferences'),
+          {
+            activeFiscalYear: fy,
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
       } catch (e) {
         console.error('FiscalYearContext: failed to save fiscal year', e);
         // revert on failure
-        setSettings(settings);
+        if (settings) {
+          setSettings(settings);
+        }
       }
     },
     [settings, user?.uid]

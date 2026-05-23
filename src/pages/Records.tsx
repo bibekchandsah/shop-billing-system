@@ -3,7 +3,7 @@ import type { Bill, BillItem } from '../types';
 import { collection, query, orderBy, limit, getDocs, endBefore, startAfter, limitToLast, Timestamp, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAllBills, deleteBill, updateBill, createBill } from '../services/billService';
-import { isBillInFiscalYear } from '../services/settingsService';
+import { DEFAULT_SETTINGS, isBillInFiscalYear } from '../services/settingsService';
 import { recordBillInventory, removeBillInventory } from '../services/stockService';
 import { syncBillCustomerLedger } from '../services/customerService';
 import { formatCurrency, numberToWords } from '../utils/numberToWords';
@@ -429,7 +429,8 @@ const Records: React.FC = () => {
         bill,
         settings?.businessName || 'Shop Billing System',
         settings?.businessAddress || 'Garuda, Rautahat, Nepal',
-        settings?.businessContact || ''
+        settings?.businessContact || '',
+        settings?.printFontSize ?? DEFAULT_SETTINGS.printFontSize
       );
       showSuccess('PDF downloaded successfully');
     } catch (error) {
@@ -443,7 +444,8 @@ const Records: React.FC = () => {
       bill,
       settings?.businessName || 'Shop Billing System',
       settings?.businessAddress || 'Garuda, Rautahat, Nepal',
-      settings?.businessContact || ''
+      settings?.businessContact || '',
+      settings?.printFontSize ?? DEFAULT_SETTINGS.printFontSize
     );
   };
 

@@ -7,32 +7,31 @@ export const generateBillPDF = (
   bill: Bill,
   businessName: string,
   businessAddress: string,
-  businessContact?: string
+  businessContact?: string,
+  printFontSize = 13
 ): void => {
   const doc = new jsPDF();
+  const scale = Math.max(0.8, Math.min(1.6, printFontSize / 13));
+  const scaled = (value: number) => Math.round(value * scale);
   
   // Set font
   doc.setFont('helvetica');
   
   // Header
-  doc.setFontSize(20);
+  doc.setFontSize(scaled(20));
   doc.setFont('helvetica', 'bold');
   doc.text('Estimate Bill', 105, 20, { align: 'center' });
   
-  doc.setFontSize(12);
+  doc.setFontSize(scaled(12));
   doc.setFont('helvetica', 'normal');
   doc.text(businessName, 105, 28, { align: 'center' });
   
   const addressLine = `${businessAddress}${businessContact ? ' | Contact: ' + businessContact : ''}`;
   doc.text(addressLine, 105, 34, { align: 'center' });
   
-  // Line separator
-  doc.setLineWidth(0.5);
-  doc.line(15, 38, 195, 38);
-
   // ── Bill meta — two-column layout ──────────────────────────────────────────
   const date = bill.nepaliDate || bill.date || '—';
-  doc.setFontSize(10);
+  doc.setFontSize(Math.max(9, scaled(10)));
 
   // Row 1: Bill No (left) | Date (right)
   doc.setFont('helvetica', 'bold');
@@ -76,12 +75,16 @@ export const generateBillPDF = (
     formatCurrency(item.rate),
     formatCurrency(item.amount)
   ]);
+
+  // Calculate total quantity of items
+  const totalQty = bill.items.reduce((sum, item) => sum + item.qty, 0);
   
   autoTable(doc, {
     startY: 68,
     head: [['S.N.', 'Particulars', 'Qty.', 'Rate', 'Amount']],
     body: tableData,
     theme: 'grid',
+    showFoot: 'lastPage',
     headStyles: {
       fillColor: [41, 128, 185],
       textColor: 255,
@@ -89,28 +92,33 @@ export const generateBillPDF = (
       halign: 'center'
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 20 },
-      1: { halign: 'left', cellWidth: 70 },
-      2: { halign: 'center', cellWidth: 25 },
-      3: { halign: 'right', cellWidth: 35 },
-      4: { halign: 'right', cellWidth: 35 }
+      0: { halign: 'center', cellWidth: scaled(20) },
+      1: { halign: 'left', cellWidth: scaled(70) },
+      2: { halign: 'center', cellWidth: scaled(25) },
+      3: { halign: 'center', cellWidth: scaled(35) },
+      4: { halign: 'center', cellWidth: scaled(35) }
     },
     styles: {
-      fontSize: 10,
-      cellPadding: 3
+      fontSize: Math.max(9, scaled(10)),
+      cellPadding: scaled(3)
+    },
+    foot: [[
+      { content: 'Total', colSpan: 2, styles: { halign: 'right', fillColor: [240, 244, 248], textColor: 17, fontStyle: 'bold' } },
+      { content: `${totalQty}`, styles: { halign: 'center', fillColor: [240, 244, 248], textColor: 17, fontStyle: 'bold' } },
+      { content: '', styles: { fillColor: [240, 244, 248] } },
+      { content: formatCurrency(bill.totalAmount), styles: { halign: 'center', fillColor: [240, 244, 248], textColor: 17, fontStyle: 'bold' } },
+    ]],
+    footStyles: {
+      fillColor: [240, 244, 248],
+      textColor: 17
+    },
+    didDrawPage: () => {
+      // keep the table footer aligned like the HTML print preview
     }
   });
   
-  // Calculate total quantity of items
-  const totalQty = bill.items.reduce((sum, item) => sum + item.qty, 0);
-
   // Get the final Y position after the table
   const finalY = (doc as any).lastAutoTable.finalY || 70;
-  
-  // Total Qty and Total Amount
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Total Qty: ${totalQty}`, 110, finalY + 10);
-  doc.text(`Total Amount: ${formatCurrency(bill.totalAmount)}`, 195, finalY + 10, { align: 'right' });
   
   // Amount in words
   doc.setFont('helvetica', 'normal');

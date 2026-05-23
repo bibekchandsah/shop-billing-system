@@ -5,7 +5,7 @@ import { getCurrentNepaliDate, toEnglishDate } from '../utils/nepaliDate';
 import { generateBillPDF } from '../utils/pdfGenerator';
 import { printBill } from '../utils/printBill';
 import { createBill, getNextBillNumber } from '../services/billService';
-import { getAppSettings } from '../services/settingsService';
+import { DEFAULT_SETTINGS, getAppSettings } from '../services/settingsService';
 import { recordBillInventory, getStockParticulars } from '../services/stockService';
 import { syncBillCustomerLedger, getCustomers } from '../services/customerService';
 import { useAuth } from '../context/AuthContext';
@@ -69,6 +69,12 @@ const CreateBill: React.FC = () => {
       console.error('Error initializing bill:', error);
       showError('Failed to initialize bill');
     }
+  };
+
+  const getLatestPrintSettings = async () => {
+    const latestSettings = await getAppSettings(user?.uid || '');
+    setSettings(latestSettings);
+    return latestSettings;
   };
 
   /** Called by the Nepali date picker whenever user picks a date */
@@ -249,7 +255,7 @@ const CreateBill: React.FC = () => {
       }
     }
 
-    try {
+    getLatestPrintSettings().then((latestSettings) => {
       const totalAmount = calculateTotal();
       const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
       const { bsDate, adDate } = getBillDates();
@@ -274,15 +280,16 @@ const CreateBill: React.FC = () => {
 
       generateBillPDF(
         bill,
-        settings?.businessName || 'Shop Billing System',
-        settings?.businessAddress || 'Garuda, Rautahat, Nepal',
-        settings?.businessContact || ''
+        latestSettings.businessName || 'Shop Billing System',
+        latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
+        latestSettings.businessContact || '',
+        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize
       );
       showSuccess('PDF generated successfully!');
-    } catch (error) {
+    }).catch((error) => {
       console.error('Error generating PDF:', error);
       showError('Failed to generate PDF. Please try again.');
-    }
+    });
   };
 
   const handlePrint = () => {
@@ -306,33 +313,39 @@ const CreateBill: React.FC = () => {
       }
     }
 
-    const { bsDate, adDate } = getBillDates();
-    const totalAmount = calculateTotal();
-    const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
-    const bill: Bill = {
-      id: '',
-      userId: user?.uid || '',
-      billNo,
-      date:       adDate,
-      nepaliDate: bsDate,
-      customerName,
-      address,
-      contactNumber,
-      items: validItems,
-      totalAmount,
-      totalAmountInWords: numberToWords(totalAmount),
-      totalQty,
-      paymentMethod: 'Cash',
-      freeDue,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    printBill(
-      bill,
-      settings?.businessName || 'Shop Billing System',
-      settings?.businessAddress || 'Garuda, Rautahat, Nepal',
-      settings?.businessContact || ''
-    );
+    getLatestPrintSettings().then((latestSettings) => {
+      const { bsDate, adDate } = getBillDates();
+      const totalAmount = calculateTotal();
+      const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
+      const bill: Bill = {
+        id: '',
+        userId: user?.uid || '',
+        billNo,
+        date:       adDate,
+        nepaliDate: bsDate,
+        customerName,
+        address,
+        contactNumber,
+        items: validItems,
+        totalAmount,
+        totalAmountInWords: numberToWords(totalAmount),
+        totalQty,
+        paymentMethod: 'Cash',
+        freeDue,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      printBill(
+        bill,
+        latestSettings.businessName || 'Shop Billing System',
+        latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
+        latestSettings.businessContact || '',
+        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize
+      );
+    }).catch((error) => {
+      console.error('Error printing bill:', error);
+      showError('Failed to print bill. Please try again.');
+    });
   };
 
   const handleClearForm = async () => {
