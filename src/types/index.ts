@@ -56,6 +56,13 @@ export interface AppSettings {
   businessContact: string;
   billNumberFormat: 'numeric' | 'prefix';
   billNumberPrefix: string;
+  /** Primary action button for billing screen */
+  billPrimaryAction: 'save' | 'pdf' | 'print';
+  /** Extra bill actions to run when primary button is clicked */
+  billActionAutoSave: boolean;
+  billActionAutoGeneratePdf: boolean;
+  billActionAutoPrint: boolean;
+  billActionAutoClear: boolean;
   /** Base font size (px) used for printed bills and PDFs */
   printFontSize: number;
   /** BS month number (1–12) when the fiscal year starts. Default: 4 (Shrawan) */

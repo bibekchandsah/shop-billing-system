@@ -160,192 +160,198 @@ const CreateBill: React.FC = () => {
     }
   };
 
-  const handleSaveBill = async () => {
-    // Validation
+  type BillPrimaryAction = 'save' | 'pdf' | 'print';
+  type BillAction = BillPrimaryAction | 'clear';
+  type BillPayload = { bill: Bill; validItems: BillItem[]; bsDate: string };
+
+  const buildBillPayload = (requireAddress: boolean): BillPayload | null => {
     if (!customerName.trim()) {
       showError('Please enter customer name');
-      return;
+      return null;
     }
 
-    if (!address.trim()) {
+    if (requireAddress && !address.trim()) {
       showError('Please enter address');
-      return;
+      return null;
     }
 
     const validItems = items.filter(item => item.particulars.trim() && item.qty > 0 && item.rate > 0);
     if (validItems.length === 0) {
       showError('Please add at least one valid item');
-      return;
+      return null;
     }
 
-    // Validate stock levels
     for (const item of validItems) {
       const selectedParticular = item.particulars.trim().toLowerCase();
       const stockItem = stockParticulars.find(p => p.name.toLowerCase() === selectedParticular);
       if (stockItem && item.qty > stockItem.currentStock) {
         showError(`Insufficient stock for "${stockItem.name}". Only ${stockItem.currentStock} Qty available.`);
-        return;
+        return null;
       }
     }
 
-    setLoading(true);
+    const totalAmount = calculateTotal();
+    const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
+    const { bsDate, adDate } = getBillDates();
+
+    const bill: Bill = {
+      id: '',
+      userId: user?.uid || '',
+      billNo,
+      date: adDate,
+      nepaliDate: bsDate,
+      customerName,
+      address,
+      contactNumber,
+      items: validItems,
+      totalAmount,
+      totalAmountInWords: numberToWords(totalAmount),
+      totalQty,
+      paymentMethod: 'Cash',
+      freeDue,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    return { bill, validItems, bsDate };
+  };
+
+  const saveBillCore = async (
+    payload: BillPayload,
+    options: { autoClear: boolean; manageLoading: boolean }
+  ): Promise<boolean> => {
+    if (options.manageLoading) {
+      setLoading(true);
+    }
 
     try {
-      const totalAmount = calculateTotal();
-      const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
-      const { bsDate, adDate } = getBillDates();
-      const bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'> = {
-        userId: user?.uid || '',
-        billNo,
-        date:       adDate,
-        nepaliDate: bsDate,
-        customerName,
-        address,
-        contactNumber,
-        items: validItems,
-        totalAmount,
-        totalAmountInWords: numberToWords(totalAmount),
-        totalQty,
-        paymentMethod: 'Cash',
-        freeDue
-      };
+      const { bill, validItems, bsDate } = payload;
+      const { id, createdAt, updatedAt, ...billForSave } = bill;
 
-      await createBill(bill);
-      
-      // Auto-deduct inventory levels directly when a bill is successfully saved
-      await recordBillInventory(user?.uid || '', billNo, bsDate, validItems);
-      await syncBillCustomerLedger(user?.uid || '', null, bill);
-      
+      await createBill(billForSave);
+      await recordBillInventory(user?.uid || '', bill.billNo, bsDate, validItems);
+      await syncBillCustomerLedger(user?.uid || '', null, billForSave);
+
       showSuccess('Bill saved successfully!');
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-      
-      // Reset form after a delay
-      setTimeout(() => {
-        handleClearForm();
-      }, 1500);
+
+      if (options.autoClear) {
+        setTimeout(() => {
+          void handleClearForm();
+        }, 1500);
+      }
+      return true;
     } catch (error) {
       console.error('Error saving bill:', error);
       showError('Failed to save bill. Please try again.');
+      return false;
     } finally {
-      setLoading(false);
+      if (options.manageLoading) {
+        setLoading(false);
+      }
     }
   };
 
-  const handleGeneratePDF = () => {
-    // Validation
-    if (!customerName.trim()) {
-      showError('Please enter customer name');
-      return;
-    }
-
-    const validItems = items.filter(item => item.particulars.trim() && item.qty > 0 && item.rate > 0);
-    if (validItems.length === 0) {
-      showError('Please add at least one valid item');
-      return;
-    }
-
-    // Validate stock levels
-    for (const item of validItems) {
-      const selectedParticular = item.particulars.trim().toLowerCase();
-      const stockItem = stockParticulars.find(p => p.name.toLowerCase() === selectedParticular);
-      if (stockItem && item.qty > stockItem.currentStock) {
-        showError(`Insufficient stock for "${stockItem.name}". Only ${stockItem.currentStock} Qty available.`);
-        return;
-      }
-    }
-
-    getLatestPrintSettings().then((latestSettings) => {
-      const totalAmount = calculateTotal();
-      const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
-      const { bsDate, adDate } = getBillDates();
-      const bill: Bill = {
-        id: '',
-        userId: user?.uid || '',
-        billNo,
-        date:       adDate,
-        nepaliDate: bsDate,
-        customerName,
-        address,
-        contactNumber,
-        items: validItems,
-        totalAmount,
-        totalAmountInWords: numberToWords(totalAmount),
-        totalQty,
-        paymentMethod: 'Cash',
-        freeDue,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
+  const generatePdfCore = (payload: BillPayload, latestSettings: AppSettings) => {
+    try {
       generateBillPDF(
-        bill,
+        payload.bill,
         latestSettings.businessName || 'Shop Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
         latestSettings.businessContact || '',
         latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize
       );
       showSuccess('PDF generated successfully!');
-    }).catch((error) => {
+    } catch (error) {
       console.error('Error generating PDF:', error);
       showError('Failed to generate PDF. Please try again.');
-    });
+    }
   };
 
-  const handlePrint = () => {
-    if (!customerName.trim()) {
-      showError('Please enter customer name');
-      return;
-    }
-    const validItems = items.filter(item => item.particulars.trim() && item.qty > 0 && item.rate > 0);
-    if (validItems.length === 0) {
-      showError('Please add at least one valid item');
-      return;
-    }
-
-    // Validate stock levels
-    for (const item of validItems) {
-      const selectedParticular = item.particulars.trim().toLowerCase();
-      const stockItem = stockParticulars.find(p => p.name.toLowerCase() === selectedParticular);
-      if (stockItem && item.qty > stockItem.currentStock) {
-        showError(`Insufficient stock for "${stockItem.name}". Only ${stockItem.currentStock} Qty available.`);
-        return;
-      }
-    }
-
-    getLatestPrintSettings().then((latestSettings) => {
-      const { bsDate, adDate } = getBillDates();
-      const totalAmount = calculateTotal();
-      const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
-      const bill: Bill = {
-        id: '',
-        userId: user?.uid || '',
-        billNo,
-        date:       adDate,
-        nepaliDate: bsDate,
-        customerName,
-        address,
-        contactNumber,
-        items: validItems,
-        totalAmount,
-        totalAmountInWords: numberToWords(totalAmount),
-        totalQty,
-        paymentMethod: 'Cash',
-        freeDue,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+  const printCore = (payload: BillPayload, latestSettings: AppSettings) => {
+    try {
       printBill(
-        bill,
+        payload.bill,
         latestSettings.businessName || 'Shop Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
         latestSettings.businessContact || '',
         latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize
       );
-    }).catch((error) => {
+    } catch (error) {
       console.error('Error printing bill:', error);
       showError('Failed to print bill. Please try again.');
-    });
+    }
+  };
+
+  const handleSaveBill = async () => {
+    const payload = buildBillPayload(true);
+    if (!payload) return;
+    await saveBillCore(payload, { autoClear: true, manageLoading: true });
+  };
+
+  const handleGeneratePDF = async () => {
+    const payload = buildBillPayload(false);
+    if (!payload) return;
+    try {
+      const latestSettings = await getLatestPrintSettings();
+      generatePdfCore(payload, latestSettings);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      showError('Failed to generate PDF. Please try again.');
+    }
+  };
+
+  const handlePrint = async () => {
+    const payload = buildBillPayload(false);
+    if (!payload) return;
+    try {
+      const latestSettings = await getLatestPrintSettings();
+      printCore(payload, latestSettings);
+    } catch (error) {
+      console.error('Error printing bill:', error);
+      showError('Failed to print bill. Please try again.');
+    }
+  };
+
+  const handlePrimaryAction = async () => {
+    const latestSettings = await getLatestPrintSettings();
+    const primaryAction = latestSettings.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
+    const actions = new Set<BillAction>([primaryAction]);
+
+    if (latestSettings.billActionAutoSave) actions.add('save');
+    if (latestSettings.billActionAutoGeneratePdf) actions.add('pdf');
+    if (latestSettings.billActionAutoPrint) actions.add('print');
+    if (latestSettings.billActionAutoClear) actions.add('clear');
+
+    const payload = buildBillPayload(actions.has('save'));
+    if (!payload) return;
+
+    const manageLoading = actions.has('save');
+    if (manageLoading) {
+      setLoading(true);
+    }
+
+    let saveOk = true;
+    if (actions.has('save')) {
+      saveOk = await saveBillCore(payload, { autoClear: false, manageLoading: false });
+    }
+
+    if (saveOk) {
+      if (actions.has('pdf')) {
+        generatePdfCore(payload, latestSettings);
+      }
+      if (actions.has('print')) {
+        printCore(payload, latestSettings);
+      }
+      if (actions.has('clear')) {
+        await handleClearForm();
+      }
+    }
+
+    if (manageLoading) {
+      setLoading(false);
+    }
   };
 
   const handleClearForm = async () => {
@@ -361,6 +367,9 @@ const CreateBill: React.FC = () => {
     setTimeout(() => setCleared(false), 2000);
     await initializeBill();
   };
+
+  const primaryBillAction = settings?.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
+  const isPrimaryAction = (action: BillPrimaryAction) => primaryBillAction === action;
 
   return (
     <div className="create-bill-page">
@@ -613,7 +622,11 @@ const CreateBill: React.FC = () => {
           </div>
 
           <div className="form-actions">
-            <button onClick={handleSaveBill} className={`btn btn-success ${saved ? 'btn-feedback' : ''}`} disabled={loading}>
+            <button
+              onClick={isPrimaryAction('save') ? handlePrimaryAction : handleSaveBill}
+              className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
+              disabled={loading}
+            >
               {saved ? (
                 <>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -633,7 +646,11 @@ const CreateBill: React.FC = () => {
               )}
             </button>
 
-            <button onClick={handleGeneratePDF} className="btn btn-primary" disabled={loading}>
+            <button
+              onClick={isPrimaryAction('pdf') ? handlePrimaryAction : handleGeneratePDF}
+              className="btn btn-primary"
+              disabled={loading}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
@@ -642,7 +659,11 @@ const CreateBill: React.FC = () => {
               Generate PDF
             </button>
 
-            <button onClick={handlePrint} className="btn btn-info" disabled={loading}>
+            <button
+              onClick={isPrimaryAction('print') ? handlePrimaryAction : handlePrint}
+              className="btn btn-info"
+              disabled={loading}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />

@@ -78,7 +78,26 @@ const Settings: React.FC = () => {
     return padded;
   };
 
+  type BillPrimaryAction = 'save' | 'pdf' | 'print';
+
   const getPreviewPrintFontSize = () => settings.printFontSize ?? 13;
+  const primaryBillAction = settings.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
+
+  const handlePrimaryActionChange = (value: BillPrimaryAction) => {
+    setSettings(prev => {
+      const updated = { ...prev, billPrimaryAction: value };
+      if (value === 'save') {
+        updated.billActionAutoSave = false;
+      }
+      if (value === 'pdf') {
+        updated.billActionAutoGeneratePdf = false;
+      }
+      if (value === 'print') {
+        updated.billActionAutoPrint = false;
+      }
+      return updated;
+    });
+  };
 
   if (loading) {
     return (
@@ -382,6 +401,134 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
                 <small className="help-text">This preview mirrors the font size used in print and PDF output.</small>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: Bill Action Shortcuts */}
+          <div className="settings-card card">
+            <div className="card-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 9V4h12v5" />
+                <path d="M6 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1" />
+                <path d="M6 14h12v6H6z" />
+              </svg>
+              <h2>Bill Action Shortcuts</h2>
+            </div>
+            <p className="card-desc">
+              Choose the primary billing button. When that button is clicked, it can also run the extra actions you enable below.
+            </p>
+
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label className="label">Primary Button</label>
+                <div className="radio-group-cards action-primary-grid">
+                  <label className={`radio-card ${primaryBillAction === 'save' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="billPrimaryAction"
+                      value="save"
+                      checked={primaryBillAction === 'save'}
+                      onChange={() => handlePrimaryActionChange('save')}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>Save Bill</strong>
+                    </div>
+                    <p className="radio-card-desc">Make Save Bill the main button on the billing screen.</p>
+                  </label>
+
+                  <label className={`radio-card ${primaryBillAction === 'pdf' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="billPrimaryAction"
+                      value="pdf"
+                      checked={primaryBillAction === 'pdf'}
+                      onChange={() => handlePrimaryActionChange('pdf')}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>Generate PDF</strong>
+                    </div>
+                    <p className="radio-card-desc">Make Generate PDF the main button on the billing screen.</p>
+                  </label>
+
+                  <label className={`radio-card ${primaryBillAction === 'print' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="billPrimaryAction"
+                      value="print"
+                      checked={primaryBillAction === 'print'}
+                      onChange={() => handlePrimaryActionChange('print')}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>Print</strong>
+                    </div>
+                    <p className="radio-card-desc">Make Print the main button on the billing screen.</p>
+                  </label>
+                </div>
+                <small className="help-text">The primary action always runs on click.</small>
+              </div>
+
+              <div className="form-group full-width">
+                <label className="label">Also Run These Actions</label>
+                <div className="action-toggle-grid">
+                  <label className={`action-toggle ${primaryBillAction === 'save' ? 'disabled' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={settings.billActionAutoSave}
+                      disabled={primaryBillAction === 'save'}
+                      onChange={e => handleFieldChange('billActionAutoSave', e.target.checked)}
+                    />
+                    <div>
+                      <strong>Save Bill</strong>
+                      <span>Saves to records before other actions.</span>
+                    </div>
+                  </label>
+
+                  <label className={`action-toggle ${primaryBillAction === 'pdf' ? 'disabled' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={settings.billActionAutoGeneratePdf}
+                      disabled={primaryBillAction === 'pdf'}
+                      onChange={e => handleFieldChange('billActionAutoGeneratePdf', e.target.checked)}
+                    />
+                    <div>
+                      <strong>Generate PDF</strong>
+                      <span>Automatically downloads the bill PDF.</span>
+                    </div>
+                  </label>
+
+                  <label className={`action-toggle ${primaryBillAction === 'print' ? 'disabled' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={settings.billActionAutoPrint}
+                      disabled={primaryBillAction === 'print'}
+                      onChange={e => handleFieldChange('billActionAutoPrint', e.target.checked)}
+                    />
+                    <div>
+                      <strong>Print</strong>
+                      <span>Opens the print dialog after the primary action.</span>
+                    </div>
+                  </label>
+
+                  <label className="action-toggle">
+                    <input
+                      type="checkbox"
+                      checked={settings.billActionAutoClear}
+                      onChange={e => handleFieldChange('billActionAutoClear', e.target.checked)}
+                    />
+                    <div>
+                      <strong>Clear Form</strong>
+                      <span>Resets the billing form after all actions finish.</span>
+                    </div>
+                  </label>
+                </div>
+                <small className="help-text">Extra actions run only after the primary action succeeds.</small>
               </div>
             </div>
           </div>
