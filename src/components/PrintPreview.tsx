@@ -131,7 +131,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({
                   <tr key={item.sn}>
                     <td className="pb-td pb-td-center">{item.sn}</td>
                     <td className="pb-td">{item.particulars}</td>
-                    <td className="pb-td pb-td-center">{item.qty}</td>
+                    <td className="pb-td pb-td-center">{item.unit ? `${item.qty} ${item.unit}` : item.qty}</td>
                     <td className="pb-td pb-td-center">{formatCurrency(item.rate)}</td>
                     <td className="pb-td pb-td-center">{formatCurrency(item.amount)}</td>
                   </tr>

@@ -24,6 +24,7 @@ export interface BillItem {
   sn: number;
   particulars: string;
   qty: number;
+  unit?: string;
   rate: number;
   amount: number;
 }
@@ -56,6 +57,8 @@ export interface AppSettings {
   businessContact: string;
   billNumberFormat: 'numeric' | 'prefix';
   billNumberPrefix: string;
+  /** Unit dropdown options for billing items */
+  unitCategories: string[];
   /** Primary action button for billing screen */
   billPrimaryAction: 'save' | 'pdf' | 'print';
   /** Extra bill actions to run when primary button is clicked */
@@ -77,6 +80,8 @@ export interface StockParticular {
   id: string;
   name: string;
   currentStock: number;
+  defaultUnit?: string;
+  particularCode?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,6 +92,7 @@ export interface StockLedgerEntry {
   billNo?: string;
   debit: number;
   credit: number;
+  unit?: string;
   currentStock: number;
   note?: string;
   createdAt: Date;

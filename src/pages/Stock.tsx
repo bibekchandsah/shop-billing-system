@@ -14,6 +14,7 @@ import {
   updateLedgerEntry,
   deleteLedgerEntry
 } from '../services/stockService';
+import { DEFAULT_SETTINGS } from '../services/settingsService';
 import type { StockParticular, StockLedgerEntry } from '../types';
 import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
 import { getCurrentNepaliDate, toNepaliDate } from '../utils/nepaliDate';
@@ -38,6 +39,37 @@ const Stock: React.FC = () => {
   
   // App Settings — loaded from FiscalYearContext
   const appSettings = settings;
+  const unitOptions = appSettings?.unitCategories ?? DEFAULT_SETTINGS.unitCategories;
+  const defaultUnit = unitOptions[0] ?? '';
+  const getParticularDefaultUnit = (particular?: StockParticular | null) =>
+    particular?.defaultUnit || defaultUnit;
+
+  const normalizeParticularCode = (value: string) => value.replace(/\D/g, '').slice(0, 5);
+  const formatParticularCode = (value: string) => {
+    const digits = normalizeParticularCode(value);
+    return digits ? digits.padStart(5, '0') : '';
+  };
+  const getNextParticularCode = () => {
+    const usedCodes = new Set(
+      particulars
+        .map(p => formatParticularCode(p.particularCode || ''))
+        .filter(Boolean)
+    );
+    let max = 0;
+    usedCodes.forEach((code) => {
+      const value = parseInt(code, 10);
+      if (!Number.isNaN(value)) {
+        max = Math.max(max, value);
+      }
+    });
+    let next = max + 1;
+    let nextCode = String(next).padStart(5, '0');
+    while (usedCodes.has(nextCode)) {
+      next += 1;
+      nextCode = String(next).padStart(5, '0');
+    }
+    return nextCode;
+  };
 
   // Filter States
   const [filterStartDate, setFilterStartDate] = useState('');
@@ -51,6 +83,8 @@ const Stock: React.FC = () => {
   // New Particular Form States
   const [newPartName, setNewPartName] = useState('');
   const [newPartInitialStock, setNewPartInitialStock] = useState<number>(0);
+  const [newPartUnit, setNewPartUnit] = useState('');
+  const [newPartCode, setNewPartCode] = useState('');
   const [newPartDate, setNewPartDate] = useState('');
   const [newPartBillNo, setNewPartBillNo] = useState('');
   const [addPartLoading, setAddPartLoading] = useState(false);
@@ -60,6 +94,7 @@ const Stock: React.FC = () => {
   // New Transaction Form States
   const [txType, setTxType] = useState<'debit' | 'credit'>('debit');
   const [txQty, setTxQty] = useState<number>(0);
+  const [txUnit, setTxUnit] = useState('');
   const [txBillNo, setTxBillNo] = useState('');
   const [txNote, setTxNote] = useState('');
   const [txDate, setTxDate] = useState('');
@@ -69,6 +104,8 @@ const Stock: React.FC = () => {
   // Edit Particular States
   const [showEditParticular, setShowEditParticular] = useState(false);
   const [editPartName, setEditPartName] = useState('');
+  const [editPartUnit, setEditPartUnit] = useState('');
+  const [editPartCode, setEditPartCode] = useState('');
   const [editPartLoading, setEditPartLoading] = useState(false);
   const [showDeleteParticularConfirm, setShowDeleteParticularConfirm] = useState(false);
   const [deletePartLoading, setDeletePartLoading] = useState(false);
@@ -78,6 +115,7 @@ const Stock: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<StockLedgerEntry | null>(null);
   const [editTxType, setEditTxType] = useState<'debit' | 'credit'>('debit');
   const [editTxQty, setEditTxQty] = useState<number>(0);
+  const [editTxUnit, setEditTxUnit] = useState('');
   const [editTxBillNo, setEditTxBillNo] = useState('');
   const [editTxNote, setEditTxNote] = useState('');
   const [editTxDate, setEditTxDate] = useState('');
@@ -138,6 +176,18 @@ const Stock: React.FC = () => {
       showError('Please enter a valid item name.');
       return;
     }
+    const resolvedCode = formatParticularCode(newPartCode || getNextParticularCode());
+    if (!resolvedCode || resolvedCode.length !== 5) {
+      showError('Please enter a valid 5-digit particular ID.');
+      return;
+    }
+    const isCodeDuplicate = particulars.some(
+      p => formatParticularCode(p.particularCode || '') === resolvedCode
+    );
+    if (isCodeDuplicate) {
+      showError('Particular ID already exists. Please use a different ID.');
+      return;
+    }
     if (newPartInitialStock > 0 && !newPartBillNo.trim()) {
       showError('Please enter a valid bill number for the initial stock.');
       return;
@@ -151,7 +201,9 @@ const Stock: React.FC = () => {
         newPartName.trim(),
         newPartInitialStock,
         dateVal,
-        newPartBillNo
+        newPartBillNo,
+        newPartUnit || undefined,
+        resolvedCode
       );
 
       showSuccess(`Particular "${newPartName}" added successfully.`);
@@ -160,6 +212,8 @@ const Stock: React.FC = () => {
       // Reset Form
       setNewPartName('');
       setNewPartInitialStock(0);
+      setNewPartUnit(defaultUnit);
+      setNewPartCode(getNextParticularCode());
       setNewPartDate('');
       setNewPartBillNo('');
 
@@ -171,6 +225,8 @@ const Stock: React.FC = () => {
         id: particularId,
         name: newPartName.trim(),
         currentStock: newPartInitialStock,
+        defaultUnit: newPartUnit || undefined,
+        particularCode: resolvedCode,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -207,12 +263,14 @@ const Stock: React.FC = () => {
       const isDebit = txType === 'debit';
       const debitQty = isDebit ? txQty : 0;
       const creditQty = isDebit ? 0 : txQty;
+      const resolvedUnit = txUnit || getParticularDefaultUnit(selectedParticular);
 
       await addLedgerEntry(user?.uid || '', selectedParticular.id, {
         date: dateVal,
         billNo: txBillNo.trim() || undefined,
         debit: debitQty,
         credit: creditQty,
+        unit: resolvedUnit || undefined,
         note: txNote.trim() || (isDebit ? 'Manual Stock In' : 'Manual Adjustment Out')
       });
 
@@ -221,6 +279,7 @@ const Stock: React.FC = () => {
 
       // Reset transaction form
       setTxQty(0);
+      setTxUnit(getParticularDefaultUnit(selectedParticular));
       setTxBillNo('');
       setTxNote('');
       setTxDate('');
@@ -251,15 +310,38 @@ const Stock: React.FC = () => {
       showError('Please enter a valid name.');
       return;
     }
+    const resolvedCode = formatParticularCode(editPartCode || '');
+    if (!resolvedCode || resolvedCode.length !== 5) {
+      showError('Please enter a valid 5-digit particular ID.');
+      return;
+    }
+    const isDuplicateCode = particulars.some(
+      p => p.id !== selectedParticular.id && formatParticularCode(p.particularCode || '') === resolvedCode
+    );
+    if (isDuplicateCode) {
+      showError('Particular ID already exists. Please use a different ID.');
+      return;
+    }
     setEditPartLoading(true);
     try {
-      await updateStockParticularName(user?.uid || '', selectedParticular.id, editPartName.trim());
+      await updateStockParticularName(
+        user?.uid || '',
+        selectedParticular.id,
+        editPartName.trim(),
+        editPartUnit || undefined,
+        resolvedCode
+      );
       showSuccess('Particular renamed successfully.');
       setShowEditParticular(false);
       
       // Reload and update UI
       await loadParticulars();
-      setSelectedParticular(prev => prev ? { ...prev, name: editPartName.trim() } : null);
+      setSelectedParticular(prev => prev ? {
+        ...prev,
+        name: editPartName.trim(),
+        defaultUnit: editPartUnit || undefined,
+        particularCode: resolvedCode
+      } : null);
     } catch (error: any) {
       console.error('Error renaming particular:', error);
       showError(error.message || 'Failed to rename particular.');
@@ -293,6 +375,7 @@ const Stock: React.FC = () => {
     setEditingTransaction(entry);
     setEditTxType(entry.debit > 0 ? 'debit' : 'credit');
     setEditTxQty(entry.debit > 0 ? entry.debit : entry.credit);
+    setEditTxUnit(entry.unit || getParticularDefaultUnit(selectedParticular));
     setEditTxBillNo(entry.billNo || '');
     setEditTxNote(entry.note || '');
     setEditTxDate(entry.date);
@@ -332,6 +415,7 @@ const Stock: React.FC = () => {
         billNo: editTxBillNo.trim() || undefined,
         debit: debitQty,
         credit: creditQty,
+        unit: editTxUnit || undefined,
         note: editTxNote.trim() || undefined
       });
 
@@ -420,12 +504,14 @@ const Stock: React.FC = () => {
         exportRows.push({
           particularId: p.id,
           name: p.name,
+          particularCode: p.particularCode || '',
           currentStock: p.currentStock,
           ledger_json: JSON.stringify(entries.map(e => ({
             date: e.date,
             billNo: e.billNo || '',
             debit: e.debit,
             credit: e.credit,
+            unit: e.unit || '',
             currentStock: e.currentStock,
             note: e.note || ''
           })))
@@ -481,7 +567,15 @@ const Stock: React.FC = () => {
 
             try {
               // Create the particular with 0 initial stock
-              await createStockParticular(user?.uid || '', name, 0, getCurrentNepaliDate());
+              await createStockParticular(
+                user?.uid || '',
+                name,
+                0,
+                getCurrentNepaliDate(),
+                undefined,
+                undefined,
+                row.particularCode || undefined
+              );
             } catch (e: any) {
               // Particular might already exist – skip creation, continue adding ledger entries
               if (!e.message?.includes('already exists')) {
@@ -499,6 +593,7 @@ const Stock: React.FC = () => {
                   billNo: entry.billNo || undefined,
                   debit: parseFloat(entry.debit) || 0,
                   credit: parseFloat(entry.credit) || 0,
+                  unit: entry.unit || undefined,
                   note: entry.note || 'Imported entry'
                 });
               } catch (err) {
@@ -607,6 +702,8 @@ const Stock: React.FC = () => {
               <button
                 onClick={() => {
                   setNewPartDate(getCurrentNepaliDate());
+                  setNewPartUnit(defaultUnit);
+                  setNewPartCode(getNextParticularCode());
                   setShowAddParticular(true);
                 }}
                 className="btn btn-primary btn-sm btn-add-part"
@@ -654,13 +751,14 @@ const Stock: React.FC = () => {
                   >
                     <div className="item-details">
                       <strong className="item-name">{p.name}</strong>
+                      <span className="item-code">ID: {p.particularCode || '—'}</span>
                       <span className="item-updated">
                         Last Active: {toNepaliDate(p.updatedAt)}
                       </span>
                     </div>
                     <div className="item-badges">
                       <span className={`badge ${getStockBadgeClass(p.currentStock)}`}>
-                        {p.currentStock} Qty
+                        {p.currentStock} {p.defaultUnit || 'Qty'}
                       </span>
                     </div>
                   </div>
@@ -719,6 +817,8 @@ const Stock: React.FC = () => {
                         <button
                           onClick={() => {
                             setEditPartName(selectedParticular.name);
+                            setEditPartUnit(getParticularDefaultUnit(selectedParticular));
+                            setEditPartCode(formatParticularCode(selectedParticular.particularCode || ''));
                             setShowEditParticular(true);
                           }}
                           className="btn-icon-action btn-edit-part"
@@ -776,6 +876,7 @@ const Stock: React.FC = () => {
                     <button
                       onClick={() => {
                         setTxDate(getCurrentNepaliDate());
+                        setTxUnit(getParticularDefaultUnit(selectedParticular));
                         setShowAddTransaction(true);
                       }}
                       className="btn btn-success"
@@ -828,6 +929,7 @@ const Stock: React.FC = () => {
                             <th style={{ width: '120px' }}>Date (BS)</th>
                             <th>Note / Description</th>
                             <th style={{ width: '100px' }} className="text-center">Bill Number</th>
+                            <th style={{ width: '70px' }} className="text-center">Unit</th>
                             <th style={{ width: '90px' }} className="text-right">Debit (+ In)</th>
                             <th style={{ width: '90px' }} className="text-right">Credit (- Out)</th>
                             <th style={{ width: '90px' }} className="text-right">Running Bal.</th>
@@ -845,6 +947,9 @@ const Stock: React.FC = () => {
                                 ) : (
                                   <span className="text-muted">—</span>
                                 )}
+                              </td>
+                              <td className="text-center">
+                                {entry.unit ? entry.unit : '—'}
                               </td>
                               <td className="text-right text-success text-bold">
                                 {entry.debit > 0 ? `+${entry.debit}` : '—'}
@@ -924,6 +1029,19 @@ const Stock: React.FC = () => {
                   />
                 </div>
                 <div className="form-group">
+                  <label className="label">Particular ID (5 digits)</label>
+                  <input
+                    type="text"
+                    className="input font-mono"
+                    value={newPartCode}
+                    onChange={e => setNewPartCode(normalizeParticularCode(e.target.value))}
+                    onBlur={e => setNewPartCode(formatParticularCode(e.target.value))}
+                    placeholder="e.g. 00001"
+                    maxLength={5}
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="form-group">
                   <label className="label">Initial Stock Quantity</label>
                   <input
                     type="number"
@@ -933,6 +1051,21 @@ const Stock: React.FC = () => {
                     placeholder="e.g. 50 (leave 0 if none)"
                     min="0"
                   />
+                </div>
+                <div className="form-group">
+                  <label className="label">Default Unit</label>
+                  <select
+                    className="input"
+                    value={newPartUnit}
+                    onChange={e => setNewPartUnit(e.target.value)}
+                  >
+                    <option value="">Unit</option>
+                    {unitOptions.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 {newPartInitialStock > 0 && (
                   <>
@@ -1018,17 +1151,31 @@ const Stock: React.FC = () => {
 
                 <div className="form-group">
                   <label className="label">Quantity *</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={txQty || ''}
-                    onChange={e => setTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
-                    placeholder="Enter quantity"
-                    required
-                    min="0.01"
-                    step="any"
-                    autoFocus
-                  />
+                  <div className="qty-unit-row">
+                    <input
+                      type="number"
+                      className="input"
+                      value={txQty || ''}
+                      onChange={e => setTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="Enter quantity"
+                      required
+                      min="0.01"
+                      step="any"
+                      autoFocus
+                    />
+                    <select
+                      className="input unit-select"
+                      value={txUnit}
+                      onChange={e => setTxUnit(e.target.value)}
+                    >
+                      <option value="">Unit</option>
+                      {unitOptions.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -1110,6 +1257,34 @@ const Stock: React.FC = () => {
                     required
                     autoFocus
                   />
+                </div>
+                <div className="form-group">
+                  <label className="label">Particular ID (5 digits)</label>
+                  <input
+                    type="text"
+                    className="input font-mono"
+                    value={editPartCode}
+                    onChange={e => setEditPartCode(normalizeParticularCode(e.target.value))}
+                    onBlur={e => setEditPartCode(formatParticularCode(e.target.value))}
+                    placeholder="e.g. 00001"
+                    maxLength={5}
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="label">Default Unit</label>
+                  <select
+                    className="input"
+                    value={editPartUnit}
+                    onChange={e => setEditPartUnit(e.target.value)}
+                  >
+                    <option value="">Unit</option>
+                    {unitOptions.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="modal-footer">
@@ -1219,17 +1394,31 @@ const Stock: React.FC = () => {
 
                 <div className="form-group">
                   <label className="label">Quantity *</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={editTxQty || ''}
-                    onChange={e => setEditTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
-                    placeholder="Enter quantity"
-                    required
-                    min="0.01"
-                    step="any"
-                    autoFocus
-                  />
+                  <div className="qty-unit-row">
+                    <input
+                      type="number"
+                      className="input"
+                      value={editTxQty || ''}
+                      onChange={e => setEditTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="Enter quantity"
+                      required
+                      min="0.01"
+                      step="any"
+                      autoFocus
+                    />
+                    <select
+                      className="input unit-select"
+                      value={editTxUnit}
+                      onChange={e => setEditTxUnit(e.target.value)}
+                    >
+                      <option value="">Unit</option>
+                      {unitOptions.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="form-group">

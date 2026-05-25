@@ -24,7 +24,7 @@ const CreateBill: React.FC = () => {
   const [address, setAddress] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [items, setItems] = useState<BillItem[]>([
-    { sn: 1, particulars: '', qty: 0, rate: 0, amount: 0 }
+    { sn: 1, particulars: '', qty: 0, unit: DEFAULT_SETTINGS.unitCategories[0] ?? '', rate: 0, amount: 0 }
   ]);
   const [freeDue, setFreeDue] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,6 +48,7 @@ const CreateBill: React.FC = () => {
     try {
       const fetchedSettings = await getAppSettings(user?.uid || '');
       setSettings(fetchedSettings);
+      setItems(prev => prev.map(item => (item.unit ? item : { ...item, unit: getDefaultUnit(fetchedSettings) })));
 
       const nextBillNo = await getNextBillNumber(user?.uid || '');
       setBillNo(nextBillNo);
@@ -88,6 +89,11 @@ const CreateBill: React.FC = () => {
     setContactNumber(digitsOnly);
   };
 
+  const getDefaultUnit = (currentSettings?: AppSettings | null) =>
+    currentSettings
+      ? currentSettings.unitCategories?.[0] ?? ''
+      : DEFAULT_SETTINGS.unitCategories[0] ?? '';
+
   const toTitleCase = (value: string) =>
     value
       .toLowerCase()
@@ -117,6 +123,9 @@ const CreateBill: React.FC = () => {
       const part = newItems[index].particulars.trim().toLowerCase();
       if (part) {
         const stockItem = stockParticulars.find(p => p.name.toLowerCase() === part);
+        if (field === 'particulars') {
+          newItems[index].unit = stockItem?.defaultUnit || newItems[index].unit || getDefaultUnit(settings);
+        }
         if (stockItem && Number(newItems[index].qty) > stockItem.currentStock) {
           newItems[index].qty = stockItem.currentStock;
           newItems[index].amount = stockItem.currentStock * Number(newItems[index].rate);
@@ -134,7 +143,10 @@ const CreateBill: React.FC = () => {
   };
 
   const addItem = () => {
-    setItems([...items, { sn: items.length + 1, particulars: '', qty: 0, rate: 0, amount: 0 }]);
+    setItems([
+      ...items,
+      { sn: items.length + 1, particulars: '', qty: 0, unit: getDefaultUnit(settings), rate: 0, amount: 0 }
+    ]);
   };
 
   const removeItem = (index: number) => {
@@ -371,7 +383,7 @@ const CreateBill: React.FC = () => {
     setCustomerName('');
     setAddress('');
     setContactNumber('');
-    setItems([{ sn: 1, particulars: '', qty: 0, rate: 0, amount: 0 }]);
+    setItems([{ sn: 1, particulars: '', qty: 0, unit: getDefaultUnit(settings), rate: 0, amount: 0 }]);
     setFreeDue('');
     // Reset dates — passing empty string clears the picker
     setNepaliDate('');
@@ -383,6 +395,7 @@ const CreateBill: React.FC = () => {
 
   const primaryBillAction = settings?.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
   const isPrimaryAction = (action: BillPrimaryAction) => primaryBillAction === action;
+  const unitOptions = settings?.unitCategories ?? DEFAULT_SETTINGS.unitCategories;
 
   return (
     <div className="create-bill-page">
@@ -500,6 +513,7 @@ const CreateBill: React.FC = () => {
                     <th style={{ width: '60px' }}>S.N.</th>
                     <th>Particulars</th>
                     <th style={{ width: '100px' }}>Qty.</th>
+                    <th style={{ width: '90px' }}>Unit</th>
                     <th style={{ width: '120px' }}>Rate</th>
                     <th style={{ width: '140px' }}>Amount</th>
                     <th style={{ width: '80px' }}>Action</th>
@@ -561,6 +575,20 @@ const CreateBill: React.FC = () => {
                             />
                           );
                         })()}
+                      </td>
+                      <td>
+                        <select
+                          className="input"
+                          value={item.unit || ''}
+                          onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                        >
+                          <option value="">Unit</option>
+                          {unitOptions.map((unit) => (
+                            <option key={unit} value={unit}>
+                              {unit}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td>
                         <input

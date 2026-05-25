@@ -20,6 +20,7 @@ const Settings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [newUnit, setNewUnit] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -82,6 +83,30 @@ const Settings: React.FC = () => {
 
   const getPreviewPrintFontSize = () => settings.printFontSize ?? 13;
   const primaryBillAction = settings.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
+  const unitCategories = settings.unitCategories ?? DEFAULT_SETTINGS.unitCategories;
+
+  const normalizeUnit = (value: string) => value.replace(/\s+/g, ' ').trim().toUpperCase();
+
+  const handleAddUnit = () => {
+    const nextUnit = normalizeUnit(newUnit);
+    if (!nextUnit) return;
+    if (unitCategories.map(unit => unit.toUpperCase()).includes(nextUnit)) {
+      showError('Unit already exists.');
+      return;
+    }
+    handleFieldChange('unitCategories', [...unitCategories, nextUnit]);
+    setNewUnit('');
+  };
+
+  const handleUpdateUnit = (index: number, value: string) => {
+    const nextUnit = normalizeUnit(value);
+    const updated = unitCategories.map((unit, i) => (i === index ? nextUnit : unit));
+    handleFieldChange('unitCategories', updated.filter(Boolean));
+  };
+
+  const handleRemoveUnit = (index: number) => {
+    handleFieldChange('unitCategories', unitCategories.filter((_, i) => i !== index));
+  };
 
   const handlePrimaryActionChange = (value: BillPrimaryAction) => {
     setSettings(prev => {
@@ -405,7 +430,75 @@ const Settings: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 5: Bill Action Shortcuts */}
+          {/* Section 5: Unit Categories */}
+          <div className="settings-card card">
+            <div className="card-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18" />
+                <path d="M7 12h10" />
+                <path d="M10 18h4" />
+              </svg>
+              <h2>Unit Categories</h2>
+            </div>
+            <p className="card-desc">
+              Add or edit unit labels used on the billing screen (e.g. CTN, BAG, PCS).
+            </p>
+
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label className="label">Add New Unit</label>
+                <div className="unit-add-row">
+                  <input
+                    type="text"
+                    className="input"
+                    value={newUnit}
+                    onChange={(e) => setNewUnit(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddUnit();
+                      }
+                    }}
+                    placeholder="e.g. CTN"
+                  />
+                  <button type="button" className="btn btn-primary" onClick={handleAddUnit}>
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group full-width">
+                <label className="label">Available Units</label>
+                <div className="unit-list">
+                  {unitCategories.length === 0 ? (
+                    <div className="empty-state">No units yet. Add one above.</div>
+                  ) : (
+                    unitCategories.map((unit, index) => (
+                      <div className="unit-row" key={`${unit}-${index}`}>
+                        <input
+                          type="text"
+                          className="input"
+                          value={unit}
+                          onChange={(e) => handleUpdateUnit(index, e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleRemoveUnit(index)}
+                          title="Remove unit"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <small className="help-text">These units appear in the quantity dropdown on the billing form.</small>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 6: Bill Action Shortcuts */}
           <div className="settings-card card">
             <div className="card-header-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -558,6 +651,21 @@ const Settings: React.FC = () => {
           </div>
         </form>
       </div>
+      <a
+        className="developer-badge"
+        href="https://www.bibekchandsah.com.np/"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Developer: Bibek Chand Sah"
+        aria-label="Open developer website"
+      >
+        <img
+          src="https://bibekchandsah.github.io/kiitcse/assets/image/developer.jpg"
+          alt="Developer"
+          className="developer-badge-image"
+        />
+        <span className="developer-badge-text">Developed by Bibek</span>
+      </a>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

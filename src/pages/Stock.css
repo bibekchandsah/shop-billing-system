@@ -88,6 +88,17 @@
   width: 100%;
 }
 
+/* ── Quantity + Unit inputs ── */
+.qty-unit-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.unit-select {
+  min-width: 110px;
+}
+
 .stock-layout {
   display: flex;
   gap: 1.75rem; /* Slightly larger premium gap between columns */
@@ -271,6 +282,19 @@
 .item-updated {
   font-size: 0.75rem;
   color: var(--text-secondary);
+}
+
+.item-code {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: monospace, Courier, monospace;
+}
+
+.badge-neutral {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .item-badges {

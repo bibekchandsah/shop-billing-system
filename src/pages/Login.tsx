@@ -320,6 +320,22 @@ const Login: React.FC = () => {
           )}
         </div>
       </div>
+
+      <a
+        className="login-developer-badge"
+        href="https://www.bibekchandsah.com.np/"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Developer: Bibek Chandsah"
+        aria-label="Open developer website"
+      >
+        <img
+          src="https://bibekchandsah.github.io/kiitcse/assets/image/developer.jpg"
+          alt="Developer"
+          className="login-developer-badge-image"
+        />
+        <span className="login-developer-badge-text">Developed by Bibek</span>
+      </a>
     </div>
   );
 };

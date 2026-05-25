@@ -2,10 +2,12 @@ import {
   collection,
   doc,
   getDocs,
+  limit,
   query,
   orderBy,
   runTransaction,
   Timestamp,
+  where,
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -62,7 +64,9 @@ export const createStockParticular = async (
   name: string,
   initialStock: number,
   dateBs: string,
-  billNo?: string
+  billNo?: string,
+  defaultUnit?: string,
+  particularCode?: string
 ): Promise<string> => {
   if (!userId || !name.trim()) {
     throw new Error('User ID and Particular name are required.');
@@ -70,6 +74,14 @@ export const createStockParticular = async (
 
   const particularId = name.toLowerCase().trim();
   const particularRef = particularDoc(userId, particularId);
+
+  if (particularCode) {
+    const codeQuery = query(stockCol(userId), where('particularCode', '==', particularCode), limit(1));
+    const codeSnap = await getDocs(codeQuery);
+    if (!codeSnap.empty) {
+      throw new Error('Particular ID already exists.');
+    }
+  }
 
   await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(particularRef);
@@ -81,6 +93,8 @@ export const createStockParticular = async (
     transaction.set(particularRef, {
       name: name.trim(),
       currentStock: initialStock,
+      defaultUnit: defaultUnit || null,
+      particularCode: particularCode || null,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     });
@@ -93,6 +107,7 @@ export const createStockParticular = async (
         billNo: billNo?.trim() || undefined,
         debit: initialStock,
         credit: 0,
+        unit: defaultUnit || undefined,
         currentStock: initialStock,
         note: billNo?.trim() ? `Initial Stock (Bill #${billNo.trim()})` : 'Initial Stock',
         createdAt: Timestamp.now()
@@ -175,6 +190,7 @@ export const recordBillInventory = async (
           transaction.set(particularRef, {
             name,
             currentStock: 0,
+            defaultUnit: item.unit || null,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now()
           });
@@ -191,6 +207,7 @@ export const recordBillInventory = async (
           billNo,
           debit: 0,
           credit: item.qty,
+          unit: item.unit || undefined,
           currentStock: newStock,
           note: `Sale (Bill #${billNo})`,
           createdAt: Timestamp.now()
@@ -214,15 +231,26 @@ export const recordBillInventory = async (
 export const updateStockParticularName = async (
   userId: string,
   particularId: string,
-  newName: string
+  newName: string,
+  defaultUnit?: string,
+  particularCode?: string
 ): Promise<void> => {
   if (!userId || !particularId || !newName.trim()) {
     throw new Error('User ID, Particular ID and Name are required.');
   }
   const ref = particularDoc(userId, particularId);
+  if (particularCode) {
+    const codeQuery = query(stockCol(userId), where('particularCode', '==', particularCode), limit(1));
+    const codeSnap = await getDocs(codeQuery);
+    if (!codeSnap.empty && codeSnap.docs[0].id !== particularId) {
+      throw new Error('Particular ID already exists.');
+    }
+  }
   await runTransaction(db, async (transaction) => {
     transaction.update(ref, {
       name: newName.trim(),
+      defaultUnit: defaultUnit || null,
+      particularCode: particularCode || null,
       updatedAt: Timestamp.now()
     });
   });
@@ -268,6 +296,7 @@ export const updateLedgerEntry = async (
     billNo?: string;
     debit: number;
     credit: number;
+    unit?: string;
     note?: string;
   }
 ): Promise<void> => {
@@ -290,6 +319,7 @@ export const updateLedgerEntry = async (
       let credit = data.credit || 0;
       let date = data.date;
       let billNo = data.billNo || null;
+      let unit = data.unit || null;
       let note = data.note || '';
 
       if (d.id === entryId) {
@@ -297,6 +327,7 @@ export const updateLedgerEntry = async (
         credit = updatedData.credit;
         date = updatedData.date;
         billNo = updatedData.billNo || null;
+        unit = updatedData.unit || null;
         note = updatedData.note || '';
 
         runningStock += debit - credit;
@@ -308,6 +339,7 @@ export const updateLedgerEntry = async (
           credit,
           date,
           billNo: billNo || null,
+          unit: unit || null,
           note,
           currentStock: runningStock
         });

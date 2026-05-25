@@ -32,7 +32,7 @@ export const printBill = (
         `<tr>
           <td class="center">${item.sn}</td>
           <td>${item.particulars}</td>
-          <td class="center">${item.qty}</td>
+          <td class="center">${item.unit ? `${item.qty} ${item.unit}` : item.qty}</td>
           <td class="center">${formatCurrency(item.rate)}</td>
           <td class="center">${formatCurrency(item.amount)}</td>
         </tr>`

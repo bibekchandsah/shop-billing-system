@@ -25,6 +25,7 @@ export const printStockLedger = (
         <td>${entry.date}</td>
         <td>${entry.note || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
+        <td class="center">${entry.unit || '—'}</td>
         <td class="right text-success">${entry.debit > 0 ? `+${entry.debit}` : '—'}</td>
         <td class="right text-danger">${entry.credit > 0 ? `-${entry.credit}` : '—'}</td>
         <td class="right"><strong>${entry.currentStock}</strong></td>
@@ -132,6 +133,7 @@ export const printStockLedger = (
         <th class="left" style="width:100px;">Date (BS)</th>
         <th class="left">Note / Description</th>
         <th class="center" style="width:90px;">Bill No</th>
+        <th class="center" style="width:70px;">Unit</th>
         <th class="right" style="width:80px;">Debit (+ In)</th>
         <th class="right" style="width:80px;">Credit (- Out)</th>
         <th class="right" style="width:90px;">Running Bal.</th>

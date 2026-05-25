@@ -71,7 +71,7 @@ export const generateBillPDF = (
   const tableData = bill.items.map(item => [
     item.sn.toString(),
     item.particulars,
-    item.qty.toString(),
+    item.unit ? `${item.qty} ${item.unit}` : item.qty.toString(),
     formatCurrency(item.rate),
     formatCurrency(item.amount)
   ]);
