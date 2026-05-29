@@ -37,6 +37,11 @@ const TOOLTIP_CONTENT: Record<string, { label: string; description: string; tag:
     description: 'Customer Ledger — Track bill-linked entries, running balances, and editable customer details.',
     tag: '🧾 CUSTOMER ACCOUNTS'
   },
+  'Parties': {
+    label: 'Party Ledger',
+    description: 'Track party dues, payments, and balances in one place.',
+    tag: '🏷️ LEDGER'
+  },
   'Settings': {
     label: 'Settings',
     description: 'Configuration — Set invoice formats, custom prefixes, and update company profile settings.',
@@ -111,6 +116,17 @@ const NAV_ITEMS = [
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    to: '/parties',
+    label: 'Parties',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3 20h18" />
+        <path d="M5 20V8l7-4 7 4v12" />
+        <path d="M9 20v-6h6v6" />
       </svg>
     ),
   },

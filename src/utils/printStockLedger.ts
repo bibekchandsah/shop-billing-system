@@ -26,8 +26,8 @@ export const printStockLedger = (
         <td>${entry.note || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
         <td class="center">${entry.unit || '—'}</td>
-        <td class="right text-success">${entry.debit > 0 ? `+${entry.debit}` : '—'}</td>
-        <td class="right text-danger">${entry.credit > 0 ? `-${entry.credit}` : '—'}</td>
+        <td class="right text-success">${entry.debit > 0 ? `${entry.debit}` : '—'}</td>
+        <td class="right text-danger">${entry.credit > 0 ? `${entry.credit}` : '—'}</td>
         <td class="right"><strong>${entry.currentStock}</strong></td>
       </tr>`
   ).join('');

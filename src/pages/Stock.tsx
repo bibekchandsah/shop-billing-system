@@ -899,7 +899,7 @@ const Stock: React.FC = () => {
                   </div>
                   <div className="metric-box bg-box">
                     <span className="mb-label">Total Billed Out (Credit)</span>
-                    <strong className="mb-value text-danger">-{totalCredit}</strong>
+                    <strong className="mb-value text-danger">{totalCredit}</strong>
                   </div>
                   <div className="metric-box bg-box-highlight">
                     <span className="mb-label">Current Stock Balance</span>
@@ -952,10 +952,10 @@ const Stock: React.FC = () => {
                                 {entry.unit ? entry.unit : '—'}
                               </td>
                               <td className="text-right text-success text-bold">
-                                {entry.debit > 0 ? `+${entry.debit}` : '—'}
+                                {entry.debit > 0 ? `${entry.debit}` : '—'}
                               </td>
                               <td className="text-right text-danger text-bold">
-                                {entry.credit > 0 ? `-${entry.credit}` : '—'}
+                                {entry.credit > 0 ? `${entry.credit}` : '—'}
                               </td>
                               <td className="text-right text-bold" style={{ color: 'var(--text-primary)' }}>
                                 {entry.currentStock}
@@ -1509,7 +1509,7 @@ const Stock: React.FC = () => {
                   <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <td style={{ padding: '6px 0', color: 'var(--text-secondary)' }}>Change:</td>
                     <td style={{ padding: '6px 0', fontWeight: 'bold' }} className={deletingTransaction.debit > 0 ? 'text-success' : 'text-danger'}>
-                      {deletingTransaction.debit > 0 ? `+${deletingTransaction.debit} (Debit)` : `-${deletingTransaction.credit} (Credit)`}
+                      {deletingTransaction.debit > 0 ? `${deletingTransaction.debit} (Debit)` : `${deletingTransaction.credit} (Credit)`}
                     </td>
                   </tr>
                 </tbody>

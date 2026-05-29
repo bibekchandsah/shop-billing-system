@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import CustomerLedger from './pages/CustomerLedger';
 import CreateBill from './pages/CreateBill';
 import Records from './pages/Records';
+import PartyLedger from './pages/PartyLedger';
 import Settings from './pages/Settings';
 import Stock from './pages/Stock';
 
@@ -39,6 +40,7 @@ function AppRoutes() {
                 <Route path="/" element={<Home />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/customers" element={<CustomerLedger />} />
+                <Route path="/parties" element={<PartyLedger />} />
                 <Route path="/create-bill" element={<CreateBill />} />
                 <Route path="/records" element={<Records />} />
                 <Route path="/stock" element={<Stock />} />

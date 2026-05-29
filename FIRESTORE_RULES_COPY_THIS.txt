@@ -30,6 +30,15 @@ service cloud.firestore {
         }
       }
 
+      // User can read/write their own parties subcollection and nested ledger entries
+      match /parties/{partyId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+
+        match /ledger/{ledgerId} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+
       // User can read/write their own stock particulars and ledger entries
       match /stock/{particularId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;

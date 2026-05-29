@@ -16,6 +16,14 @@ service cloud.firestore {
         }
       }
 
+      match /parties/{partyId} {
+        allow read, write: if true;
+
+        match /ledger/{ledgerId} {
+          allow read, write: if true;
+        }
+      }
+
       match /bills/{billId} {
         allow read, write: if true;
       }
@@ -46,6 +54,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
       match /customers/{customerId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+
+        match /ledger/{ledgerId} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+
+      match /parties/{partyId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
 
         match /ledger/{ledgerId} {

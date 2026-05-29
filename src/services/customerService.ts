@@ -264,11 +264,14 @@ export const addCustomerLedgerEntry = async (
   const entryRef = doc(customerLedgerCol(userId, customerId));
 
   await runTransaction(db, async (transaction) => {
-    transaction.set(entryRef, {
+    const payload = {
       ...entryData,
+      billNo: entryData.billNo || '',
       currentBalance: nextBalance,
       createdAt: Timestamp.now(),
-    });
+    };
+
+    transaction.set(entryRef, payload);
 
     transaction.set(
       customerRef,
@@ -312,7 +315,7 @@ export const updateCustomerLedgerEntry = async (
       let credit = Number(data.credit || 0);
       let date = data.date;
       let particular = data.particular || '';
-      let billNo = data.billNo || undefined;
+      let billNo = data.billNo || '';
       let note = data.note || '';
 
       if (entry.id === entryId) {
@@ -320,7 +323,7 @@ export const updateCustomerLedgerEntry = async (
         credit = updatedData.credit;
         date = updatedData.date;
         particular = updatedData.particular;
-        billNo = updatedData.billNo || undefined;
+        billNo = updatedData.billNo || '';
         note = updatedData.note || '';
       }
 

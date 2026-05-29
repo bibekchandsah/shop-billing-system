@@ -111,3 +111,30 @@ export interface CustomerLedgerEntry {
   note?: string;
   createdAt: Date;
 }
+
+export interface Party {
+  id: string;
+  name: string;
+  address: string;
+  contactNumber: string;
+  partyCode?: string;
+  currentBalance?: number;
+  lastBillNo?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PartyLedgerEntry {
+  id: string;
+  date: string;
+  particular: string;
+  billNo?: string;
+  debit: number;
+  credit: number;
+  currentBalance: number;
+  note?: string;
+  createdAt: Date;
+}
+
+export type Supplier = Party;
+export type SupplierLedgerEntry = PartyLedgerEntry;
