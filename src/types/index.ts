@@ -119,6 +119,7 @@ export interface Party {
   address: string;
   contactNumber: string;
   partyCode?: string;
+  supplierCode?: string;
   currentBalance?: number;
   lastBillNo?: string;
   createdAt: Date;

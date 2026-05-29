@@ -5,7 +5,6 @@ import { db } from '../firebase/config';
 import { getAllBills, deleteBill, updateBill, createBill } from '../services/billService';
 import { DEFAULT_SETTINGS, isBillInFiscalYear, getAppSettings } from '../services/settingsService';
 import { getStockParticulars } from '../services/stockService';
-import { getCustomers } from '../services/customerService';
 import { recordBillInventory, removeBillInventory } from '../services/stockService';
 import { syncBillCustomerLedger } from '../services/customerService';
 import { formatCurrency, numberToWords } from '../utils/numberToWords';
@@ -57,11 +56,10 @@ const Records: React.FC = () => {
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { user } = useAuth();
   const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd } = useFiscalYear();
-  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings.actionPinHash, showError });
+  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings?.actionPinHash, showError });
 
   const [localSettings, setLocalSettings] = useState<any | null>(null);
   const [stockParticulars, setStockParticulars] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
 
   const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }), []);
 
@@ -581,8 +579,6 @@ const Records: React.FC = () => {
         setLocalSettings(s);
         const parts = await getStockParticulars(user.uid);
         setStockParticulars(parts);
-        const custs = await getCustomers(user.uid);
-        setCustomers(custs);
       } catch (err) {
         console.warn('Failed loading edit resources', err);
       }

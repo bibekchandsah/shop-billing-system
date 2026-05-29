@@ -41,8 +41,6 @@ export const buildPartyId = (party: Pick<Party, 'name' | 'address' | 'contactNum
   return sanitizeId([party.name, party.address].join('-'));
 };
 
-const buildEntryId = (suffix: string) => `entry_${sanitizeId(suffix)}`;
-
 const toParty = (id: string, data: any): Party => ({
   id,
   name: data.name || '',

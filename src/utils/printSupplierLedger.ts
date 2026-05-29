@@ -98,7 +98,7 @@ export const printSupplierLedger = (
       <div class="meta-row"><span class="meta-label">Party:</span><span>${supplier.name}</span></div>
       <div class="meta-row"><span class="meta-label">Address:</span><span>${supplier.address || '—'}</span></div>
       ${supplier.contactNumber ? `<div class="meta-row"><span class="meta-label">Contact:</span><span>${supplier.contactNumber}</span></div>` : ''}
-      ${supplier.supplierCode ? `<div class="meta-row"><span class="meta-label">Party ID:</span><span>${supplier.supplierCode}</span></div>` : ''}
+      ${(supplier.partyCode || supplier.supplierCode) ? `<div class="meta-row"><span class="meta-label">Party ID:</span><span>${supplier.partyCode || supplier.supplierCode}</span></div>` : ''}
     </div>
     <div class="meta-right">
       <div class="meta-row"><span class="meta-label">Date Range:</span><span>${dateRangeStr}</span></div>

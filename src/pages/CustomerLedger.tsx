@@ -24,7 +24,7 @@ const CustomerLedger: React.FC = () => {
   const { user } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, isInActiveFY } = useFiscalYear();
-  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings.actionPinHash, showError });
+  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings?.actionPinHash, showError });
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);

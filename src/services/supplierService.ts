@@ -27,8 +27,8 @@ const sanitizeId = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'supplier';
 
-export const buildSupplierId = (supplier: Pick<Supplier, 'name' | 'address' | 'contactNumber' | 'supplierCode'>) => {
-  const code = (supplier.supplierCode || '').trim();
+export const buildSupplierId = (supplier: Pick<Supplier, 'name' | 'address' | 'contactNumber' | 'partyCode' | 'supplierCode'>) => {
+  const code = (supplier.partyCode || supplier.supplierCode || '').trim();
   if (code) {
     return `code-${code}`;
   }
@@ -40,14 +40,13 @@ export const buildSupplierId = (supplier: Pick<Supplier, 'name' | 'address' | 'c
   return sanitizeId([supplier.name, supplier.address].join('-'));
 };
 
-const buildEntryId = (suffix: string) => `entry_${sanitizeId(suffix)}`;
-
 const toSupplier = (id: string, data: any): Supplier => ({
   id,
   name: data.name || '',
   address: data.address || '',
   contactNumber: data.contactNumber || '',
-  supplierCode: data.supplierCode || '',
+  partyCode: data.partyCode || data.supplierCode || '',
+  supplierCode: data.supplierCode || data.partyCode || '',
   currentBalance: Number(data.currentBalance || 0),
   lastBillNo: data.lastBillNo || '',
   createdAt: data.createdAt?.toDate() || new Date(),
@@ -91,6 +90,7 @@ export const upsertSupplierProfile = async (
     name: string;
     address: string;
     contactNumber: string;
+    partyCode?: string;
     supplierCode?: string;
     currentBalance?: number;
     lastBillNo?: string;
@@ -101,7 +101,7 @@ export const upsertSupplierProfile = async (
   }
 
   const ref = supplierDoc(userId, supplierId);
-  const code = (supplierData.supplierCode || '').trim();
+  const code = (supplierData.partyCode || supplierData.supplierCode || '').trim();
 
   if (code) {
     const codeDocRef = supplierDoc(userId, `code-${code}`);
@@ -117,6 +117,7 @@ export const upsertSupplierProfile = async (
       name: supplierData.name.trim(),
       address: supplierData.address.trim(),
       contactNumber: supplierData.contactNumber.trim(),
+      partyCode: code || '',
       supplierCode: code || '',
       currentBalance: Number(supplierData.currentBalance || 0),
       lastBillNo: supplierData.lastBillNo || '',

@@ -7,7 +7,7 @@ import ToastContainer from '../components/ToastContainer';
 import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
 import { getCurrentNepaliDate } from '../utils/nepaliDate';
 import Papa from 'papaparse';
-import type { Party, PartyLedgerEntry } from '../types';
+import type { Party, PartyLedgerEntry, SupplierLedgerEntry } from '../types';
 import { printPartyLedger } from '../utils/printPartyLedger';
 import {
   addPartyLedgerEntry,
@@ -27,7 +27,7 @@ const SupplierLedger: React.FC = () => {
   const { user } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, isInActiveFY } = useFiscalYear();
-  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings.actionPinHash, showError });
+  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings?.actionPinHash, showError });
 
   const [suppliers, setSuppliers] = useState<Party[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Party | null>(null);
