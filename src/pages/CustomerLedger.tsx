@@ -369,6 +369,15 @@ const CustomerLedger: React.FC = () => {
     };
   };
 
+  const titleCase = (value: string) => {
+    return (value || '')
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
+
   const openCustomerEdit = () => {
     if (!selectedCustomer) return;
     setEditCustomerName(selectedCustomer.name);
@@ -915,15 +924,15 @@ const CustomerLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Customer Name *</label>
-                  <input className="input" value={editCustomerName} onChange={(event) => setEditCustomerName(event.target.value)} />
+                  <input className="input" value={editCustomerName} onChange={(event) => setEditCustomerName(event.target.value)} onBlur={() => setEditCustomerName(titleCase(editCustomerName))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
-                  <input className="input" value={editCustomerAddress} onChange={(event) => setEditCustomerAddress(event.target.value)} />
+                  <input className="input" value={editCustomerAddress} onChange={(event) => setEditCustomerAddress(event.target.value)} onBlur={() => setEditCustomerAddress(titleCase(editCustomerAddress))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Contact Number</label>
-                  <input className="input" value={editCustomerContact} onChange={(event) => setEditCustomerContact(event.target.value)} />
+                  <input className="input" maxLength={10} value={editCustomerContact} onChange={(event) => setEditCustomerContact((event.target.value || '').replace(/\D/g, '').slice(0, 10))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Customer ID (max 4 chars)</label>

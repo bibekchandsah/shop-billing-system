@@ -7,7 +7,7 @@ import { printBill } from '../utils/printBill';
 import { createBill, getNextBillNumber } from '../services/billService';
 import { DEFAULT_SETTINGS, getAppSettings } from '../services/settingsService';
 import { recordBillInventory, getStockParticulars } from '../services/stockService';
-import { syncBillCustomerLedger, getCustomers, upsertCustomerProfile } from '../services/customerService';
+import { syncBillCustomerLedger, getCustomers, upsertCustomerProfile, findCustomerByCode } from '../services/customerService';
 import { useAuth } from '../context/AuthContext';
 import ToastContainer from '../components/ToastContainer';
 import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
@@ -24,6 +24,7 @@ const CreateBill: React.FC = () => {
   const [address, setAddress] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [customerCode, setCustomerCode] = useState('');
+  const [customerCodeMessage, setCustomerCodeMessage] = useState('');
   const [items, setItems] = useState<BillItem[]>([
     { sn: 1, particulars: '', qty: 0, unit: DEFAULT_SETTINGS.unitCategories[0] ?? '', rate: 0, amount: 0 }
   ]);
@@ -136,6 +137,7 @@ const CreateBill: React.FC = () => {
   const handleCustomerCodeChange = (value: string) => {
     const norm = value.toUpperCase().slice(0, 4);
     setCustomerCode(norm);
+    setCustomerCodeMessage('');
     if (!norm) return;
     const match = customers.find(c => (c.customerCode || '').toUpperCase() === norm);
     if (match) {
@@ -143,6 +145,43 @@ const CreateBill: React.FC = () => {
       if (match.address) setAddress(toTitleCase(match.address));
       if (match.contactNumber) setContactNumber(match.contactNumber);
     }
+  };
+
+  const normalizeName = (value: string) => value.trim().toLowerCase();
+  const normalizeAddress = (value: string) => value.trim().toLowerCase();
+  const normalizeContact = (value: string) => value.replace(/\D/g, '').trim();
+
+  const validateCustomerCode = async () => {
+    const code = customerCode.trim().toUpperCase();
+    if (!code) {
+      setCustomerCodeMessage('');
+      return true;
+    }
+
+    const existing = await findCustomerByCode(user?.uid || '', code);
+    if (!existing) {
+      setCustomerCodeMessage('');
+      return true;
+    }
+
+    const sameCustomer =
+      normalizeName(existing.name) === normalizeName(customerName) &&
+      normalizeAddress(existing.address) === normalizeAddress(address) &&
+      normalizeContact(existing.contactNumber) === normalizeContact(contactNumber);
+
+    if (sameCustomer) {
+      setCustomerCodeMessage('');
+      return true;
+    }
+
+    const message = `Customer ID ${code} is already used by ${existing.name}. Please use a different ID.`;
+    setCustomerCodeMessage(message);
+    showError(message);
+    return false;
+  };
+
+  const handleCustomerCodeBlur = async () => {
+    await validateCustomerCode();
   };
 
   const handleAddressChange = (value: string) => {
@@ -338,7 +377,7 @@ const CreateBill: React.FC = () => {
   type BillAction = BillPrimaryAction | 'clear';
   type BillPayload = { bill: Bill; validItems: BillItem[]; bsDate: string };
 
-  const buildBillPayload = (requireAddress: boolean): BillPayload | null => {
+  const buildBillPayload = async (requireAddress: boolean): Promise<BillPayload | null> => {
     if (!customerName.trim()) {
       showError('Please enter customer name');
       return null;
@@ -346,6 +385,11 @@ const CreateBill: React.FC = () => {
 
     if (requireAddress && !address.trim()) {
       showError('Please enter address');
+      return null;
+    }
+
+    if (!(await validateCustomerCode())) {
+      flashAndScroll(customerCodeRef);
       return null;
     }
 
@@ -504,13 +548,13 @@ const CreateBill: React.FC = () => {
   };
 
   const handleSaveBill = async () => {
-    const payload = buildBillPayload(true);
+    const payload = await buildBillPayload(true);
     if (!payload) return;
     await saveBillCore(payload, { autoClear: true, manageLoading: true });
   };
 
   const handleGeneratePDF = async () => {
-    const payload = buildBillPayload(false);
+    const payload = await buildBillPayload(false);
     if (!payload) return;
     try {
       const latestSettings = await getLatestPrintSettings();
@@ -522,7 +566,7 @@ const CreateBill: React.FC = () => {
   };
 
   const handlePrint = async () => {
-    const payload = buildBillPayload(false);
+    const payload = await buildBillPayload(false);
     if (!payload) return;
     try {
       const latestSettings = await getLatestPrintSettings();
@@ -543,7 +587,7 @@ const CreateBill: React.FC = () => {
     if (latestSettings.billActionAutoPrint) actions.add('print');
     if (latestSettings.billActionAutoClear) actions.add('clear');
 
-    const payload = buildBillPayload(actions.has('save'));
+    const payload = await buildBillPayload(actions.has('save'));
     if (!payload) return;
 
     const manageLoading = actions.has('save');
@@ -715,9 +759,15 @@ const CreateBill: React.FC = () => {
                 className="input"
                 value={customerCode}
                 onChange={(e) => handleCustomerCodeChange(e.target.value)}
+                onBlur={handleCustomerCodeBlur}
                 placeholder="Max 4 chars"
                 maxLength={4}
               />
+              {customerCodeMessage && (
+                <div style={{ marginTop: '6px', fontSize: '0.875rem', color: customerCodeMessage.includes('already used') ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                  {customerCodeMessage}
+                </div>
+              )}
             </div>
           </div>
 

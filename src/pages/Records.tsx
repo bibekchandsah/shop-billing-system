@@ -3,7 +3,9 @@ import type { Bill, BillItem } from '../types';
 import { collection, query, orderBy, limit, getDocs, endBefore, startAfter, limitToLast, Timestamp, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAllBills, deleteBill, updateBill, createBill } from '../services/billService';
-import { DEFAULT_SETTINGS, isBillInFiscalYear } from '../services/settingsService';
+import { DEFAULT_SETTINGS, isBillInFiscalYear, getAppSettings } from '../services/settingsService';
+import { getStockParticulars } from '../services/stockService';
+import { getCustomers } from '../services/customerService';
 import { recordBillInventory, removeBillInventory } from '../services/stockService';
 import { syncBillCustomerLedger } from '../services/customerService';
 import { formatCurrency, numberToWords } from '../utils/numberToWords';
@@ -54,6 +56,10 @@ const Records: React.FC = () => {
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { user } = useAuth();
   const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd } = useFiscalYear();
+
+  const [localSettings, setLocalSettings] = useState<any | null>(null);
+  const [stockParticulars, setStockParticulars] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
 
   const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }), []);
 
@@ -565,6 +571,24 @@ const Records: React.FC = () => {
     setShowEditModal(true);
   };
 
+  useEffect(() => {
+    const loadResources = async () => {
+      if (!user?.uid) return;
+      try {
+        const s = await getAppSettings(user.uid);
+        setLocalSettings(s);
+        const parts = await getStockParticulars(user.uid);
+        setStockParticulars(parts);
+        const custs = await getCustomers(user.uid);
+        setCustomers(custs);
+      } catch (err) {
+        console.warn('Failed loading edit resources', err);
+      }
+    };
+
+    if (showEditModal) loadResources();
+  }, [showEditModal, user?.uid]);
+
   const handleEditField = (field: keyof Bill, value: string) => {
     if (!editBill) return;
     setEditBill({ ...editBill, [field]: value });
@@ -581,7 +605,19 @@ const Records: React.FC = () => {
       if (i !== index) return item;
       const updated = { ...item, [field]: value };
       if (field === 'qty' || field === 'rate') {
-        updated.amount = updated.qty * updated.rate;
+        updated.amount = Number(updated.qty) * Number(updated.rate);
+      }
+      // When particulars change, try to set default unit from stock particulars
+      if (field === 'particulars') {
+        const partName = String(value || '').trim().toLowerCase();
+        if (partName) {
+          const stockItem = stockParticulars.find(p => p.name.toLowerCase() === partName);
+          if (stockItem && stockItem.defaultUnit) {
+            updated.unit = stockItem.defaultUnit;
+          } else if (!updated.unit) {
+            updated.unit = localSettings?.unitCategories?.[0] || DEFAULT_SETTINGS.unitCategories[0] || '';
+          }
+        }
       }
       return updated;
     });
@@ -590,10 +626,27 @@ const Records: React.FC = () => {
 
   const handleEditAddItem = () => {
     if (!editBill) return;
+    const last = editBill.items[editBill.items.length - 1];
+    if (last) {
+      if (!last.particulars || !String(last.particulars).trim()) {
+        showError('Please enter item description before adding a new item');
+        return;
+      }
+      if (!last.qty || Number(last.qty) <= 0) {
+        showError('Please enter a valid quantity before adding a new item');
+        return;
+      }
+      if (!last.rate || Number(last.rate) <= 0) {
+        showError('Please enter a valid rate before adding a new item');
+        return;
+      }
+    }
+
     const newItem: BillItem = {
       sn: editBill.items.length + 1,
       particulars: '',
       qty: 0,
+      unit: localSettings?.unitCategories?.[0] || DEFAULT_SETTINGS.unitCategories[0] || '',
       rate: 0,
       amount: 0,
     };
@@ -775,7 +828,12 @@ const Records: React.FC = () => {
                         <div className="nepali-date">{bill.date}</div>
                       )}
                     </td>
-                    <td>{bill.customerName}</td>
+                    <td>
+                      <div>{bill.customerName}</div>
+                      {bill.customerCode && (
+                        <div className="customer-id">ID: {bill.customerCode}</div>
+                      )}
+                    </td>
                     <td className="address-cell">{bill.address}</td>
                     <td>{bill.contactNumber}</td>
                     <td>{bill.items?.reduce((sum, item) => sum + item.qty, 0) || 0}</td>
@@ -942,6 +1000,10 @@ const Records: React.FC = () => {
                       <span className="detail-value">{selectedBill.customerName}</span>
                     </div>
                     <div className="detail-item">
+                      <span className="detail-label">Customer ID:</span>
+                      <span className="detail-value">{selectedBill.customerCode || '—'}</span>
+                    </div>
+                    <div className="detail-item">
                       <span className="detail-label">Address:</span>
                       <span className="detail-value">{selectedBill.address}</span>
                     </div>
@@ -958,27 +1020,29 @@ const Records: React.FC = () => {
                     <table className="table">
                       <thead>
                         <tr>
-                          <th>S.N.</th>
-                          <th>Particulars</th>
-                          <th>Qty.</th>
-                          <th>Rate</th>
-                          <th>Amount</th>
+                            <th>S.N.</th>
+                            <th>Particulars</th>
+                            <th>Qty.</th>
+                            <th>Unit</th>
+                            <th>Rate</th>
+                            <th>Amount</th>
                         </tr>
                       </thead>
                       <tbody>
                         {selectedBill.items.map((item) => (
                           <tr key={item.sn}>
                             <td>{item.sn}</td>
-                            <td>{item.particulars}</td>
-                            <td>{item.qty}</td>
-                            <td>{formatCurrency(item.rate)}</td>
-                            <td><strong>{formatCurrency(item.amount)}</strong></td>
+                              <td>{item.particulars}</td>
+                              <td>{item.qty}</td>
+                              <td>{item.unit || '—'}</td>
+                              <td>{formatCurrency(item.rate)}</td>
+                              <td><strong>{formatCurrency(item.amount)}</strong></td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan={5} className="detail-total-row">
+                          <td colSpan={6} className="detail-total-row">
                             <span style={{ marginRight: '30px' }}>
                               Total Qty: {selectedBill.items.reduce((sum, item) => sum + item.qty, 0)}
                             </span>
@@ -1084,6 +1148,12 @@ const Records: React.FC = () => {
                         placeholder="Customer name" />
                     </div>
                     <div className="form-group">
+                      <label className="label">Customer ID</label>
+                      <input className="input" maxLength={4} value={editBill.customerCode || ''}
+                        onChange={e => handleEditField('customerCode', e.target.value.toUpperCase().slice(0,4))}
+                        placeholder="e.g. 0001 or AB12" />
+                    </div>
+                    <div className="form-group">
                       <label className="label">Address *</label>
                       <input className="input" value={editBill.address}
                         onChange={e => handleEditField('address', e.target.value)}
@@ -1110,6 +1180,7 @@ const Records: React.FC = () => {
                           <th style={{ width: 50 }}>S.N.</th>
                           <th>Particulars</th>
                           <th style={{ width: 90 }}>Qty.</th>
+                          <th style={{ width: 90 }}>Unit</th>
                           <th style={{ width: 110 }}>Rate</th>
                           <th style={{ width: 120 }}>Amount</th>
                           <th style={{ width: 60 }}></th>
@@ -1128,6 +1199,13 @@ const Records: React.FC = () => {
                               <input type="number" className="input" value={item.qty || ''}
                                 onChange={e => handleEditItemChange(idx, 'qty', parseFloat(e.target.value) || 0)}
                                 min="0" step="0.01" />
+                            </td>
+                            <td>
+                              <select className="select" value={item.unit || ''} onChange={e => handleEditItemChange(idx, 'unit', e.target.value)}>
+                                {(localSettings?.unitCategories || DEFAULT_SETTINGS.unitCategories).map((u: string) => (
+                                  <option key={u} value={u}>{u}</option>
+                                ))}
+                              </select>
                             </td>
                             <td>
                               <input type="number" className="input" value={item.rate || ''}

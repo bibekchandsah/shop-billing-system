@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   query,
+  where,
   orderBy,
   runTransaction,
   Timestamp,
@@ -86,6 +87,22 @@ export const getCustomerLedgerEntries = async (
   const q = query(customerLedgerCol(userId, customerId), orderBy('createdAt', 'asc'));
   const snap = await getDocs(q);
   return snap.docs.map((entry) => toLedgerEntry(entry.id, entry.data()));
+};
+
+export const findCustomerByCode = async (userId: string, customerCode: string): Promise<Customer | null> => {
+  if (!userId || !customerCode.trim()) return null;
+
+  const code = customerCode.trim().toUpperCase();
+  const codeDocRef = customerDoc(userId, `code-${code}`);
+  const codeSnap = await getDoc(codeDocRef);
+  if (codeSnap.exists()) {
+    return toCustomer(codeSnap.id, codeSnap.data());
+  }
+
+  const q = query(customersCol(userId), where('customerCode', '==', code));
+  const snap = await getDocs(q);
+  const found = snap.docs.find((entry) => entry.id !== `code-${code}`);
+  return found ? toCustomer(found.id, found.data()) : null;
 };
 
 export const upsertCustomerProfile = async (
