@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { useFiscalYear } from '../context/FiscalYearContext';
 import ToastContainer from '../components/ToastContainer';
-import { getAppSettings, saveAppSettings, DEFAULT_SETTINGS, getFiscalYearOptions } from '../services/settingsService';
+import { getAppSettings, saveAppSettings, DEFAULT_SETTINGS, getFiscalYearOptions, hashActionPin, verifyActionPin } from '../services/settingsService';
 import type { AppSettings } from '../types';
 import './Settings.css';
 
@@ -29,6 +29,10 @@ const Settings: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installState, setInstallState] = useState<'idle' | 'available' | 'installed'>('idle');
   const [installHint, setInstallHint] = useState('');
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinSaving, setPinSaving] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -73,6 +77,9 @@ const Settings: React.FC = () => {
     try {
       const fetched = await getAppSettings(user?.uid || '');
       setSettings(fetched);
+      setCurrentPin('');
+      setNewPin('');
+      setConfirmPin('');
     } catch (error) {
       console.error('Error loading settings:', error);
       showError('Failed to load settings.');
@@ -163,6 +170,68 @@ const Settings: React.FC = () => {
       }
       return updated;
     });
+  };
+
+  const handleSavePin = async () => {
+    setPinSaving(true);
+    try {
+      const existingHash = settings.actionPinHash;
+      const hasExistingPin = Boolean(existingHash);
+      const trimmedNewPin = newPin.trim();
+
+      if (hasExistingPin) {
+        if (!currentPin.trim()) {
+          showError('Enter your current PIN first.');
+          return;
+        }
+
+        const isValidCurrent = await verifyActionPin(currentPin, existingHash);
+        if (!isValidCurrent) {
+          showError('Current PIN is incorrect.');
+          return;
+        }
+      }
+
+      if (!trimmedNewPin) {
+        if (!hasExistingPin) {
+          showError('Enter a new PIN to set one.');
+          return;
+        }
+
+        const updated = { ...settings, actionPinHash: undefined };
+        await saveAppSettings(user?.uid || '', updated);
+        setSettings(updated);
+        setCurrentPin('');
+        setNewPin('');
+        setConfirmPin('');
+        showSuccess('Action PIN removed successfully.');
+        return;
+      }
+
+      if (trimmedNewPin.length < 4) {
+        showError('PIN must be at least 4 characters long.');
+        return;
+      }
+
+      if (trimmedNewPin !== confirmPin.trim()) {
+        showError('PIN and confirmation do not match.');
+        return;
+      }
+
+      const hashed = await hashActionPin(trimmedNewPin);
+      const updated = { ...settings, actionPinHash: hashed };
+      await saveAppSettings(user?.uid || '', updated);
+      setSettings(updated);
+      setCurrentPin('');
+      setNewPin('');
+      setConfirmPin('');
+      showSuccess(hashed ? 'Action PIN saved successfully.' : 'Action PIN cleared successfully.');
+    } catch (error) {
+      console.error('Error saving PIN:', error);
+      showError('Failed to save action PIN.');
+    } finally {
+      setPinSaving(false);
+    }
   };
 
   const handleInstallApp = async () => {
@@ -612,7 +681,92 @@ const Settings: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 7: Bill Action Shortcuts */}
+          {/* Section 7: Action PIN */}
+          <div className="settings-card card">
+            <div className="card-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="10" rx="2" />
+                <path d="M7 11V8a5 5 0 0 1 10 0v3" />
+              </svg>
+              <h2>Action PIN</h2>
+            </div>
+            <p className="card-desc">
+              Protect edit and delete actions with a PIN. When set, users must enter the PIN before opening edit or delete flows.
+            </p>
+
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <div className="settings-preview-box" style={{ justifyContent: 'space-between' }}>
+                  <span className="preview-label">PIN Status</span>
+                  <strong className="preview-value">{settings.actionPinHash ? 'PIN Enabled' : 'No PIN Set'}</strong>
+                </div>
+              </div>
+
+              {settings.actionPinHash && (
+                <div className="form-group full-width">
+                  <label className="label">Current PIN *</label>
+                  <input
+                    type="password"
+                    className="input"
+                    name="current-action-pin"
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    value={currentPin}
+                    onChange={e => setCurrentPin(e.target.value)}
+                    placeholder="Enter current PIN"
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="label">New PIN {settings.actionPinHash ? '(leave blank to remove)' : '*'}</label>
+                <input
+                  type="password"
+                  className="input"
+                  name="new-action-pin"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  value={newPin}
+                  onChange={e => setNewPin(e.target.value)}
+                  placeholder="Enter new PIN"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="label">Confirm New PIN</label>
+                <input
+                  type="password"
+                  className="input"
+                  name="confirm-action-pin"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  value={confirmPin}
+                  onChange={e => setConfirmPin(e.target.value)}
+                  placeholder="Re-enter new PIN"
+                />
+              </div>
+
+              <div className="form-group full-width">
+                <small className="help-text">
+                  Leave the new PIN empty and save to remove the current PIN. PINs are stored securely as hashes.
+                </small>
+              </div>
+
+              <div className="form-group full-width">
+                <button type="button" className="btn btn-primary" onClick={handleSavePin} disabled={pinSaving}>
+                  {pinSaving ? 'Saving PIN...' : settings.actionPinHash ? 'Update / Remove PIN' : 'Save PIN'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 8: Bill Action Shortcuts */}
           <div className="settings-card card">
             <div className="card-header-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

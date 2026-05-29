@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useFiscalYear } from '../context/FiscalYearContext';
 import { useToast } from '../hooks/useToast';
+import { useActionPinGuard } from '../hooks/useActionPinGuard';
 import ToastContainer from '../components/ToastContainer';
 import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
 import { getCurrentNepaliDate } from '../utils/nepaliDate';
@@ -26,6 +27,7 @@ const SupplierLedger: React.FC = () => {
   const { user } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, isInActiveFY } = useFiscalYear();
+  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings.actionPinHash, showError });
 
   const [suppliers, setSuppliers] = useState<Party[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Party | null>(null);
@@ -821,7 +823,7 @@ const SupplierLedger: React.FC = () => {
                       <div className="particular-action-buttons">
                         <button
                           className="btn-icon-action btn-edit-row"
-                          onClick={openSupplierEdit}
+                            onClick={() => void requestAction({ label: 'edit party', onConfirm: openSupplierEdit })}
                             aria-label="Edit party"
                             title="Edit party"
                         >
@@ -832,7 +834,7 @@ const SupplierLedger: React.FC = () => {
                         </button>
                         <button
                           className="btn-icon-action btn-delete-row"
-                          onClick={() => setShowDeleteSupplierConfirm(true)}
+                            onClick={() => void requestAction({ label: 'delete party', onConfirm: () => setShowDeleteSupplierConfirm(true) })}
                             aria-label="Delete party"
                             title="Delete party"
                         >
@@ -968,7 +970,7 @@ const SupplierLedger: React.FC = () => {
                                 <div className="row-actions">
                                   <button
                                     className="btn-icon-action btn-edit-row"
-                                    onClick={() => openEditTransaction(entry)}
+                                    onClick={() => void requestAction({ label: 'edit transaction', onConfirm: () => openEditTransaction(entry) })}
                                     aria-label={`Edit transaction ${entry.particular}`}
                                     title="Edit"
                                   >
@@ -980,10 +982,10 @@ const SupplierLedger: React.FC = () => {
 
                                   <button
                                     className="btn-icon-action btn-delete-row"
-                                    onClick={() => {
+                                    onClick={() => void requestAction({ label: 'delete transaction', onConfirm: () => {
                                       setDeletingTransaction(entry);
                                       setShowDeleteTransactionConfirm(true);
-                                    }}
+                                    } })}
                                     aria-label={`Delete transaction ${entry.particular}`}
                                     title="Delete"
                                   >
@@ -1232,6 +1234,7 @@ const SupplierLedger: React.FC = () => {
         </div>
       )}
 
+      {pinPrompt}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

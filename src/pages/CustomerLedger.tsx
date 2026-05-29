@@ -5,6 +5,7 @@ import { useFiscalYear } from '../context/FiscalYearContext';
 import ToastContainer from '../components/ToastContainer';
 import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
 import { getCurrentNepaliDate } from '../utils/nepaliDate';
+import { useActionPinGuard } from '../hooks/useActionPinGuard';
 import Papa from 'papaparse';
 import type { Customer, CustomerLedgerEntry } from '../types';
 import { printCustomerLedger } from '../utils/printCustomerLedger';
@@ -23,6 +24,7 @@ const CustomerLedger: React.FC = () => {
   const { user } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, isInActiveFY } = useFiscalYear();
+  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings.actionPinHash, showError });
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -723,7 +725,7 @@ const CustomerLedger: React.FC = () => {
                       <div className="particular-action-buttons">
                         <button
                           className="btn-icon-action btn-edit-row"
-                          onClick={openCustomerEdit}
+                          onClick={() => void requestAction({ label: 'edit customer', onConfirm: openCustomerEdit })}
                           aria-label="Edit customer"
                           title="Edit customer"
                         >
@@ -734,7 +736,7 @@ const CustomerLedger: React.FC = () => {
                         </button>
                         <button
                           className="btn-icon-action btn-delete-row"
-                          onClick={() => setShowDeleteCustomerConfirm(true)}
+                          onClick={() => void requestAction({ label: 'delete customer', onConfirm: () => setShowDeleteCustomerConfirm(true) })}
                           aria-label="Delete customer"
                           title="Delete customer"
                         >
@@ -875,7 +877,7 @@ const CustomerLedger: React.FC = () => {
                               <div className="row-actions">
                                 <button
                                   className="btn-icon-action btn-edit-row"
-                                  onClick={() => openEditTransaction(entry)}
+                                  onClick={() => void requestAction({ label: 'edit transaction', onConfirm: () => openEditTransaction(entry) })}
                                   aria-label={`Edit transaction ${entry.particular}`}
                                   title="Edit"
                                 >
@@ -887,10 +889,10 @@ const CustomerLedger: React.FC = () => {
 
                                 <button
                                   className="btn-icon-action btn-delete-row"
-                                  onClick={() => {
-                                    setDeletingTransaction(entry);
-                                    setShowDeleteTransactionConfirm(true);
-                                  }}
+                                    onClick={() => void requestAction({ label: 'delete transaction', onConfirm: () => {
+                                      setDeletingTransaction(entry);
+                                      setShowDeleteTransactionConfirm(true);
+                                    } })}
                                   aria-label={`Delete transaction ${entry.particular}`}
                                   title="Delete"
                                 >
@@ -1093,6 +1095,7 @@ const CustomerLedger: React.FC = () => {
         </div>
       )}
 
+      {pinPrompt}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { useFiscalYear } from '../context/FiscalYearContext';
 import ToastContainer from '../components/ToastContainer';
+import { useActionPinGuard } from '../hooks/useActionPinGuard';
 import { printStockLedger } from '../utils/printStockLedger';
 import {
   getStockParticulars,
@@ -25,6 +26,7 @@ const Stock: React.FC = () => {
   const { user } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, isInActiveFY } = useFiscalYear();
+  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings.actionPinHash, showError });
 
   // Stock Lists & Ledger States
   const [particulars, setParticulars] = useState<StockParticular[]>([]);
@@ -815,12 +817,12 @@ const Stock: React.FC = () => {
                       <h2>{selectedParticular.name}</h2>
                       <div className="particular-action-buttons">
                         <button
-                          onClick={() => {
+                          onClick={() => void requestAction({ label: 'edit particular', onConfirm: () => {
                             setEditPartName(selectedParticular.name);
                             setEditPartUnit(getParticularDefaultUnit(selectedParticular));
                             setEditPartCode(formatParticularCode(selectedParticular.particularCode || ''));
                             setShowEditParticular(true);
-                          }}
+                          } })}
                           className="btn-icon-action btn-edit-part"
                           title="Rename Particular"
                         >
@@ -830,7 +832,7 @@ const Stock: React.FC = () => {
                           </svg>
                         </button>
                         <button
-                          onClick={() => setShowDeleteParticularConfirm(true)}
+                          onClick={() => void requestAction({ label: 'delete particular', onConfirm: () => setShowDeleteParticularConfirm(true) })}
                           className="btn-icon-action btn-delete-part"
                           title="Delete Particular & History"
                         >
@@ -963,7 +965,7 @@ const Stock: React.FC = () => {
                               <td className="text-center">
                                 <div className="ledger-row-actions">
                                   <button
-                                    onClick={() => openEditTransactionModal(entry)}
+                                    onClick={() => void requestAction({ label: 'edit transaction', onConfirm: () => openEditTransactionModal(entry) })}
                                     className="btn-row-action btn-edit-row"
                                     title="Edit Transaction"
                                   >
@@ -973,10 +975,10 @@ const Stock: React.FC = () => {
                                     </svg>
                                   </button>
                                   <button
-                                    onClick={() => {
-                                      setDeletingTransaction(entry);
-                                      setShowDeleteTransactionConfirm(true);
-                                    }}
+                                    onClick={() => void requestAction({ label: 'delete transaction', onConfirm: () => {
+                                        setDeletingTransaction(entry);
+                                        setShowDeleteTransactionConfirm(true);
+                                      } })}
                                     className="btn-row-action btn-delete-row"
                                     title="Delete Transaction"
                                   >
@@ -1539,6 +1541,8 @@ const Stock: React.FC = () => {
         </div>
       )}
 
+      {pinPrompt}
+      {pinPrompt}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

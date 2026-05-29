@@ -57,6 +57,7 @@ export interface AppSettings {
   businessName: string;
   businessAddress: string;
   businessContact: string;
+  actionPinHash?: string;
   billNumberFormat: 'numeric' | 'prefix';
   billNumberPrefix: string;
   /** Unit dropdown options for billing items */

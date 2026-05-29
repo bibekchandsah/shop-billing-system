@@ -18,6 +18,7 @@ import ToastContainer from '../components/ToastContainer';
 import { useAuth } from '../context/AuthContext';
 import { useFiscalYear } from '../context/FiscalYearContext';
 import { useToast } from '../hooks/useToast';
+import { useActionPinGuard } from '../hooks/useActionPinGuard';
 import './Records.css';
 
 const Records: React.FC = () => {
@@ -56,6 +57,7 @@ const Records: React.FC = () => {
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { user } = useAuth();
   const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd } = useFiscalYear();
+  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings.actionPinHash, showError });
 
   const [localSettings, setLocalSettings] = useState<any | null>(null);
   const [stockParticulars, setStockParticulars] = useState<any[]>([]);
@@ -852,7 +854,7 @@ const Records: React.FC = () => {
                         </button>
 
                         <button
-                          onClick={() => handleOpenEdit(bill)}
+                          onClick={() => void requestAction({ label: 'edit bill', onConfirm: () => handleOpenEdit(bill) })}
                           className="btn btn-sm btn-warning"
                           title="Edit bill"
                         >
@@ -875,7 +877,7 @@ const Records: React.FC = () => {
                         </button>
 
                         <button
-                          onClick={() => handleDeleteBill(bill.id)}
+                          onClick={() => void requestAction({ label: 'delete bill', onConfirm: () => handleDeleteBill(bill.id) })}
                           className="btn btn-sm btn-danger"
                           title="Delete bill"
                         >
@@ -1285,6 +1287,7 @@ const Records: React.FC = () => {
 
       </div>
 
+      {pinPrompt}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { AppSettings } from '../types';
 import NepaliDate from 'nepali-date-converter';
@@ -97,6 +97,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   businessName: 'Shop Billing System',
   businessAddress: 'Garuda, Rautahat, Nepal',
   businessContact: '',
+  actionPinHash: undefined,
   billNumberFormat: 'numeric',
   billNumberPrefix: 'BILL-',
   unitCategories: ['PCS'],
@@ -170,7 +171,7 @@ export const saveAppSettings = async (userId: string, settings: AppSettings): Pr
   if (!userId) return;
 
   try {
-    await setDoc(settingsDocRef(userId), {
+    const payload: Record<string, any> = {
       theme: settings.theme,
       businessName: settings.businessName || DEFAULT_SETTINGS.businessName,
       businessAddress: settings.businessAddress || DEFAULT_SETTINGS.businessAddress,
@@ -188,9 +189,30 @@ export const saveAppSettings = async (userId: string, settings: AppSettings): Pr
       fiscalYearEnd: settings.fiscalYearEnd ?? DEFAULT_SETTINGS.fiscalYearEnd,
       activeFiscalYear: settings.activeFiscalYear || DEFAULT_SETTINGS.activeFiscalYear,
       updatedAt: new Date()
-    }, { merge: true });
+    };
+
+    payload.actionPinHash = settings.actionPinHash ? settings.actionPinHash : deleteField();
+
+    await setDoc(settingsDocRef(userId), payload, { merge: true });
   } catch (error) {
     console.error('Error saving settings to Firestore:', error);
     throw new Error('Failed to persist settings in database.');
   }
+};
+
+export const hashActionPin = async (pin: string): Promise<string> => {
+  const normalized = (pin || '').trim();
+  if (!normalized) return '';
+
+  const data = new TextEncoder().encode(normalized);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+export const verifyActionPin = async (pin: string, storedHash?: string): Promise<boolean> => {
+  if (!storedHash) return true;
+  const currentHash = await hashActionPin(pin);
+  return currentHash === storedHash;
 };
