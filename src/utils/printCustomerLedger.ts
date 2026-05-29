@@ -1,6 +1,11 @@
 import type { Customer, CustomerLedgerEntry } from '../types';
 import { formatCurrency } from './numberToWords';
 
+const formatBalanceDisplay = (balance: number) => ({
+  amount: Math.abs(balance),
+  label: balance < 0 ? 'CR' : 'DR',
+});
+
 export const printCustomerLedger = (
   customer: Customer,
   ledger: CustomerLedgerEntry[],
@@ -27,7 +32,7 @@ export const printCustomerLedger = (
         <td class="center">${entry.billNo || '—'}</td>
         <td class="right text-success">${entry.debit > 0 ? formatCurrency(entry.debit) : '—'}</td>
         <td class="right text-danger">${entry.credit > 0 ? formatCurrency(entry.credit) : '—'}</td>
-        <td class="right"><strong>${formatCurrency(entry.currentBalance)}</strong></td>
+        <td class="right"><strong>${formatCurrency(formatBalanceDisplay(entry.currentBalance).amount)}</strong> <span class="balance-tag ${formatBalanceDisplay(entry.currentBalance).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(entry.currentBalance).label}</span></td>
       </tr>`
   ).join('');
 
@@ -79,6 +84,18 @@ export const printCustomerLedger = (
     .right  { text-align: right; }
     .text-success { color: #10b981; }
     .text-danger { color: #ef4444; }
+    .balance-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      border: 1px solid #cbd5e1;
+      vertical-align: middle;
+    }
+    .balance-tag.dr { color: #10b981; background: #ecfdf5; }
+    .balance-tag.cr { color: #ef4444; background: #fef2f2; }
     .toolbar {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -126,7 +143,7 @@ export const printCustomerLedger = (
     </div>
     <div class="meta-right">
       <div class="meta-row"><span class="meta-label">Date Range:</span><span>${dateRangeStr}</span></div>
-      <div class="meta-row"><span class="meta-label">Current Balance:</span><span><strong>${formatCurrency(customer.currentBalance || 0)}</strong></span></div>
+      <div class="meta-row"><span class="meta-label">Current Balance:</span><span><strong>${formatCurrency(formatBalanceDisplay(customer.currentBalance || 0).amount)}</strong> <span class="balance-tag ${formatBalanceDisplay(customer.currentBalance || 0).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(customer.currentBalance || 0).label}</span></span></div>
     </div>
   </div>
 

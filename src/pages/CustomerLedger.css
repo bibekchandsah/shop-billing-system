@@ -88,6 +88,28 @@
   width: 100%;
 }
 
+.customer-edit-modal {
+  width: min(92vw, 500px);
+  max-width: 500px !important;
+  padding: 1rem;
+}
+
+.customer-edit-modal .modal-body {
+  padding-top: 0.25rem;
+}
+
+.customer-edit-modal .modal-footer {
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .customer-edit-modal {
+    width: calc(100vw - 2rem);
+    max-width: none;
+    padding: 0.9rem;
+  }
+}
+
 .customer-ledger-layout {
   display: flex;
   gap: 1.75rem; /* Slightly larger premium gap between columns */

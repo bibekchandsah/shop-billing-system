@@ -7,6 +7,11 @@ import { getAppSettings, saveAppSettings, DEFAULT_SETTINGS, getFiscalYearOptions
 import type { AppSettings } from '../types';
 import './Settings.css';
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
 const BS_MONTH_NAMES = [
   'Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin',
   'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra',
@@ -21,11 +26,47 @@ const Settings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [newUnit, setNewUnit] = useState('');
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installState, setInstallState] = useState<'idle' | 'available' | 'installed'>('idle');
+  const [installHint, setInstallHint] = useState('');
 
   useEffect(() => {
     loadSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
+
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    if (standalone) {
+      setInstallState('installed');
+    }
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+      setInstallHint('');
+      setInstallState('available');
+    };
+
+    const handleAppInstalled = () => {
+      setInstallPrompt(null);
+      setInstallHint('');
+      setInstallState('installed');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    if (!('serviceWorker' in navigator) || !window.matchMedia('(display-mode: standalone)').matches && !('standalone' in window.navigator)) {
+      // Keep the section visible even when the prompt is not currently available.
+      setInstallState((prev) => (prev === 'installed' ? prev : 'idle'));
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -122,6 +163,19 @@ const Settings: React.FC = () => {
       }
       return updated;
     });
+  };
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) {
+      setInstallHint('This browser has not exposed the install prompt yet. Use the install icon in the address bar or open the browser menu and choose Install App / Add to Home Screen.');
+      return;
+    }
+
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    setInstallPrompt(null);
+    setInstallHint('');
+    setInstallState(choice.outcome === 'accepted' ? 'installed' : 'available');
   };
 
   if (loading) {
@@ -430,7 +484,67 @@ const Settings: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 5: Unit Categories */}
+          {/* Section 5: PWA / Install Support */}
+          <div className="settings-card card">
+            <div className="card-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 3v18" />
+                <path d="M5 10h14" />
+                <path d="M7 7l5-4 5 4" />
+                <path d="M7 17l5 4 5-4" />
+              </svg>
+              <h2>Install App / PWA</h2>
+            </div>
+            <p className="card-desc">
+              Install the billing system on supported browsers and devices. It can run like a normal app on desktop, laptop, Android, and other supported platforms.
+            </p>
+
+            <div className="pwa-panel">
+              <div className="pwa-status-row">
+                <div>
+                  <strong className="pwa-status-title">
+                    {installState === 'installed'
+                      ? 'Installed'
+                      : installState === 'available'
+                        ? 'Ready to install'
+                        : 'Installation support enabled'}
+                  </strong>
+                  <p className="pwa-status-text">
+                    {installState === 'installed'
+                      ? 'This app is already installed on this device.'
+                      : installState === 'available'
+                        ? 'A browser install prompt is available right now.'
+                        : 'A service worker and manifest are active, so supported browsers can install this app.'}
+                  </p>
+                  {installHint && (
+                    <p className="pwa-hint-text">{installHint}</p>
+                  )}
+                </div>
+
+                {installState === 'installed' ? (
+                  <span className="pwa-status-badge installed">Installed</span>
+                ) : (
+                  <button type="button" className="btn btn-primary pwa-install-btn" onClick={handleInstallApp}>
+                    Install App
+                  </button>
+                )}
+              </div>
+
+              <div className="pwa-note-box">
+                <div className="pwa-note-title">Works best in:</div>
+                <ul className="pwa-note-list">
+                  <li>Chrome, Edge, and Chromium browsers on desktop and Android</li>
+                  <li>Supported mobile browsers that show the install prompt</li>
+                  <li>Offline-friendly launch with the app shell cached locally</li>
+                </ul>
+                <small className="help-text">
+                  On iPhone or iPad, open the browser share menu and choose <strong>Add to Home Screen</strong> if the install button does not appear.
+                </small>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 6: Unit Categories */}
           <div className="settings-card card">
             <div className="card-header-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -498,7 +612,7 @@ const Settings: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 6: Bill Action Shortcuts */}
+          {/* Section 7: Bill Action Shortcuts */}
           <div className="settings-card card">
             <div className="card-header-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

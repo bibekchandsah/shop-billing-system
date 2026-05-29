@@ -7,7 +7,7 @@ import { printBill } from '../utils/printBill';
 import { createBill, getNextBillNumber } from '../services/billService';
 import { DEFAULT_SETTINGS, getAppSettings } from '../services/settingsService';
 import { recordBillInventory, getStockParticulars } from '../services/stockService';
-import { syncBillCustomerLedger, getCustomers } from '../services/customerService';
+import { syncBillCustomerLedger, getCustomers, upsertCustomerProfile } from '../services/customerService';
 import { useAuth } from '../context/AuthContext';
 import ToastContainer from '../components/ToastContainer';
 import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
@@ -23,6 +23,7 @@ const CreateBill: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [address, setAddress] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [customerCode, setCustomerCode] = useState('');
   const [items, setItems] = useState<BillItem[]>([
     { sn: 1, particulars: '', qty: 0, unit: DEFAULT_SETTINGS.unitCategories[0] ?? '', rate: 0, amount: 0 }
   ]);
@@ -34,15 +35,29 @@ const CreateBill: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
+  const itemParticularRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const itemQtyRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const itemRateRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const addItemButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [pendingFocusItemIndex, setPendingFocusItemIndex] = useState<number | null>(null);
 
   // Ref to read the picker's current date directly — more reliable than state
   const datePickerRef = useRef<NepaliDatePickerHandle>(null);
+  const customerNameRef = useRef<HTMLInputElement | null>(null);
+  const customerCodeRef = useRef<HTMLInputElement | null>(null);
+  const noteRef = useRef<HTMLInputElement | null>(null);
   const { user } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
 
   useEffect(() => {
     initializeBill();
   }, []);
+
+  useEffect(() => {
+    if (pendingFocusItemIndex === null) return;
+    focusItemParticular(pendingFocusItemIndex);
+    setPendingFocusItemIndex(null);
+  }, [items.length, pendingFocusItemIndex]);
 
   const initializeBill = async () => {
     try {
@@ -65,6 +80,8 @@ const CreateBill: React.FC = () => {
         setStockParticulars(particulars);
         const fetchedCustomers = await getCustomers(user.uid);
         setCustomers(fetchedCustomers);
+        // After initial load, focus customer ID to speed up new billing
+        setTimeout(() => flashAndScroll(customerCodeRef), 250);
       }
     } catch (error) {
       console.error('Error initializing bill:', error);
@@ -103,6 +120,31 @@ const CreateBill: React.FC = () => {
     setCustomerName(toTitleCase(value));
   };
 
+  const flashAndScroll = (elRef: React.RefObject<HTMLElement | null>) => {
+    const el = elRef.current as HTMLElement | null;
+    if (!el) return;
+    try {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('input-flash');
+      window.setTimeout(() => el.classList.remove('input-flash'), 900);
+      (el as HTMLInputElement).focus?.();
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const handleCustomerCodeChange = (value: string) => {
+    const norm = value.toUpperCase().slice(0, 4);
+    setCustomerCode(norm);
+    if (!norm) return;
+    const match = customers.find(c => (c.customerCode || '').toUpperCase() === norm);
+    if (match) {
+      setCustomerName(toTitleCase(match.name));
+      if (match.address) setAddress(toTitleCase(match.address));
+      if (match.contactNumber) setContactNumber(match.contactNumber);
+    }
+  };
+
   const handleAddressChange = (value: string) => {
     setAddress(toTitleCase(value));
   };
@@ -127,14 +169,85 @@ const CreateBill: React.FC = () => {
           newItems[index].unit = stockItem?.defaultUnit || newItems[index].unit || getDefaultUnit(settings);
         }
         if (stockItem && Number(newItems[index].qty) > stockItem.currentStock) {
-          newItems[index].qty = stockItem.currentStock;
-          newItems[index].amount = stockItem.currentStock * Number(newItems[index].rate);
-          showError(`Adjusted quantity to available stock (${stockItem.currentStock}) for "${stockItem.name}".`);
+          // Clear the input (use 0 in state so the input renders blank) instead of clamping
+          newItems[index].qty = 0;
+          newItems[index].amount = 0;
+          showError(`Entered quantity exceeds available stock (${stockItem.currentStock}) for "${stockItem.name}". Please enter a smaller quantity.`);
         }
       }
     }
 
     setItems(newItems);
+  };
+
+  const focusItemParticular = (index: number) => {
+    window.setTimeout(() => {
+      const input = itemParticularRefs.current[index];
+      if (!input) return;
+      input.focus();
+      input.select?.();
+      input.classList.add('input-flash');
+      window.setTimeout(() => input.classList.remove('input-flash'), 900);
+    }, 0);
+  };
+
+  const focusItemRate = (index: number) => {
+    window.setTimeout(() => {
+      const input = itemRateRefs.current[index];
+      if (!input) return;
+      input.focus();
+      input.select?.();
+      input.classList.add('input-flash');
+      window.setTimeout(() => input.classList.remove('input-flash'), 900);
+    }, 0);
+  };
+
+  const handleQtyTab = (event: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (event.key !== 'Tab' || event.shiftKey) return;
+    event.preventDefault();
+    focusItemRate(index);
+  };
+
+  const handleRateTab = (event: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (event.key !== 'Tab' || event.shiftKey) return;
+    event.preventDefault();
+    const nextIndex = index + 1;
+    if (nextIndex < items.length) {
+      focusItemParticular(nextIndex);
+      return;
+    }
+    addItemButtonRef.current?.focus();
+  };
+
+  const getNextCustomerCode = (list: Customer[]) => {
+    try {
+      const nums = list
+        .map((c) => {
+          if (!c.customerCode) return NaN;
+          const m = c.customerCode.match(/\d+/);
+          return m ? parseInt(m[0], 10) : NaN;
+        })
+        .filter((n) => !isNaN(n));
+      const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+      return String(next).padStart(4, '0');
+    } catch {
+      return '0001';
+    }
+  };
+
+  const sanitizeId = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'customer';
+
+  const buildCustomerDocId = (name: string, address: string, contact: string, code?: string) => {
+    const c = (code || '').trim();
+    if (c) return `code-${c}`;
+    const digits = (contact || '').replace(/\D/g, '');
+    if (digits) return `contact-${digits}`;
+    return sanitizeId([name, address].join('-'));
   };
 
   const handleSelectSuggestion = (index: number, name: string) => {
@@ -143,10 +256,46 @@ const CreateBill: React.FC = () => {
   };
 
   const addItem = () => {
+    // Prevent adding a new row if the current last row is incomplete
+    const last = items[items.length - 1];
+    if (last) {
+      if (!last.particulars || !String(last.particulars).trim()) {
+        showError('Please enter item description before adding a new item');
+        return;
+      }
+      if (!last.qty || Number(last.qty) <= 0) {
+        showError('Please enter a valid quantity before adding a new item');
+        return;
+      }
+      if (!last.rate || Number(last.rate) <= 0) {
+        showError('Please enter a valid rate before adding a new item');
+        return;
+      }
+    }
+
     setItems([
       ...items,
       { sn: items.length + 1, particulars: '', qty: 0, unit: getDefaultUnit(settings), rate: 0, amount: 0 }
     ]);
+    setPendingFocusItemIndex(items.length);
+  };
+
+  const handleAddItemButtonKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      addItem();
+      return;
+    }
+
+    if (event.key === 'Tab' && !event.shiftKey) {
+      event.preventDefault();
+      window.setTimeout(() => {
+        noteRef.current?.focus();
+        noteRef.current?.select?.();
+        noteRef.current?.classList.add('input-flash');
+        window.setTimeout(() => noteRef.current?.classList.remove('input-flash'), 900);
+      }, 0);
+    }
   };
 
   const removeItem = (index: number) => {
@@ -228,6 +377,7 @@ const CreateBill: React.FC = () => {
       customerName,
       address,
       contactNumber,
+      customerCode: customerCode.trim(),
       items: validItems,
       totalAmount,
       totalAmountInWords: numberToWords(totalAmount),
@@ -251,6 +401,45 @@ const CreateBill: React.FC = () => {
 
     try {
       const { bill, validItems, bsDate } = payload;
+      // Preserve a manually entered customerCode; only generate one when blank.
+      let customerCodeToUse = (bill.customerCode || '').trim();
+      const existing = customers.find(
+        (c) =>
+          c.name.trim().toLowerCase() === bill.customerName.trim().toLowerCase() ||
+          (bill.contactNumber && c.contactNumber === bill.contactNumber)
+      );
+      if (existing) {
+        if (!customerCodeToUse) {
+          customerCodeToUse = existing.customerCode || '';
+        }
+        if (!customerCodeToUse) {
+          customerCodeToUse = getNextCustomerCode(customers);
+          const docId = buildCustomerDocId(existing.name, existing.address, existing.contactNumber, customerCodeToUse);
+          await upsertCustomerProfile(user?.uid || '', docId, {
+            name: existing.name,
+            address: existing.address,
+            contactNumber: existing.contactNumber,
+            customerCode: customerCodeToUse,
+            currentBalance: existing.currentBalance || 0,
+          });
+        }
+      } else {
+        // New customer - use typed code if present, otherwise generate one.
+        if (!customerCodeToUse) {
+          customerCodeToUse = getNextCustomerCode(customers);
+        }
+        const docId = buildCustomerDocId(bill.customerName, bill.address, bill.contactNumber, customerCodeToUse);
+        await upsertCustomerProfile(user?.uid || '', docId, {
+          name: bill.customerName,
+          address: bill.address,
+          contactNumber: bill.contactNumber,
+          customerCode: customerCodeToUse,
+          currentBalance: 0,
+        });
+      }
+
+      // attach customerCode to bill before saving ledger
+      bill.customerCode = customerCodeToUse;
       const { id, createdAt, updatedAt, ...billForSave } = bill;
 
       await createBill(billForSave);
@@ -261,9 +450,12 @@ const CreateBill: React.FC = () => {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
 
+      // After saving, preserve focus and scroll to customer ID for next billing
+      flashAndScroll(customerCodeRef);
+
       if (options.autoClear) {
         setTimeout(() => {
-          void handleClearForm();
+          void handleClearForm({ preserveCustomerCode: true });
         }, 1500);
       }
       return true;
@@ -288,6 +480,7 @@ const CreateBill: React.FC = () => {
         latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize
       );
       showSuccess('PDF generated successfully!');
+      flashAndScroll(customerCodeRef);
     } catch (error) {
       console.error('Error generating PDF:', error);
       showError('Failed to generate PDF. Please try again.');
@@ -307,6 +500,7 @@ const CreateBill: React.FC = () => {
       console.error('Error printing bill:', error);
       showError('Failed to print bill. Please try again.');
     }
+    flashAndScroll(customerCodeRef);
   };
 
   const handleSaveBill = async () => {
@@ -379,10 +573,16 @@ const CreateBill: React.FC = () => {
     }
   };
 
-  const handleClearForm = async () => {
+  const handleClearForm = async (options?: { preserveCustomerCode?: boolean } | React.MouseEvent) => {
+    const shouldPreserveCustomerCode = options && typeof options === 'object' && 'preserveCustomerCode' in options
+      ? (options as any).preserveCustomerCode === true
+      : false;
+    const preservedCustomerCode = shouldPreserveCustomerCode ? customerCode : '';
+
     setCustomerName('');
     setAddress('');
     setContactNumber('');
+    setCustomerCode(preservedCustomerCode);
     setItems([{ sn: 1, particulars: '', qty: 0, unit: getDefaultUnit(settings), rate: 0, amount: 0 }]);
     setFreeDue('');
     // Reset dates — passing empty string clears the picker
@@ -391,6 +591,8 @@ const CreateBill: React.FC = () => {
     setCleared(true);
     setTimeout(() => setCleared(false), 2000);
     await initializeBill();
+    // After clearing for next billing, focus customer ID
+    flashAndScroll(customerCodeRef);
   };
 
   const primaryBillAction = settings?.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
@@ -439,6 +641,7 @@ const CreateBill: React.FC = () => {
               <input
                 type="text"
                 className="input"
+                ref={customerNameRef}
                 value={customerName}
                 onChange={(e) => handleCustomerNameChange(e.target.value)}
                 onFocus={() => setCustomerDropdownOpen(true)}
@@ -462,11 +665,16 @@ const CreateBill: React.FC = () => {
                         setCustomerName(toTitleCase(c.name));
                         if (c.address) setAddress(toTitleCase(c.address));
                         if (c.contactNumber) setContactNumber(c.contactNumber);
+                        setCustomerCode(c.customerCode || '');
                         setCustomerDropdownOpen(false);
                       }}
                     >
-                      <span className="suggestion-name">{c.name}</span>
-                      {c.contactNumber && <span className="suggestion-stock">{c.contactNumber}</span>}
+                      <div className="suggestion-inline-row">
+                        <span className="suggestion-name">{c.name}</span>
+                        {c.customerCode && <span className="suggestion-code">ID: {c.customerCode}</span>}
+                        {c.address && <span className="suggestion-sub suggestion-sub-inline">{c.address}</span>}
+                        {c.contactNumber && <span className="suggestion-stock suggestion-stock-inline">{c.contactNumber}</span>}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -475,7 +683,7 @@ const CreateBill: React.FC = () => {
           </div>
 
           {/* ── Row 3: Address | Contact ── */}
-          <div className="bill-meta-row">
+          <div className="bill-meta-row customer-meta-row">
             <div className="form-group">
               <label className="label">Address *</label>
               <input
@@ -497,6 +705,18 @@ const CreateBill: React.FC = () => {
                 maxLength={10}
                 inputMode="numeric"
                 pattern="[0-9]*"
+              />
+            </div>
+            <div className="form-group">
+              <label className="label">Customer ID</label>
+              <input
+                ref={customerCodeRef}
+                type="text"
+                className="input"
+                value={customerCode}
+                onChange={(e) => handleCustomerCodeChange(e.target.value)}
+                placeholder="Max 4 chars"
+                maxLength={4}
               />
             </div>
           </div>
@@ -544,14 +764,14 @@ const CreateBill: React.FC = () => {
                               {matches.slice(0, 8).map(p => (
                                 <div
                                   key={p.id}
-                                  className="suggestion-item"
+                                  className="suggestion-item suggestion-item-stock"
                                   onMouseDown={(e) => {
                                     e.preventDefault();
                                     handleSelectSuggestion(index, p.name);
                                   }}
                                 >
                                   <span className="suggestion-name">{p.name}</span>
-                                  <span className="suggestion-stock">Stock: {p.currentStock} Qty</span>
+                                  <span className="suggestion-stock">Stock: {p.currentStock} {p.defaultUnit || 'Qty'}</span>
                                 </div>
                               ))}
                             </div>
@@ -565,10 +785,12 @@ const CreateBill: React.FC = () => {
                           );
                           return (
                             <input
+                              ref={(el) => { itemQtyRefs.current[index] = el; }}
                               type="number"
                               className="input"
                               value={item.qty || ''}
                               onChange={(e) => handleItemChange(index, 'qty', parseFloat(e.target.value) || 0)}
+                              onKeyDown={(e) => handleQtyTab(e, index)}
                               min="0"
                               max={stockItem ? stockItem.currentStock : undefined}
                               step="1"
@@ -592,10 +814,12 @@ const CreateBill: React.FC = () => {
                       </td>
                       <td>
                         <input
+                          ref={(el) => { itemRateRefs.current[index] = el; }}
                           type="number"
                           className="input"
                           value={item.rate || ''}
                           onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value) || 0)}
+                          onKeyDown={(e) => handleRateTab(e, index)}
                           min="0"
                           step="1"
                         />
@@ -622,7 +846,13 @@ const CreateBill: React.FC = () => {
               </table>
             </div>
 
-            <button onClick={addItem} className="btn btn-primary btn-add-item">
+            <button
+              ref={addItemButtonRef}
+              type="button"
+              onClick={addItem}
+              onKeyDown={handleAddItemButtonKeyDown}
+              className="btn btn-primary btn-add-item"
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -651,6 +881,7 @@ const CreateBill: React.FC = () => {
           <div className="form-group" style={{ marginBottom: '1.5rem' }}>
             <label className="label">Note / Free Due</label>
             <input
+              ref={noteRef}
               type="text"
               className="input"
               value={freeDue}

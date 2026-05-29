@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   orderBy,
@@ -28,7 +29,11 @@ const sanitizeId = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'customer';
 
-export const buildCustomerId = (customer: Pick<Bill, 'customerName' | 'address' | 'contactNumber'>) => {
+export const buildCustomerId = (customer: Pick<Bill, 'customerName' | 'address' | 'contactNumber' | 'customerCode'>) => {
+  const code = (customer.customerCode || '').trim();
+  if (code) {
+    return `code-${code}`;
+  }
   const contactNumber = cleanText(customer.contactNumber || '').replace(/\D/g, '');
   if (contactNumber) {
     return `contact-${contactNumber}`;
@@ -44,6 +49,7 @@ const toCustomer = (id: string, data: any): Customer => ({
   name: data.name || '',
   address: data.address || '',
   contactNumber: data.contactNumber || '',
+  customerCode: data.customerCode || '',
   purchaseHistory: Array.isArray(data.purchaseHistory) ? data.purchaseHistory : [],
   currentBalance: Number(data.currentBalance || 0),
   lastBillNo: data.lastBillNo || '',
@@ -89,6 +95,7 @@ export const upsertCustomerProfile = async (
     name: string;
     address: string;
     contactNumber: string;
+    customerCode?: string;
     currentBalance?: number;
     lastBillNo?: string;
   }
@@ -99,12 +106,26 @@ export const upsertCustomerProfile = async (
 
   const ref = customerDoc(userId, customerId);
 
+  // Normalize provided customerCode to a safe 4-char value (preserve as-is but trimmed)
+  const code = (customerData.customerCode || '').trim();
+
+  // If a customerCode is provided, check for duplicate by looking up the canonical doc id
+  // that would be used when building a customer id from a code (buildCustomerId -> code-{code}).
+  if (code) {
+    const codeDocRef = customerDoc(userId, `code-${code}`);
+    const existing = await getDoc(codeDocRef);
+    if (existing.exists() && existing.id !== customerId) {
+      throw new Error('Customer ID already in use by another customer.');
+    }
+  }
+
   await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(ref);
     const payload = {
       name: customerData.name.trim(),
       address: customerData.address.trim(),
       contactNumber: customerData.contactNumber.trim(),
+      customerCode: code || '',
       currentBalance: Number(customerData.currentBalance || 0),
       lastBillNo: customerData.lastBillNo || '',
       updatedAt: Timestamp.now(),
@@ -143,6 +164,7 @@ export const recordBillCustomerLedger = async (
       name: bill.customerName.trim(),
       address: bill.address.trim(),
       contactNumber: bill.contactNumber.trim(),
+      customerCode: bill.customerCode || '',
       currentBalance: newBalance,
       lastBillNo: bill.billNo,
       purchaseHistory: [],

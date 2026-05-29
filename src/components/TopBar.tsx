@@ -306,6 +306,24 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuOpen, mobileOpen = false })
                   </svg>
                   Sign out
                 </button>
+
+                <div className="topbar-dropdown-divider" />
+
+                <a
+                  className="topbar-dropdown-item topbar-dropdown-developer"
+                  href="https://www.bibekchandsah.com.np/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  <img
+                    src="https://bibekchandsah.github.io/kiitcse/assets/image/developer.jpg"
+                    alt="Developer"
+                    className="topbar-dropdown-developer-avatar"
+                    referrerPolicy="no-referrer"
+                  />
+                  Developed by Bibek
+                </a>
               </div>
             )}
           </div>

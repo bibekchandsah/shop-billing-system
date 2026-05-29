@@ -214,6 +214,27 @@
 .topbar-dropdown-signout { color: var(--danger); }
 .topbar-dropdown-signout:hover { background: var(--danger-light); }
 
+.topbar-dropdown-developer {
+  justify-content: flex-start;
+  color: var(--accent-primary);
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+}
+
+.topbar-dropdown-developer:hover {
+  background: var(--accent-light, rgba(99,102,241,0.08));
+  text-decoration: none;
+}
+
+.topbar-dropdown-developer-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .topbar { padding: 0 1rem; }

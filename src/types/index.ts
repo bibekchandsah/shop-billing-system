@@ -13,6 +13,7 @@ export interface Customer {
   name: string;
   address: string;
   contactNumber: string;
+  customerCode?: string;
   purchaseHistory: string[];
   currentBalance?: number;
   lastBillNo?: string;
@@ -38,6 +39,7 @@ export interface Bill {
   customerName: string;
   address: string;
   contactNumber: string;
+  customerCode?: string;
   items: BillItem[];
   totalAmount: number;
   totalAmountInWords: string;

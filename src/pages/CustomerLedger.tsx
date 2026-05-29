@@ -40,6 +40,7 @@ const CustomerLedger: React.FC = () => {
   const [editCustomerName, setEditCustomerName] = useState('');
   const [editCustomerAddress, setEditCustomerAddress] = useState('');
   const [editCustomerContact, setEditCustomerContact] = useState('');
+  const [editCustomerCode, setEditCustomerCode] = useState('');
   const [editCustomerLoading, setEditCustomerLoading] = useState(false);
 
   const [showAddTransaction, setShowAddTransaction] = useState(false);
@@ -72,6 +73,84 @@ const CustomerLedger: React.FC = () => {
   const txDatePickerRef = useRef<NepaliDatePickerHandle>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const printCustomerList = () => {
+    const list = filteredCustomers.length > 0 ? filteredCustomers : customers;
+    if (list.length === 0) {
+      showError('No customers to print.');
+      return;
+    }
+
+    const win = window.open('', '_blank', 'width=1100,height=800');
+    if (!win) {
+      showError('Pop-up blocked. Please allow pop-ups for this site and try again.');
+      return;
+    }
+
+    const rows = list
+      .map((customer) => {
+        const balance = formatBalanceDisplay(customer.currentBalance || 0);
+        return `
+          <tr>
+            <td>${customer.name || '—'}</td>
+            <td>${customer.address || '—'}</td>
+            <td>${customer.contactNumber || '—'}</td>
+            <td>${customer.customerCode || '—'}</td>
+            <td class="right"><strong>${balance.amount}</strong> ${balance.label}</td>
+          </tr>`;
+      })
+      .join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Customer List</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #111; background: #fff; }
+    h1 { font-size: 22px; margin-bottom: 6px; }
+    .subtitle { color: #555; margin-bottom: 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { border: 1px solid #cfcfcf; padding: 8px 10px; vertical-align: top; }
+    th { background: #1e3a5f; color: #fff; text-align: left; }
+    .right { text-align: right; }
+    .toolbar { margin-bottom: 12px; display: flex; justify-content: flex-end; gap: 10px; }
+    .btn { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .btn-print { background: #10b981; color: #fff; }
+    .btn-close { background: #e5e7eb; color: #111; }
+    @media print { .toolbar { display: none; } body { padding: 0; } @page { size: A4 portrait; margin: 1.5cm; } }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="btn btn-print" onclick="window.print()">Print / Save PDF</button>
+    <button class="btn btn-close" onclick="window.close()">Close</button>
+  </div>
+  <h1>Customer List</h1>
+  <div class="subtitle">${list.length} customer(s)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Customer Name</th>
+        <th>Address</th>
+        <th>Contact</th>
+        <th>Customer ID</th>
+        <th class="right">Current Balance</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <script>
+    window.onload = function () { window.print(); };
+  </script>
+</body>
+</html>`;
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  };
 
   const handleExport = async () => {
     if (customers.length === 0) {
@@ -257,8 +336,10 @@ const CustomerLedger: React.FC = () => {
     const lower = searchTerm.trim().toLowerCase();
     if (!lower) return customers;
     return customers.filter((customer) => {
+      const customerCode = (customer.customerCode || '').toLowerCase();
       return (
         customer.name.toLowerCase().includes(lower) ||
+        customerCode.includes(lower) ||
         customer.address.toLowerCase().includes(lower) ||
         customer.contactNumber.toLowerCase().includes(lower)
       );
@@ -280,12 +361,20 @@ const CustomerLedger: React.FC = () => {
   const selectedBalance = ledger.length > 0 ? ledger[ledger.length - 1].currentBalance : (selectedCustomer?.currentBalance || 0);
   const totalDebit = filteredLedger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
   const totalCredit = filteredLedger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
+  const formatBalanceDisplay = (balance: number) => {
+    const isCredit = balance < 0;
+    return {
+      amount: Math.abs(balance),
+      label: isCredit ? 'CR' : 'DR',
+    };
+  };
 
   const openCustomerEdit = () => {
     if (!selectedCustomer) return;
     setEditCustomerName(selectedCustomer.name);
     setEditCustomerAddress(selectedCustomer.address);
     setEditCustomerContact(selectedCustomer.contactNumber);
+    setEditCustomerCode(selectedCustomer.customerCode || '');
     setShowEditCustomer(true);
   };
 
@@ -300,17 +389,13 @@ const CustomerLedger: React.FC = () => {
       showError('Address is required');
       return;
     }
-    if (!editCustomerContact.trim()) {
-      showError('Contact number is required');
-      return;
-    }
-
     setEditCustomerLoading(true);
     try {
       await upsertCustomerProfile(user?.uid || '', selectedCustomer.id, {
         name: editCustomerName,
         address: editCustomerAddress,
         contactNumber: editCustomerContact,
+        customerCode: editCustomerCode.trim(),
         currentBalance: selectedBalance,
       });
       showSuccess('Customer details updated successfully');
@@ -504,16 +589,32 @@ const CustomerLedger: React.FC = () => {
                     {customers.length}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomersCollapsed(true)}
-                  className="btn-collapse-customers"
-                  title="Collapse Customers List"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={printCustomerList}
+                    className="btn-icon-action"
+                    title="Print customer list"
+                    aria-label="Print customer list"
+                    style={{ width: '34px', height: '34px', borderRadius: '8px' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6 9 6 2 18 2 18 9" />
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                      <rect x="6" y="14" width="12" height="8" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomersCollapsed(true)}
+                    className="btn-collapse-customers"
+                    title="Collapse Customers List"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -529,7 +630,7 @@ const CustomerLedger: React.FC = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search by name, contact, or address"
+                placeholder="Search by name, ID, contact, or address"
               />
             </div>
 
@@ -553,12 +654,20 @@ const CustomerLedger: React.FC = () => {
                   >
                     <div className="item-details">
                       <strong className="item-name" title={customer.name}>{customer.name}</strong>
+                      <span className="item-updated">{customer.address || 'No address'}</span>
+                      <span className="item-updated">{customer.customerCode ? `ID: ${customer.customerCode}` : 'No customer ID'}</span>
                       <span className="item-updated">{customer.contactNumber || 'No contact'}</span>
                     </div>
                     <div className="item-badges">
-                      <span className="badge" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
-                        Rs. {customer.currentBalance || 0}
-                      </span>
+                      {(() => {
+                        const balance = formatBalanceDisplay(customer.currentBalance || 0);
+                        return (
+                          <span className="badge" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span>{balance.amount}</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>{balance.label}</span>
+                          </span>
+                        );
+                      })()}
                     </div>
                   </button>
                 ))
@@ -695,7 +804,17 @@ const CustomerLedger: React.FC = () => {
                   </div>
                   <div className="metric-card highlight">
                     <span className="mb-label">Current Balance</span>
-                    <strong className="mb-value">{selectedBalance}</strong>
+                    {(() => {
+                      const balance = formatBalanceDisplay(selectedBalance);
+                      return (
+                        <strong className="mb-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span>{balance.amount}</span>
+                          <span className={`badge ${balance.label === 'CR' ? 'text-danger' : 'text-success'}`} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontSize: '0.72rem', fontWeight: 700 }}>
+                            {balance.label}
+                          </span>
+                        </strong>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -730,7 +849,19 @@ const CustomerLedger: React.FC = () => {
                             <td className="text-center">{entry.billNo || '—'}</td>
                             <td className="text-right text-success">{entry.debit > 0 ? entry.debit : '—'}</td>
                             <td className="text-right text-danger">{entry.credit > 0 ? entry.credit : '—'}</td>
-                            <td className="text-right">{entry.currentBalance}</td>
+                            <td className="text-right">
+                              {(() => {
+                                const balance = formatBalanceDisplay(entry.currentBalance);
+                                return (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <strong>{balance.amount}</strong>
+                                    <span className={`badge ${balance.label === 'CR' ? 'text-danger' : 'text-success'}`} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontSize: '0.72rem', fontWeight: 700 }}>
+                                      {balance.label}
+                                    </span>
+                                  </span>
+                                );
+                              })()}
+                            </td>
                             <td className="text-center">
                               <div className="row-actions">
                                 <button
@@ -775,7 +906,7 @@ const CustomerLedger: React.FC = () => {
 
       {showEditCustomer && selectedCustomer && (
         <div className="modal-overlay" onClick={() => setShowEditCustomer(false)}>
-          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-content stock-modal customer-edit-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Edit Customer</h2>
               <button className="modal-close" onClick={() => setShowEditCustomer(false)}>×</button>
@@ -791,8 +922,18 @@ const CustomerLedger: React.FC = () => {
                   <input className="input" value={editCustomerAddress} onChange={(event) => setEditCustomerAddress(event.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="label">Contact Number *</label>
+                  <label className="label">Contact Number</label>
                   <input className="input" value={editCustomerContact} onChange={(event) => setEditCustomerContact(event.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="label">Customer ID (max 4 chars)</label>
+                  <input
+                    className="input"
+                    maxLength={4}
+                    value={editCustomerCode}
+                    onChange={(event) => setEditCustomerCode(event.target.value.toUpperCase().slice(0, 4))}
+                    placeholder="e.g. 0001 or AB12"
+                  />
                 </div>
               </div>
               <div className="modal-footer">
@@ -927,7 +1068,7 @@ const CustomerLedger: React.FC = () => {
 
       {showDeleteCustomerConfirm && selectedCustomer && (
         <div className="modal-overlay" onClick={() => setShowDeleteCustomerConfirm(false)}>
-          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-content stock-modal customer-edit-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Delete Customer</h2>
               <button className="modal-close" onClick={() => setShowDeleteCustomerConfirm(false)}>×</button>
