@@ -11,8 +11,10 @@ import type { Customer, CustomerLedgerEntry } from '../types';
 import { printCustomerLedger } from '../utils/printCustomerLedger';
 import {
   addCustomerLedgerEntry,
+  buildCustomerId,
   deleteCustomerLedgerEntry,
   deleteCustomerProfile,
+  findCustomerByCode,
   getCustomerLedgerEntries,
   getCustomers,
   upsertCustomerProfile,
@@ -44,13 +46,24 @@ const CustomerLedger: React.FC = () => {
   const [editCustomerContact, setEditCustomerContact] = useState('');
   const [editCustomerCode, setEditCustomerCode] = useState('');
   const [editCustomerLoading, setEditCustomerLoading] = useState(false);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerAddress, setNewCustomerAddress] = useState('');
+  const [newCustomerContact, setNewCustomerContact] = useState('');
+  const [newCustomerCode, setNewCustomerCode] = useState('');
+  const [newCustomerOpeningAmount, setNewCustomerOpeningAmount] = useState<number>(0);
+  const [newCustomerOpeningDate, setNewCustomerOpeningDate] = useState('');
+  const [newCustomerOpeningParticular, setNewCustomerOpeningParticular] = useState('');
+  const [newCustomerOpeningBillNo, setNewCustomerOpeningBillNo] = useState('');
+  const [newCustomerLoading, setNewCustomerLoading] = useState(false);
+  const [newCustomerCodeError, setNewCustomerCodeError] = useState('');
 
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [txDate, setTxDate] = useState('');
   const [txParticular, setTxParticular] = useState('');
   const [txBillNo, setTxBillNo] = useState('');
   const [txAmount, setTxAmount] = useState<number>(0);
-  const [txType, setTxType] = useState<'debit' | 'credit'>('debit');
+  const [txType, setTxType] = useState<'debit' | 'credit'>('credit');
   const [txNote, setTxNote] = useState('');
   const [addTxLoading, setAddTxLoading] = useState(false);
 
@@ -73,6 +86,7 @@ const CustomerLedger: React.FC = () => {
 
   const editDatePickerRef = useRef<NepaliDatePickerHandle>(null);
   const txDatePickerRef = useRef<NepaliDatePickerHandle>(null);
+  const newCustomerOpeningDatePickerRef = useRef<NepaliDatePickerHandle>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -389,6 +403,110 @@ const CustomerLedger: React.FC = () => {
     setShowEditCustomer(true);
   };
 
+  const openAddCustomer = () => {
+    setNewCustomerName('');
+    setNewCustomerAddress('');
+    setNewCustomerContact('');
+    setNewCustomerCode('');
+    setNewCustomerOpeningAmount(0);
+    setNewCustomerOpeningDate(getCurrentNepaliDate());
+    setNewCustomerOpeningParticular('Opening Balance');
+    setNewCustomerOpeningBillNo('');
+    setNewCustomerCodeError('');
+    setShowAddCustomer(true);
+  };
+
+  const checkCustomerCodeDuplicate = async (code: string, currentCustomerId?: string) => {
+    const trimmed = (code || '').trim();
+    if (!trimmed) return false;
+    if (!user?.uid) return false;
+
+    try {
+      const existing = await findCustomerByCode(user.uid, trimmed);
+      return Boolean(existing && existing.id !== currentCustomerId);
+    } catch (error) {
+      console.warn('Error checking customer code duplicate:', error);
+      return false;
+    }
+  };
+
+  const handleAddCustomerSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!newCustomerName.trim()) {
+      showError('Customer name is required');
+      return;
+    }
+    if (!newCustomerAddress.trim()) {
+      showError('Address is required');
+      return;
+    }
+
+    if (newCustomerOpeningAmount > 0) {
+      if (!newCustomerOpeningDate.trim()) {
+        showError('Please enter a date for the opening amount');
+        return;
+      }
+      if (!newCustomerOpeningParticular.trim()) {
+        showError('Please enter a particular for the opening amount');
+        return;
+      }
+      if (!newCustomerOpeningBillNo.trim()) {
+        showError('Please enter a bill number for the opening amount');
+        return;
+      }
+    }
+
+    if (newCustomerCode.trim()) {
+      const isDup = await checkCustomerCodeDuplicate(newCustomerCode.trim());
+      if (isDup) {
+        setNewCustomerCodeError('Customer ID already in use');
+        showError('Customer ID already in use');
+        return;
+      }
+    }
+
+    setNewCustomerLoading(true);
+    try {
+      const payload = {
+        name: titleCase(newCustomerName).trim(),
+        address: titleCase(newCustomerAddress).trim(),
+        contactNumber: (newCustomerContact || '').replace(/\D/g, '').slice(0, 10),
+        customerCode: newCustomerCode.trim().toUpperCase(),
+      };
+      const customerId = buildCustomerId({
+        customerName: payload.name,
+        address: payload.address,
+        contactNumber: payload.contactNumber,
+        customerCode: payload.customerCode,
+      });
+
+      await upsertCustomerProfile(user?.uid || '', customerId, {
+        ...payload,
+        currentBalance: 0,
+      });
+
+      if (newCustomerOpeningAmount > 0) {
+        await addCustomerLedgerEntry(user?.uid || '', customerId, {
+          date: newCustomerOpeningDate.trim() || getCurrentNepaliDate(),
+          particular: newCustomerOpeningParticular.trim() || 'Opening Balance',
+          billNo: newCustomerOpeningBillNo.trim(),
+          debit: newCustomerOpeningAmount,
+          credit: 0,
+          note: '',
+        });
+      }
+
+      showSuccess('Customer added successfully');
+      setShowAddCustomer(false);
+      await loadCustomers();
+    } catch (error: any) {
+      console.error('Error adding customer:', error);
+      showError(error.message || 'Failed to add customer');
+    } finally {
+      setNewCustomerLoading(false);
+    }
+  };
+
   const handleEditCustomerSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selectedCustomer) return;
@@ -425,7 +543,7 @@ const CustomerLedger: React.FC = () => {
     setTxParticular('');
     setTxBillNo('');
     setTxAmount(0);
-    setTxType('debit');
+    setTxType('credit');
     setTxNote('');
     setShowAddTransaction(true);
   };
@@ -627,6 +745,17 @@ const CustomerLedger: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              <button
+                onClick={openAddCustomer}
+                className="btn btn-primary btn-sm btn-add-part"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}>
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New Customer
+              </button>
             </div>
 
             <div className="search-bar">
@@ -950,6 +1079,94 @@ const CustomerLedger: React.FC = () => {
               <div className="modal-footer">
                 <button className="btn btn-success" type="submit" disabled={editCustomerLoading}>{editCustomerLoading ? 'Saving...' : 'Save Changes'}</button>
                 <button className="btn btn-secondary" type="button" onClick={() => setShowEditCustomer(false)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showAddCustomer && (
+        <div className="modal-overlay" onClick={() => setShowAddCustomer(false)}>
+          <div className="modal-content stock-modal customer-edit-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Add Customer</h2>
+              <button className="modal-close" onClick={() => setShowAddCustomer(false)}>×</button>
+            </div>
+            <form onSubmit={handleAddCustomerSubmit}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="label">Customer Name *</label>
+                  <input className="input" value={newCustomerName} onChange={(event) => setNewCustomerName(event.target.value)} onBlur={() => setNewCustomerName(titleCase(newCustomerName))} />
+                </div>
+                <div className="form-group">
+                  <label className="label">Address *</label>
+                  <input className="input" value={newCustomerAddress} onChange={(event) => setNewCustomerAddress(event.target.value)} onBlur={() => setNewCustomerAddress(titleCase(newCustomerAddress))} />
+                </div>
+                <div className="form-group">
+                  <label className="label">Contact Number</label>
+                  <input className="input" maxLength={10} value={newCustomerContact} onChange={(event) => setNewCustomerContact((event.target.value || '').replace(/\D/g, '').slice(0, 10))} />
+                </div>
+                <div className="form-group">
+                  <label className="label">Customer ID (max 4 chars)</label>
+                  <input
+                    className="input"
+                    maxLength={4}
+                    value={newCustomerCode}
+                    onChange={(event) => { setNewCustomerCode(event.target.value.toUpperCase().slice(0, 4)); setNewCustomerCodeError(''); }}
+                    onBlur={async () => {
+                      if (!newCustomerCode.trim()) return;
+                      const dup = await checkCustomerCodeDuplicate(newCustomerCode.trim());
+                      setNewCustomerCodeError(dup ? 'Customer ID already in use' : '');
+                    }}
+                    placeholder="e.g. 0001 or AB12"
+                  />
+                  {newCustomerCodeError && <div style={{ color: '#b91c1c', marginTop: '6px', fontSize: '0.9rem' }}>{newCustomerCodeError}</div>}
+                </div>
+                <div className="form-group">
+                  <label className="label">Opening Amount</label>
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    value={newCustomerOpeningAmount || ''}
+                    onChange={(event) => setNewCustomerOpeningAmount(Number(event.target.value) || 0)}
+                    placeholder="Enter opening DR amount"
+                  />
+                </div>
+                {newCustomerOpeningAmount > 0 && (
+                  <>
+                    <div className="form-group">
+                      <NepaliDatePickerComponent
+                        ref={newCustomerOpeningDatePickerRef}
+                        label="Date (BS) *"
+                        value={newCustomerOpeningDate}
+                        onChange={(bs) => setNewCustomerOpeningDate(bs)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">Particular *</label>
+                      <input
+                        className="input"
+                        value={newCustomerOpeningParticular}
+                        onChange={(event) => setNewCustomerOpeningParticular(event.target.value)}
+                        placeholder="Opening Balance"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">Bill Number *</label>
+                      <input
+                        className="input"
+                        value={newCustomerOpeningBillNo}
+                        onChange={(event) => setNewCustomerOpeningBillNo(event.target.value)}
+                        placeholder="Bill number"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-success" type="submit" disabled={newCustomerLoading || !!newCustomerCodeError}>{newCustomerLoading ? 'Saving...' : 'Add Customer'}</button>
+                <button className="btn btn-secondary" type="button" onClick={() => setShowAddCustomer(false)}>Cancel</button>
               </div>
             </form>
           </div>
