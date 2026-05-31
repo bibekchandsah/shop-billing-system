@@ -29,6 +29,7 @@ const Settings: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installState, setInstallState] = useState<'idle' | 'available' | 'installed'>('idle');
   const [installHint, setInstallHint] = useState('');
+  const [pwaDiag, setPwaDiag] = useState<{ isSecure?: boolean; swRegistered?: boolean; manifestOk?: boolean; manifestErrors?: string[]; deferredPrompt?: boolean }>({});
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -47,6 +48,8 @@ const Settings: React.FC = () => {
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
+      // store on window so components mounted later can access it
+      (window as any).__deferredInstallPrompt = event;
       setInstallPrompt(event as BeforeInstallPromptEvent);
       setInstallHint('');
       setInstallState('available');
@@ -61,6 +64,31 @@ const Settings: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
+    // If the global deferred prompt already exists (fired before this component mounted), use it
+    const globalPrompt = (window as any).__deferredInstallPrompt;
+    if (globalPrompt) {
+      setInstallPrompt(globalPrompt as BeforeInstallPromptEvent);
+      setInstallState('available');
+    }
+
+    const handleGlobalDeferred = () => {
+      const gp = (window as any).__deferredInstallPrompt;
+      if (gp) {
+        setInstallPrompt(gp as BeforeInstallPromptEvent);
+        setInstallState('available');
+        setInstallHint('');
+      }
+    };
+
+    const handleGlobalInstalled = () => {
+      setInstallPrompt(null);
+      setInstallState('installed');
+      setInstallHint('');
+    };
+
+    window.addEventListener('pwa-deferred', handleGlobalDeferred as EventListener);
+    window.addEventListener('pwa-installed', handleGlobalInstalled as EventListener);
+
     if (!('serviceWorker' in navigator) || !window.matchMedia('(display-mode: standalone)').matches && !('standalone' in window.navigator)) {
       // Keep the section visible even when the prompt is not currently available.
       setInstallState((prev) => (prev === 'installed' ? prev : 'idle'));
@@ -69,8 +97,51 @@ const Settings: React.FC = () => {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener('pwa-deferred', handleGlobalDeferred as EventListener);
+      window.removeEventListener('pwa-installed', handleGlobalInstalled as EventListener);
     };
   }, []);
+
+  // Run diagnostics to surface why the install prompt may not be available
+  const runPwaDiagnostics = async () => {
+    const diag: any = {};
+    diag.isSecure = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+        diag.swRegistered = !!reg;
+      } else {
+        diag.swRegistered = false;
+      }
+    } catch (e) {
+      diag.swRegistered = false;
+    }
+
+    diag.deferredPrompt = Boolean((window as any).__deferredInstallPrompt || installPrompt);
+
+    const manifestErrors: string[] = [];
+    try {
+      const resp = await fetch('/manifest.json', { cache: 'no-store' });
+      if (!resp.ok) {
+        manifestErrors.push('manifest fetch failed: ' + resp.status);
+        diag.manifestOk = false;
+      } else {
+        const manifest = await resp.json();
+        if (!manifest.display || manifest.display !== 'standalone') manifestErrors.push('display not standalone');
+        if (!manifest.start_url) manifestErrors.push('start_url missing');
+        if (!manifest.icons || manifest.icons.length === 0) manifestErrors.push('icons missing');
+        diag.manifestOk = manifestErrors.length === 0;
+      }
+    } catch (e) {
+      manifestErrors.push('manifest parse/fetch error');
+      diag.manifestOk = false;
+    }
+
+    diag.manifestErrors = manifestErrors;
+    setPwaDiag(diag);
+    console.info('PWA diagnostics', diag);
+    return diag;
+  };
 
   const loadSettings = async () => {
     setLoading(true);
@@ -241,16 +312,61 @@ const Settings: React.FC = () => {
   };
 
   const handleInstallApp = async () => {
-    if (!installPrompt) {
-      setInstallHint('This browser has not exposed the install prompt yet. Use the install icon in the address bar or open the browser menu and choose Install App / Add to Home Screen.');
+    // Try to pick up any global deferred prompt that may have been stored earlier
+    let promptEvent = installPrompt ?? (window as any).__deferredInstallPrompt as BeforeInstallPromptEvent | undefined;
+    if (!promptEvent) {
+      // Run diagnostics to help user understand why install is unavailable
+      const reasons: string[] = [];
+      const isSecure = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+      if (!isSecure) reasons.push('App is not served over HTTPS or localhost (required for install prompt).');
+      if (!('serviceWorker' in navigator)) reasons.push('Service worker support is not available in this browser.');
+      else {
+        try {
+          const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+          if (!reg) reasons.push('Service worker not registered at /sw.js.');
+        } catch (e) {
+          reasons.push('Could not verify service worker registration.');
+        }
+      }
+
+      try {
+        const resp = await fetch('/manifest.json', { cache: 'no-store' });
+        if (!resp.ok) reasons.push('Could not fetch manifest.json (HTTP ' + resp.status + ').');
+        else {
+          try {
+            const manifest = await resp.json();
+            if (!manifest.display || manifest.display !== 'standalone') reasons.push('Manifest `display` is not `standalone`.');
+            if (!manifest.start_url) reasons.push('Manifest `start_url` is missing.');
+            if (!manifest.icons || manifest.icons.length === 0) reasons.push('Manifest icons are missing.');
+          } catch (e) {
+            reasons.push('Manifest exists but could not be parsed as JSON.');
+          }
+        }
+      } catch (e) {
+        reasons.push('Failed to fetch manifest.json.');
+      }
+
+      const hint = reasons.length === 0
+        ? 'This browser has not exposed the install prompt yet. Use the install icon in the address bar or open the browser menu and choose Install App / Add to Home Screen.'
+        : 'Install prompt unavailable for these reasons: ' + reasons.join(' ');
+
+      setInstallHint(hint);
+      setInstallState(prev => (prev === 'installed' ? prev : 'idle'));
       return;
     }
 
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    setInstallPrompt(null);
-    setInstallHint('');
-    setInstallState(choice.outcome === 'accepted' ? 'installed' : 'available');
+    try {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      // Clear stored prompt after using it
+      (window as any).__deferredInstallPrompt = null;
+      setInstallPrompt(null);
+      setInstallHint('');
+      setInstallState(choice.outcome === 'accepted' ? 'installed' : 'available');
+    } catch (err) {
+      console.error('PWA prompt failed:', err);
+      setInstallHint('Failed to show install prompt. You can try the browser menu to install the app manually.');
+    }
   };
 
   if (loading) {

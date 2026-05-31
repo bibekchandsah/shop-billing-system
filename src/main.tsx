@@ -11,6 +11,24 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Capture the beforeinstallprompt early so later mounts (Settings page) can use it.
+window.addEventListener('beforeinstallprompt', (event: Event) => {
+  try {
+    event.preventDefault();
+  } catch (e) {
+    // ignore
+  }
+  // store globally for pages/components mounted later
+  (window as any).__deferredInstallPrompt = event;
+  // notify any listeners that a deferred prompt is available
+  window.dispatchEvent(new CustomEvent('pwa-deferred'));
+});
+
+window.addEventListener('appinstalled', () => {
+  (window as any).__deferredInstallPrompt = null;
+  window.dispatchEvent(new CustomEvent('pwa-installed'));
+});
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
