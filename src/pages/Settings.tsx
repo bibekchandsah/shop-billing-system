@@ -105,6 +105,11 @@ const Settings: React.FC = () => {
         setSaving(false);
         return;
       }
+      if (!Number.isFinite(settings.maxBillNumber) || settings.maxBillNumber < 1) {
+        showError('Please enter a valid maximum bill number.');
+        setSaving(false);
+        return;
+      }
       
       await saveAppSettings(user?.uid || '', settings);
       // Sync the fiscal year context so TopBar updates immediately
@@ -132,6 +137,7 @@ const Settings: React.FC = () => {
   const getPreviewPrintFontSize = () => settings.printFontSize ?? 13;
   const primaryBillAction = settings.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
   const unitCategories = settings.unitCategories ?? DEFAULT_SETTINGS.unitCategories;
+  const maxBillNumber = settings.maxBillNumber ?? DEFAULT_SETTINGS.maxBillNumber;
 
   const normalizeUnit = (value: string) => value.replace(/\s+/g, ' ').trim().toUpperCase();
 
@@ -387,6 +393,22 @@ const Settings: React.FC = () => {
                   <span className="preview-label">Next Bill Number:</span>
                   <strong className="preview-value">{getPreviewBillNo()}</strong>
                 </div>
+              </div>
+
+              <div className="form-group full-width">
+                <label className="label">Maximum Bill Number</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  className="input"
+                  value={maxBillNumber}
+                  onChange={e => handleFieldChange('maxBillNumber', Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                  placeholder="e.g. 100"
+                />
+                <small className="help-text">
+                  After this number is reached, billing restarts from <strong>0001</strong>.
+                </small>
               </div>
             </div>
           </div>

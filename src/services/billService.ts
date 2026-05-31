@@ -130,27 +130,35 @@ export const getNextBillNumber = async (userId: string): Promise<string> => {
   try {
     const settings = await getAppSettings(userId);
     const prefix = settings.billNumberFormat === 'prefix' ? (settings.billNumberPrefix || 'BILL-') : '';
+    const maxBillNumber = Number.isFinite(settings.maxBillNumber) && settings.maxBillNumber > 0
+      ? Math.floor(settings.maxBillNumber)
+      : 100;
+    const padWidth = Math.max(4, String(maxBillNumber).length);
 
     const qMax = query(billsCol(userId), orderBy('createdAt', 'desc'), limit(1));
     const snapMax = await getDocs(qMax);
     
     if (snapMax.empty) {
-      return `${prefix}0001`;
+      return `${prefix}${String(1).padStart(padWidth, '0')}`;
     }
 
     const latestBillNo = snapMax.docs[0].data().billNo || '';
     const m = latestBillNo.match(/\d+/g);
     const lastNumStr = m ? m[m.length - 1] : '0';
     const num = parseInt(lastNumStr, 10) || 0;
-    const next = num + 1;
-    const padded = next.toString().padStart(4, '0');
+    const next = num >= maxBillNumber ? 1 : num + 1;
+    const padded = next.toString().padStart(padWidth, '0');
     return `${prefix}${padded}`;
   } catch (error) {
     console.error('Error generating next bill number:', error);
     try {
       const settings = await getAppSettings(userId);
       const prefix = settings.billNumberFormat === 'prefix' ? (settings.billNumberPrefix || 'BILL-') : '';
-      return `${prefix}0001`;
+      const maxBillNumber = Number.isFinite(settings.maxBillNumber) && settings.maxBillNumber > 0
+        ? Math.floor(settings.maxBillNumber)
+        : 100;
+      const padWidth = Math.max(4, String(maxBillNumber).length);
+      return `${prefix}${String(1).padStart(padWidth, '0')}`;
     } catch {
       return '0001';
     }
