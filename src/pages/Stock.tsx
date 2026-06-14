@@ -74,10 +74,7 @@ const Stock: React.FC = () => {
   };
 
   const capitalizeWords = (str: string) => {
-    return str
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    return str.replace(/(^|[\s\-./])([a-z])/g, (_, sep: string, letter: string) => `${sep}${letter.toUpperCase()}`);
   };
 
   // Filter States

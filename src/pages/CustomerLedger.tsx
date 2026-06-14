@@ -392,10 +392,7 @@ const CustomerLedger: React.FC = () => {
   const titleCase = (value: string) => {
     return (value || '')
       .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
+      .replace(/(^|[\s\-./])([a-z])/g, (_, sep: string, letter: string) => `${sep}${letter.toUpperCase()}`);
   };
 
   const openCustomerEdit = () => {
@@ -1059,11 +1056,11 @@ const CustomerLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Customer Name *</label>
-                  <input className="input" value={editCustomerName} onChange={(event) => setEditCustomerName(event.target.value)} onBlur={() => setEditCustomerName(titleCase(editCustomerName))} />
+                  <input className="input" value={editCustomerName} onChange={(event) => setEditCustomerName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
-                  <input className="input" value={editCustomerAddress} onChange={(event) => setEditCustomerAddress(event.target.value)} onBlur={() => setEditCustomerAddress(titleCase(editCustomerAddress))} />
+                  <input className="input" value={editCustomerAddress} onChange={(event) => setEditCustomerAddress(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Contact Number</label>
@@ -1100,11 +1097,11 @@ const CustomerLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Customer Name *</label>
-                  <input className="input" value={newCustomerName} onChange={(event) => setNewCustomerName(event.target.value)} onBlur={() => setNewCustomerName(titleCase(newCustomerName))} />
+                  <input className="input" value={newCustomerName} onChange={(event) => setNewCustomerName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
-                  <input className="input" value={newCustomerAddress} onChange={(event) => setNewCustomerAddress(event.target.value)} onBlur={() => setNewCustomerAddress(titleCase(newCustomerAddress))} />
+                  <input className="input" value={newCustomerAddress} onChange={(event) => setNewCustomerAddress(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Contact Number</label>

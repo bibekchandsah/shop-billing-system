@@ -419,10 +419,7 @@ const SupplierLedger: React.FC = () => {
   const titleCase = (value: string) => {
     return (value || '')
       .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
+      .replace(/(^|[\s\-./])([a-z])/g, (_, sep: string, letter: string) => `${sep}${letter.toUpperCase()}`);
   };
 
   const handleAddSupplierSubmit = async (event: React.FormEvent) => {
@@ -1020,11 +1017,11 @@ const SupplierLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Party Name *</label>
-                  <input className="input" value={newSupplierName} onChange={(event) => setNewSupplierName(event.target.value)} onBlur={() => setNewSupplierName(titleCase(newSupplierName))} />
+                  <input className="input" value={newSupplierName} onChange={(event) => setNewSupplierName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
-                  <input className="input" value={newSupplierAddress} onChange={(event) => setNewSupplierAddress(event.target.value)} onBlur={() => setNewSupplierAddress(titleCase(newSupplierAddress))} />
+                  <input className="input" value={newSupplierAddress} onChange={(event) => setNewSupplierAddress(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Contact Number</label>
@@ -1067,11 +1064,11 @@ const SupplierLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Party Name *</label>
-                  <input className="input" value={editSupplierName} onChange={(event) => setEditSupplierName(event.target.value)} onBlur={() => setEditSupplierName(titleCase(editSupplierName))} />
+                  <input className="input" value={editSupplierName} onChange={(event) => setEditSupplierName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
-                  <input className="input" value={editSupplierAddress} onChange={(event) => setEditSupplierAddress(event.target.value)} onBlur={() => setEditSupplierAddress(titleCase(editSupplierAddress))} />
+                  <input className="input" value={editSupplierAddress} onChange={(event) => setEditSupplierAddress(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Contact Number</label>
