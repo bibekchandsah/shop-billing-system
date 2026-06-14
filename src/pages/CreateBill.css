@@ -277,7 +277,8 @@
   justify-content: space-between;
 }
 
-.suggestion-item:hover {
+.suggestion-item:hover,
+.suggestion-item.suggestion-highlighted {
   background-color: var(--bg-secondary);
 }
 
@@ -341,7 +342,8 @@
   100% { transform: translateY(-1px); }
 }
 
-.suggestion-item:hover .suggestion-stock {
+.suggestion-item:hover .suggestion-stock,
+.suggestion-item.suggestion-highlighted .suggestion-stock {
   background-color: var(--bg-primary);
   border-color: var(--text-secondary);
 }

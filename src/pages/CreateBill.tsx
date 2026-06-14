@@ -36,6 +36,7 @@ const CreateBill: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
+  const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState<number>(-1);
   const itemParticularRefs = useRef<Array<HTMLInputElement | null>>([]);
   const itemQtyRefs = useRef<Array<HTMLInputElement | null>>([]);
   const itemRateRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -298,6 +299,7 @@ const CreateBill: React.FC = () => {
   const handleSelectSuggestion = (index: number, name: string) => {
     handleItemChange(index, 'particulars', name);
     setFocusedRowIndex(null);
+    setHighlightedSuggestionIndex(-1);
   };
 
   const addItem = () => {
@@ -818,12 +820,46 @@ const CreateBill: React.FC = () => {
                       <td className="text-center">{item.sn}</td>
                       <td style={{ position: 'relative', zIndex: focusedRowIndex === index ? 10 : 1 }}>
                         <input
+                          ref={(el) => { itemParticularRefs.current[index] = el; }}
                           type="text"
                           className="input"
                           value={item.particulars}
-                          onChange={(e) => handleItemChange(index, 'particulars', e.target.value)}
-                          onFocus={() => setFocusedRowIndex(index)}
+                          onChange={(e) => {
+                            handleItemChange(index, 'particulars', e.target.value);
+                            setHighlightedSuggestionIndex(-1);
+                          }}
+                          onFocus={() => {
+                            setFocusedRowIndex(index);
+                            setHighlightedSuggestionIndex(-1);
+                          }}
                           onBlur={() => setFocusedRowIndex(null)}
+                          onKeyDown={(e) => {
+                            if (focusedRowIndex !== index) return;
+                            const matches = stockParticulars.filter(p =>
+                              p.name.toLowerCase().includes(item.particulars.toLowerCase())
+                            ).slice(0, 8);
+                            if (matches.length === 0) return;
+
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              setHighlightedSuggestionIndex(prev =>
+                                prev < matches.length - 1 ? prev + 1 : 0
+                              );
+                            } else if (e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              setHighlightedSuggestionIndex(prev =>
+                                prev > 0 ? prev - 1 : matches.length - 1
+                              );
+                            } else if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (highlightedSuggestionIndex >= 0 && highlightedSuggestionIndex < matches.length) {
+                                handleSelectSuggestion(index, matches[highlightedSuggestionIndex].name);
+                              }
+                            } else if (e.key === 'Escape') {
+                              setFocusedRowIndex(null);
+                              setHighlightedSuggestionIndex(-1);
+                            }
+                          }}
                           placeholder="Item description"
                           autoComplete="off"
                         />
@@ -834,14 +870,15 @@ const CreateBill: React.FC = () => {
                           if (matches.length === 0) return null;
                           return (
                             <div className="suggestions-dropdown">
-                              {matches.slice(0, 8).map(p => (
+                              {matches.slice(0, 8).map((p, sIdx) => (
                                 <div
                                   key={p.id}
-                                  className="suggestion-item suggestion-item-stock"
+                                  className={`suggestion-item suggestion-item-stock${sIdx === highlightedSuggestionIndex ? ' suggestion-highlighted' : ''}`}
                                   onMouseDown={(e) => {
                                     e.preventDefault();
                                     handleSelectSuggestion(index, p.name);
                                   }}
+                                  onMouseEnter={() => setHighlightedSuggestionIndex(sIdx)}
                                 >
                                   <span className="suggestion-name">{p.name}</span>
                                   <span className="suggestion-stock">Stock: {p.currentStock} {p.defaultUnit || 'Qty'}</span>
