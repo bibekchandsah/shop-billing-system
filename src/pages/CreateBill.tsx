@@ -207,7 +207,13 @@ const CreateBill: React.FC = () => {
         if (field === 'particulars') {
           newItems[index].unit = stockItem?.defaultUnit || newItems[index].unit || getDefaultUnit(settings);
         }
-        if (stockItem && Number(newItems[index].qty) > stockItem.currentStock) {
+        
+        // Enforce stock existence check instantly when entering quantity
+        if (field === 'qty' && !stockItem) {
+          newItems[index].qty = 0;
+          newItems[index].amount = 0;
+          showError(`Item "${newItems[index].particulars}" does not exist in stock. Please select a valid item from the suggestions dropdown.`);
+        } else if (stockItem && Number(newItems[index].qty) > stockItem.currentStock) {
           // Clear the input (use 0 in state so the input renders blank) instead of clamping
           newItems[index].qty = 0;
           newItems[index].amount = 0;
@@ -408,11 +414,18 @@ const CreateBill: React.FC = () => {
 
     const validItems = items;
 
-    for (const item of validItems) {
+    for (let i = 0; i < validItems.length; i++) {
+      const item = validItems[i];
       const selectedParticular = item.particulars.trim().toLowerCase();
       const stockItem = stockParticulars.find(p => p.name.toLowerCase() === selectedParticular);
-      if (stockItem && item.qty > stockItem.currentStock) {
-        showError(`Insufficient stock for "${stockItem.name}". Only ${stockItem.currentStock} Qty available.`);
+      
+      if (!stockItem) {
+        showError(`Item "${item.particulars}" at row ${i + 1} does not exist in stock. Please select a valid item from the suggestions dropdown.`);
+        return null;
+      }
+
+      if (item.qty > stockItem.currentStock) {
+        showError(`Insufficient stock for "${stockItem.name}" at row ${i + 1}. Only ${stockItem.currentStock} Qty available.`);
         return null;
       }
     }
