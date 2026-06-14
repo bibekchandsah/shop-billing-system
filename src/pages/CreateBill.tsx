@@ -377,13 +377,13 @@ const CreateBill: React.FC = () => {
   type BillAction = BillPrimaryAction | 'clear';
   type BillPayload = { bill: Bill; validItems: BillItem[]; bsDate: string };
 
-  const buildBillPayload = async (requireAddress: boolean): Promise<BillPayload | null> => {
+  const buildBillPayload = async (): Promise<BillPayload | null> => {
     if (!customerName.trim()) {
       showError('Please enter customer name');
       return null;
     }
 
-    if (requireAddress && !address.trim()) {
+    if (!address.trim()) {
       showError('Please enter address');
       return null;
     }
@@ -393,11 +393,20 @@ const CreateBill: React.FC = () => {
       return null;
     }
 
-    const validItems = items.filter(item => item.particulars.trim() && item.qty > 0 && item.rate > 0);
-    if (validItems.length === 0) {
-      showError('Please add at least one valid item');
-      return null;
+    // Validate that all added items are complete
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const hasParticulars = Boolean(item.particulars.trim());
+      const hasQty = Number(item.qty) > 0;
+      const hasRate = Number(item.rate) > 0;
+
+      if (!hasParticulars || !hasQty || !hasRate) {
+        showError(`Item row ${i + 1} is empty or incomplete. Please fill in the description, quantity, and rate, or remove the row.`);
+        return null;
+      }
     }
+
+    const validItems = items;
 
     for (const item of validItems) {
       const selectedParticular = item.particulars.trim().toLowerCase();
@@ -549,13 +558,13 @@ const CreateBill: React.FC = () => {
   };
 
   const handleSaveBill = async () => {
-    const payload = await buildBillPayload(true);
+    const payload = await buildBillPayload();
     if (!payload) return;
     await saveBillCore(payload, { autoClear: true, manageLoading: true });
   };
 
   const handleGeneratePDF = async () => {
-    const payload = await buildBillPayload(false);
+    const payload = await buildBillPayload();
     if (!payload) return;
     try {
       const latestSettings = await getLatestPrintSettings();
@@ -567,7 +576,7 @@ const CreateBill: React.FC = () => {
   };
 
   const handlePrint = async () => {
-    const payload = await buildBillPayload(false);
+    const payload = await buildBillPayload();
     if (!payload) return;
     try {
       const latestSettings = await getLatestPrintSettings();
@@ -588,7 +597,7 @@ const CreateBill: React.FC = () => {
     if (latestSettings.billActionAutoPrint) actions.add('print');
     if (latestSettings.billActionAutoClear) actions.add('clear');
 
-    const payload = await buildBillPayload(actions.has('save'));
+    const payload = await buildBillPayload();
     if (!payload) return;
 
     const manageLoading = actions.has('save');
