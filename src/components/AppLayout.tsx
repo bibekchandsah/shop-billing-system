@@ -240,7 +240,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
         {/* Nav panel */}
         <div className={`sidebar-nav-panel ${mobileOpen ? 'sidebar-nav-panel-open' : ''}`}>
-          <nav className="sidebar-nav" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0.75rem 0.625rem 1.5rem' }}>
+          <nav className="sidebar-nav sidebar-nav-shell sidebar-nav-stack" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0.75rem 0.625rem 1.5rem', minHeight: 0 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               {NAV_ITEMS.map(item => (
                 <Link
@@ -261,7 +261,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               ))}
             </div>
 
-            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--sidebar-border)' }}>
+            <div className="sidebar-settings-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--sidebar-border)' }}>
               <Link
                 to="/settings"
                 className={`sidebar-nav-item ${isActive('/settings') ? 'active' : ''}`}

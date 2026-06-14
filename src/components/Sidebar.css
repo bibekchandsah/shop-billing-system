@@ -224,6 +224,48 @@
     display: flex;
     flex-direction: column;
   }
+
+  .sidebar-nav-shell {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .sidebar-nav-stack {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .sidebar-settings-group {
+    margin-top: 0;
+    padding-top: 0.5rem;
+  }
+  /* Make the settings button sticky at the bottom on small screens and style like the mock */
+  .sidebar-settings-group {
+    position: sticky;
+    bottom: 0;
+    z-index: 210;
+    background: linear-gradient(to bottom, rgba(0,0,0,0), var(--sidebar-bg));
+    padding: 0.625rem 0.75rem 0.9rem;
+    border-top: 1px solid var(--sidebar-border);
+  }
+
+  .sidebar-settings-group .sidebar-nav-item {
+    border-radius: 12px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0.25rem;
+  }
+
+  .sidebar-settings-group .sidebar-nav-item .sidebar-nav-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .sidebar-settings-group .sidebar-nav-item.active {
+    background: var(--sidebar-item-active-bg);
+    color: var(--sidebar-item-active-color);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.06) inset;
+  }
+
   .strip-brand {
     display: none;
   }

@@ -450,6 +450,10 @@
   transition: max-width 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, background-color 0.3s ease;
 }
 
+.developer-badge.developer-badge-expanded {
+  max-width: 260px;
+}
+
 .developer-badge:hover {
   max-width: 260px;
   transform: translateY(-2px);
@@ -474,6 +478,11 @@
   opacity: 0;
   transform: translateX(-8px);
   transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.developer-badge.developer-badge-expanded .developer-badge-text {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .developer-badge:hover .developer-badge-text {

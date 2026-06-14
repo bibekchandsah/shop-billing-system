@@ -29,7 +29,7 @@ const Settings: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installState, setInstallState] = useState<'idle' | 'available' | 'installed'>('idle');
   const [installHint, setInstallHint] = useState('');
-  const [pwaDiag, setPwaDiag] = useState<{ isSecure?: boolean; swRegistered?: boolean; manifestOk?: boolean; manifestErrors?: string[]; deferredPrompt?: boolean }>({});
+  const [developerBadgeExpanded, setDeveloperBadgeExpanded] = useState(true);
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -39,6 +39,14 @@ const Settings: React.FC = () => {
     loadSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDeveloperBadgeExpanded(false);
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -102,46 +110,7 @@ const Settings: React.FC = () => {
     };
   }, []);
 
-  // Run diagnostics to surface why the install prompt may not be available
-  const runPwaDiagnostics = async () => {
-    const diag: any = {};
-    diag.isSecure = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost';
-    try {
-      if ('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration('/sw.js');
-        diag.swRegistered = !!reg;
-      } else {
-        diag.swRegistered = false;
-      }
-    } catch (e) {
-      diag.swRegistered = false;
-    }
-
-    diag.deferredPrompt = Boolean((window as any).__deferredInstallPrompt || installPrompt);
-
-    const manifestErrors: string[] = [];
-    try {
-      const resp = await fetch('/manifest.json', { cache: 'no-store' });
-      if (!resp.ok) {
-        manifestErrors.push('manifest fetch failed: ' + resp.status);
-        diag.manifestOk = false;
-      } else {
-        const manifest = await resp.json();
-        if (!manifest.display || manifest.display !== 'standalone') manifestErrors.push('display not standalone');
-        if (!manifest.start_url) manifestErrors.push('start_url missing');
-        if (!manifest.icons || manifest.icons.length === 0) manifestErrors.push('icons missing');
-        diag.manifestOk = manifestErrors.length === 0;
-      }
-    } catch (e) {
-      manifestErrors.push('manifest parse/fetch error');
-      diag.manifestOk = false;
-    }
-
-    diag.manifestErrors = manifestErrors;
-    setPwaDiag(diag);
-    console.info('PWA diagnostics', diag);
-    return diag;
-  };
+  // PWA diagnostics removed — kept install UI visible and simple.
 
   const loadSettings = async () => {
     setLoading(true);
@@ -1058,7 +1027,7 @@ const Settings: React.FC = () => {
         </form>
       </div>
       <a
-        className="developer-badge"
+        className={`developer-badge ${developerBadgeExpanded ? 'developer-badge-expanded' : ''}`}
         href="https://www.bibekchandsah.com.np/"
         target="_blank"
         rel="noopener noreferrer"

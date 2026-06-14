@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -19,6 +19,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [developerBadgeExpanded, setDeveloperBadgeExpanded] = useState(true);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
@@ -113,6 +114,14 @@ const Login: React.FC = () => {
     setConfirmPassword('');
     setMode(next);
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDeveloperBadgeExpanded(false);
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const titles: Record<Mode, string> = {
     login: 'Welcome back',
@@ -322,7 +331,7 @@ const Login: React.FC = () => {
       </div>
 
       <a
-        className="login-developer-badge"
+        className={`login-developer-badge ${developerBadgeExpanded ? 'login-developer-badge-expanded' : ''}`}
         href="https://www.bibekchandsah.com.np/"
         target="_blank"
         rel="noopener noreferrer"
