@@ -185,7 +185,14 @@ export const printBill = (
       print-color-adjust: exact;
     }
     thead th.left { text-align: left; }
-    td { padding: 0.45em 0.8em; border: 1px solid #ccc; vertical-align: middle; }
+    tbody td {
+      padding: 0.45em 0.8em;
+      border-left: 1px solid #ccc;
+      border-right: 1px solid #ccc;
+      border-top: none;
+      border-bottom: none;
+      vertical-align: middle;
+    }
     tr.filler td { height: 1.9em; }
     .center { text-align: center; }
     .right  { text-align: right; }
@@ -198,11 +205,15 @@ export const printBill = (
       font-size: 0.95em;
     }
     tr.total-row { page-break-inside: avoid; break-inside: avoid; }
-    tr.total-row td {
+    tbody tr.total-row td {
       background: #f0f4f8;
       font-weight: 700;
       font-size: 0.95em;
       padding: 0.55em 0.8em;
+      border-top: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+      border-left: 1px solid #ccc;
+      border-right: 1px solid #ccc;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
