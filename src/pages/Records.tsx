@@ -451,7 +451,8 @@ const Records: React.FC = () => {
       settings?.businessName || 'Shop Billing System',
       settings?.businessAddress || 'Garuda, Rautahat, Nepal',
       settings?.businessContact || '',
-      settings?.printFontSize ?? DEFAULT_SETTINGS.printFontSize
+      settings?.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
+      settings?.printCopies ?? DEFAULT_SETTINGS.printCopies
     );
   };
 

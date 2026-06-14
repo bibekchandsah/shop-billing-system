@@ -108,6 +108,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   billActionAutoPrint: false,
   billActionAutoClear: true,
   printFontSize: 13,
+  printCopies: 2,
   fiscalYearStart: 4,   // Shrawan (month 4 in BS, 1-indexed)
   fiscalYearEnd: 3,     // Ashadh (month 3 in BS, 1-indexed)
   activeFiscalYear: getDefaultActiveFiscalYear(4),
@@ -187,6 +188,7 @@ export const saveAppSettings = async (userId: string, settings: AppSettings): Pr
       billActionAutoPrint: settings.billActionAutoPrint ?? DEFAULT_SETTINGS.billActionAutoPrint,
       billActionAutoClear: settings.billActionAutoClear ?? DEFAULT_SETTINGS.billActionAutoClear,
       printFontSize: settings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
+      printCopies: settings.printCopies ?? DEFAULT_SETTINGS.printCopies,
       fiscalYearStart: settings.fiscalYearStart ?? DEFAULT_SETTINGS.fiscalYearStart,
       fiscalYearEnd: settings.fiscalYearEnd ?? DEFAULT_SETTINGS.fiscalYearEnd,
       activeFiscalYear: settings.activeFiscalYear || DEFAULT_SETTINGS.activeFiscalYear,

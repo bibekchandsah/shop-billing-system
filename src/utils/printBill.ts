@@ -10,7 +10,8 @@ export const printBill = (
   businessName: string,
   businessAddress: string,
   businessContact?: string,
-  printFontSize = 13
+  printFontSize = 13,
+  printCopies = 2
 ): void => {
   const win = window.open('', '_blank', 'width=900,height=700');
   if (!win) {
@@ -60,6 +61,83 @@ export const printBill = (
     ? `<div class="payment-row"><span class="meta-label">Note:</span><span>${bill.freeDue}</span></div>`
     : '';
 
+  const renderCopyHtml = () => `
+    <div class="print-scale-wrap">
+      <div class="header">
+        <h1>Estimate Bill</h1>
+        <p class="biz-name">${businessName}</p>
+        <p class="biz-addr">${businessAddress}${businessContact ? ' | Contact: ' + businessContact : ''}</p>
+      </div>
+      <!-- Two-column meta grid -->
+      <div class="meta-grid">
+        <!-- Row 1: Bill No | Date -->
+        <div class="meta-row">
+          <span class="meta-label">Bill No:</span>
+          <span>${bill.billNo}</span>
+        </div>
+        <div class="meta-row" style="justify-content:flex-end">
+          <span class="meta-label">Date:</span>
+          <span>${bsDate}</span>
+        </div>
+        <!-- Row 2: Customer Name (full width) -->
+        <div class="meta-row meta-full">
+          <span class="meta-label">Customer Name:</span>
+          <span>${bill.customerName}</span>
+        </div>
+        <!-- Row 3: Address | Contact -->
+        <div class="meta-row">
+          <span class="meta-label">Address:</span>
+          <span>${bill.address}</span>
+        </div>
+        ${bill.contactNumber ? `
+        <div class="meta-row" style="justify-content:flex-end">
+          <span class="meta-label">Contact:</span>
+          <span>${bill.contactNumber}</span>
+        </div>` : ''}
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:42px">S.N.</th>
+            <th class="left">Particulars</th>
+            <th style="width:80px">Qty.</th>
+            <th style="width:100px">Rate</th>
+            <th style="width:110px">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}${fillerRows}${totalRow}</tbody>
+      </table>
+
+      <div class="words">
+        <strong>In Words: </strong><em>${bill.totalAmountInWords}</em>
+      </div>
+
+      <div class="payment">
+        ${freeDueRow}
+      </div>
+
+      <div class="signature">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <div class="sig-text">Authorized Signature</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  let copiesContent = '';
+  if (printCopies === 2) {
+    copiesContent = `
+      ${renderCopyHtml()}
+      <div class="page-break"></div>
+      <div class="page-break-container"></div>
+      ${renderCopyHtml()}
+    `;
+  } else {
+    copiesContent = renderCopyHtml();
+  }
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,6 +156,7 @@ export const printBill = (
       transform: scale(${wrapperScale});
       transform-origin: top left;
       width: calc(100% / ${wrapperScale});
+      position: relative;
     }
     .header { text-align: center; margin-bottom: 1em; }
     .header h1 { font-size: 2.15em; font-weight: 700; letter-spacing: 0.5px; }
@@ -167,12 +246,41 @@ export const printBill = (
     .btn-print:hover { background: #059669; }
     .btn-close { background: rgba(255,255,255,0.15); color: #fff; }
     .btn-close:hover { background: rgba(255,255,255,0.25); }
-    @media screen { body { padding-top: calc(2cm + ${scaled(52)}); } }
+    .page-break { display: none; }
+    .page-break-container { display: none; }
+    @media screen {
+      body { padding-top: calc(2cm + ${scaled(52)}); }
+      .page-break-container {
+        display: block;
+        border-top: 2px dashed #cbd5e1;
+        margin: 3.5rem 0;
+        position: relative;
+        text-align: center;
+      }
+      .page-break-container::after {
+        content: "✂️ CUT HERE — COPY 2 BELOW";
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff;
+        padding: 0 15px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        letter-spacing: 1px;
+      }
+    }
     @media print {
       .toolbar { display: none !important; }
       body { padding: 0 !important; }
       .print-scale-wrap { transform: none !important; width: auto !important; }
       @page { size: A4 portrait; margin: 1.5cm 2cm; }
+      .page-break {
+        display: block;
+        page-break-before: always;
+        break-before: page;
+      }
     }
   </style>
 </head>
@@ -185,69 +293,7 @@ export const printBill = (
     </div>
   </div>
 
-  <div class="print-scale-wrap">
-  <div class="header">
-    <h1>Estimate Bill</h1>
-    <p class="biz-name">${businessName}</p>
-    <p class="biz-addr">${businessAddress}${businessContact ? ' | Contact: ' + businessContact : ''}</p>
-  </div>
-  <!-- Two-column meta grid -->
-  <div class="meta-grid">
-    <!-- Row 1: Bill No | Date -->
-    <div class="meta-row">
-      <span class="meta-label">Bill No:</span>
-      <span>${bill.billNo}</span>
-    </div>
-    <div class="meta-row" style="justify-content:flex-end">
-      <span class="meta-label">Date:</span>
-      <span>${bsDate}</span>
-    </div>
-    <!-- Row 2: Customer Name (full width) -->
-    <div class="meta-row meta-full">
-      <span class="meta-label">Customer Name:</span>
-      <span>${bill.customerName}</span>
-    </div>
-    <!-- Row 3: Address | Contact -->
-    <div class="meta-row">
-      <span class="meta-label">Address:</span>
-      <span>${bill.address}</span>
-    </div>
-    ${bill.contactNumber ? `
-    <div class="meta-row" style="justify-content:flex-end">
-      <span class="meta-label">Contact:</span>
-      <span>${bill.contactNumber}</span>
-    </div>` : ''}
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width:42px">S.N.</th>
-        <th class="left">Particulars</th>
-        <th style="width:80px">Qty.</th>
-        <th style="width:100px">Rate</th>
-        <th style="width:110px">Amount</th>
-      </tr>
-    </thead>
-    <tbody>${itemRows}${fillerRows}${totalRow}</tbody>
-  </table>
-
-  <div class="words">
-    <strong>In Words: </strong><em>${bill.totalAmountInWords}</em>
-  </div>
-
-  <div class="payment">
-    ${freeDueRow}
-  </div>
-
-  <div class="signature">
-    <div class="sig-box">
-      <div class="sig-line"></div>
-      <div class="sig-text">Authorized Signature</div>
-    </div>
-  </div>
-
-  </div>
+  ${copiesContent}
 
   <script>
     // Auto-open print dialog once the page has fully rendered

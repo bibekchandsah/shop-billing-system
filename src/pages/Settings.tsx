@@ -602,13 +602,48 @@ const Settings: React.FC = () => {
                 <path d="M6 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1" />
                 <path d="M6 14h12v6H6z" />
               </svg>
-              <h2>Print Font Settings</h2>
+              <h2>Print & Font Settings</h2>
             </div>
             <p className="card-desc">
-              Choose the font size used when printing bills and PDFs. The last saved size is remembered and used automatically for future prints.
+              Configure print configurations, default copy count, and font sizes used for billing invoices and PDF outputs.
             </p>
 
             <div className="form-grid">
+              <div className="form-group full-width">
+                <label className="label">Default Print Copies</label>
+                <div className="radio-group-cards">
+                  <label className={`radio-card ${(settings.printCopies ?? 2) === 1 ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="printCopies"
+                      checked={(settings.printCopies ?? 2) === 1}
+                      onChange={() => handleFieldChange('printCopies', 1)}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>1 Copy</strong>
+                    </div>
+                    <p className="radio-card-desc">Prints a single standard copy of the invoice.</p>
+                  </label>
+
+                  <label className={`radio-card ${(settings.printCopies ?? 2) === 2 ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="printCopies"
+                      checked={(settings.printCopies ?? 2) === 2}
+                      onChange={() => handleFieldChange('printCopies', 2)}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>2 Copies</strong>
+                    </div>
+                    <p className="radio-card-desc">Prints two copies (Customer & Office Copies) separated by a clean page break.</p>
+                  </label>
+                </div>
+              </div>
+
               <div className="form-group full-width">
                 <label className="label">
                   Print Font Size: <strong>{getPreviewPrintFontSize()}px</strong>

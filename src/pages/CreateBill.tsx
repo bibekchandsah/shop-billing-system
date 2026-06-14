@@ -538,7 +538,8 @@ const CreateBill: React.FC = () => {
         latestSettings.businessName || 'Shop Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
         latestSettings.businessContact || '',
-        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize
+        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
+        latestSettings.printCopies ?? DEFAULT_SETTINGS.printCopies
       );
     } catch (error) {
       console.error('Error printing bill:', error);
