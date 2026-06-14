@@ -73,6 +73,13 @@ const Stock: React.FC = () => {
     return nextCode;
   };
 
+  const capitalizeWords = (str: string) => {
+    return str
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   // Filter States
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
@@ -1024,7 +1031,7 @@ const Stock: React.FC = () => {
                     type="text"
                     className="input"
                     value={newPartName}
-                    onChange={e => setNewPartName(e.target.value)}
+                    onChange={e => setNewPartName(capitalizeWords(e.target.value))}
                     placeholder="e.g. Rice, Dal, Soap"
                     required
                     autoFocus
@@ -1254,7 +1261,7 @@ const Stock: React.FC = () => {
                     type="text"
                     className="input"
                     value={editPartName}
-                    onChange={e => setEditPartName(e.target.value)}
+                    onChange={e => setEditPartName(capitalizeWords(e.target.value))}
                     placeholder="Enter new particular name"
                     required
                     autoFocus
