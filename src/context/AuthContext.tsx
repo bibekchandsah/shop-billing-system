@@ -19,7 +19,8 @@ import {
   createSession, 
   revokeAllSessions, 
   getCurrentSessionId,
-  updateSessionActivity
+  updateSessionActivity,
+  isCurrentSessionValid
 } from '../services/sessionService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -122,35 +123,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user,      setUser]      = useState<User | null>(null);
   const [photoData, setPhotoData] = useState<string | null>(null);
   const [loading,   setLoading]   = useState(true);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
       if (firebaseUser) {
-        const photo = await loadPhotoData(firebaseUser.uid);
-        setPhotoData(photo);
-        
-        // Update session activity periodically
+        // Check if the current session is valid
         const sessionId = getCurrentSessionId();
-        if (sessionId) {
+        
+        // Only validate session if we have a session ID and we didn't just login
+        if (sessionId && !justLoggedIn) {
+          // Verify session exists in Firestore
+          const isValid = await isCurrentSessionValid(firebaseUser.uid);
+          
+          if (!isValid) {
+            // Session was revoked, force logout
+            console.log('Session invalid, logging out...');
+            await signOut(auth);
+            setUser(null);
+            setPhotoData(null);
+            setLoading(false);
+            return;
+          }
+          
+          // Update session activity
           updateSessionActivity(firebaseUser.uid, sessionId);
         }
+        
+        // Reset the justLoggedIn flag after first validation
+        if (justLoggedIn) {
+          setJustLoggedIn(false);
+        }
+        
+        const photo = await loadPhotoData(firebaseUser.uid);
+        setPhotoData(photo);
+        setUser(firebaseUser);
       } else {
+        setUser(null);
         setPhotoData(null);
       }
       setLoading(false);
     });
     return unsubscribe;
-  }, []);
+  }, [justLoggedIn]);
+
+  // Periodic session validation check
+  useEffect(() => {
+    if (!user) return;
+
+    const checkSession = async () => {
+      const sessionId = getCurrentSessionId();
+      if (!sessionId) {
+        // No session ID, logout
+        await signOut(auth);
+        return;
+      }
+
+      const isValid = await isCurrentSessionValid(user.uid);
+      if (!isValid) {
+        // Session was revoked, force logout
+        console.log('Session check: Session invalid, logging out...');
+        await signOut(auth);
+      }
+    };
+
+    // Check session every 30 seconds
+    const intervalId = setInterval(checkSession, 30000);
+
+    // Also check on window focus (when user returns to the tab)
+    const handleFocus = () => checkSession();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user]);
 
   // ── Auth methods ─────────────────────────────────────────────────────────
   const signInEmail = async (email: string, password: string) => {
+    setJustLoggedIn(true);
     const result = await signInWithEmailAndPassword(auth, email, password);
     // Create a new session after successful login
     await createSession(result.user.uid);
   };
 
   const signUpEmail = async (email: string, password: string, displayName: string) => {
+    setJustLoggedIn(true);
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(user, { displayName });
     // Create the user doc so the subcollection path exists
@@ -160,6 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInGoogle = async () => {
+    setJustLoggedIn(true);
     const result = await signInWithPopup(auth, googleProvider);
     // Create a new session after successful Google sign-in
     await createSession(result.user.uid);
