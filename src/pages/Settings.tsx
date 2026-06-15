@@ -231,10 +231,12 @@ const Settings: React.FC = () => {
       // User will be logged out after password change
     } catch (error: any) {
       console.error('Error changing password:', error);
-      if (error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         showError('Current password is incorrect.');
       } else if (error.code === 'auth/weak-password') {
         showError('New password is too weak.');
+      } else if (error.code === 'auth/requires-recent-login') {
+        showError('Please log out and log in again, then try changing your password.');
       } else {
         showError('Failed to change password. Please try again.');
       }
