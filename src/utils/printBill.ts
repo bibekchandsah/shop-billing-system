@@ -40,11 +40,8 @@ export const printBill = (
     )
     .join('');
 
-  // Filler rows so the table always has at least 5 rows
-  const fillerCount = Math.max(0, 5 - bill.items.length);
-  const fillerRows = Array.from({ length: fillerCount })
-    .map(() => `<tr class="filler"><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>`)
-    .join('');
+  // Empty filler row that stretches to fill remaining table height
+  const fillerRows = `<tr class="filler-stretch"><td></td><td></td><td></td><td></td><td></td></tr>`;
 
   const totalRow = `
     <tr class="total-row">
@@ -156,6 +153,9 @@ export const printBill = (
       transform: scale(${wrapperScale});
       transform-origin: top left;
       width: calc(100% / ${wrapperScale});
+      min-height: calc(255mm / ${wrapperScale});
+      display: flex;
+      flex-direction: column;
       position: relative;
     }
     .header { text-align: center; margin-bottom: 1em; }
@@ -173,7 +173,7 @@ export const printBill = (
     .meta-row { display: flex; gap: 5px; align-items: baseline; }
     .meta-label { font-weight: 700; white-space: nowrap; color: #222; }
     .meta-full { grid-column: 1 / -1; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 0.75em; font-size: 0.95em; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 0.75em; font-size: 0.95em; flex-grow: 1; }
     thead th {
       background: #1e3a5f;
       color: #fff;
@@ -194,6 +194,8 @@ export const printBill = (
       vertical-align: middle;
     }
     tr.filler td { height: 1.9em; }
+    tbody tr:not(.filler-stretch) td { height: 1px; }
+    tr.filler-stretch td { height: auto; }
     .center { text-align: center; }
     .right  { text-align: right; }
     tfoot td {
@@ -231,7 +233,7 @@ export const printBill = (
     .words em { font-style: italic; color: #444; }
     .payment { display: flex; gap: 2em; flex-wrap: wrap; margin-bottom: 0.75em; font-size: 0.95em; }
     .payment-row { display: flex; gap: 6px; }
-    .signature { margin-top: 3em; display: flex; justify-content: flex-end; page-break-inside: avoid; }
+    .signature { margin-top: 2em; display: flex; justify-content: flex-end; page-break-inside: avoid; }
     .sig-box { width: 12em; text-align: center; }
     .sig-line { border-top: 1px solid #111; margin-bottom: 5px; }
     .sig-text { font-size: 1em; font-weight: 600; }
@@ -285,7 +287,11 @@ export const printBill = (
     @media print {
       .toolbar { display: none !important; }
       body { padding: 0 !important; }
-      .print-scale-wrap { transform: none !important; width: auto !important; }
+      .print-scale-wrap { 
+        transform: none !important; 
+        width: auto !important; 
+        min-height: 255mm !important;
+      }
       @page { size: A4 portrait; margin: 1.5cm 2cm; }
       .page-break {
         display: block;
