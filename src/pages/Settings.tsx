@@ -203,8 +203,7 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePasswordChange = async () => {
     
     if (!currentPassword || !newPassword || !confirmPassword) {
       showError('Please fill in all fields.');
@@ -967,7 +966,7 @@ const Settings: React.FC = () => {
                 </div>
                 {showPasswordChange && (
                   <div className="password-change-form fade-in">
-                    <form onSubmit={handlePasswordChange}>
+                    <div>
                       <div className="form-group">
                         <label className="label">Current Password *</label>
                         <input
@@ -1013,13 +1012,14 @@ const Settings: React.FC = () => {
                         <span>Changing your password will log you out from all devices for security.</span>
                       </div>
                       <button
-                        type="submit"
+                        type="button"
                         className="btn btn-primary"
+                        onClick={handlePasswordChange}
                         disabled={passwordChanging}
                       >
                         {passwordChanging ? 'Changing Password...' : 'Change Password'}
                       </button>
-                    </form>
+                    </div>
                   </div>
                 )}
               </div>
