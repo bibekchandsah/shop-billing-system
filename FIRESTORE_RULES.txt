@@ -32,6 +32,10 @@ service cloud.firestore {
         allow read, write: if true;
       }
 
+      match /sessions/{sessionId} {
+        allow read, write: if true;
+      }
+
       match /stock/{particularId} {
         allow read, write: if true;
 
@@ -74,6 +78,10 @@ service cloud.firestore {
       }
 
       match /settings/{settingId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /sessions/{sessionId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 

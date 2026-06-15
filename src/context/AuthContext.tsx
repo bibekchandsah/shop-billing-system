@@ -8,10 +8,19 @@ import {
   signOut,
   sendPasswordResetEmail,
   updateProfile,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   type User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import { 
+  createSession, 
+  revokeAllSessions, 
+  getCurrentSessionId,
+  updateSessionActivity
+} from '../services/sessionService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface AuthContextType {
@@ -24,6 +33,7 @@ interface AuthContextType {
   signInGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updatePhoto: (file: File) => Promise<void>;
   removePhoto: () => Promise<void>;
 }
@@ -119,6 +129,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         const photo = await loadPhotoData(firebaseUser.uid);
         setPhotoData(photo);
+        
+        // Update session activity periodically
+        const sessionId = getCurrentSessionId();
+        if (sessionId) {
+          updateSessionActivity(firebaseUser.uid, sessionId);
+        }
       } else {
         setPhotoData(null);
       }
@@ -129,7 +145,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Auth methods ─────────────────────────────────────────────────────────
   const signInEmail = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    // Create a new session after successful login
+    await createSession(result.user.uid);
   };
 
   const signUpEmail = async (email: string, password: string, displayName: string) => {
@@ -137,19 +155,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateProfile(user, { displayName });
     // Create the user doc so the subcollection path exists
     await setDoc(userDocRef(user.uid), { displayName, email: user.email, photoData: null }, { merge: true });
+    // Create a new session after successful signup
+    await createSession(user.uid);
   };
 
   const signInGoogle = async () => {
-    await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, googleProvider);
+    // Create a new session after successful Google sign-in
+    await createSession(result.user.uid);
   };
 
   const logout = async () => {
     await signOut(auth);
     setPhotoData(null);
+    // Clear current session ID
+    localStorage.removeItem('currentSessionId');
   };
 
   const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!auth.currentUser || !auth.currentUser.email) {
+      throw new Error('Not authenticated');
+    }
+    
+    // Re-authenticate user before changing password
+    const credential = EmailAuthProvider.credential(
+      auth.currentUser.email,
+      currentPassword
+    );
+    await reauthenticateWithCredential(auth.currentUser, credential);
+    
+    // Change the password
+    await updatePassword(auth.currentUser, newPassword);
+    
+    // Revoke all sessions (user will need to log in again on all devices)
+    await revokeAllSessions(auth.currentUser.uid);
+    
+    // Log out the user
+    await signOut(auth);
   };
 
   // ── Photo methods ─────────────────────────────────────────────────────────
@@ -188,7 +234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{
       user, photoData, loading,
       signInEmail, signUpEmail, signInGoogle,
-      logout, resetPassword,
+      logout, resetPassword, changePassword,
       updatePhoto, removePhoto,
     }}>
       {children}

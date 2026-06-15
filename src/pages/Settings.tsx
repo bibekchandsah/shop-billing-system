@@ -4,6 +4,7 @@ import { useToast } from '../hooks/useToast';
 import { useFiscalYear } from '../context/FiscalYearContext';
 import ToastContainer from '../components/ToastContainer';
 import { getAppSettings, saveAppSettings, DEFAULT_SETTINGS, getFiscalYearOptions, hashActionPin, verifyActionPin } from '../services/settingsService';
+import { getUserSessions, revokeSession, revokeOtherSessions, getCurrentSessionId, type DeviceSession } from '../services/sessionService';
 import type { AppSettings } from '../types';
 import './Settings.css';
 
@@ -17,8 +18,20 @@ const BS_MONTH_NAMES = [
   'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra',
 ];
 
+// Helper function to format time ago
+const getTimeAgo = (date: Date): string => {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  return date.toLocaleDateString();
+};
+
 const Settings: React.FC = () => {
-  const { user } = useAuth();
+  const { user, changePassword } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { setActiveFiscalYear } = useFiscalYear();
   
@@ -34,9 +47,23 @@ const Settings: React.FC = () => {
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [pinSaving, setPinSaving] = useState(false);
+  
+  // Device session management states
+  const [sessions, setSessions] = useState<DeviceSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [currentSessionId] = useState(getCurrentSessionId() || '');
+  
+  // Password change states
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordChanging, setPasswordChanging] = useState(false);
 
   useEffect(() => {
     loadSettings();
+    loadSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
@@ -125,6 +152,95 @@ const Settings: React.FC = () => {
       showError('Failed to load settings.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSessions = async () => {
+    if (!user?.uid) return;
+    setSessionsLoading(true);
+    try {
+      const fetchedSessions = await getUserSessions(user.uid);
+      setSessions(fetchedSessions);
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+      showError('Failed to load device sessions.');
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const handleRevokeSession = async (sessionId: string) => {
+    if (!user?.uid) return;
+    if (!confirm('Are you sure you want to revoke this session? The device will be logged out.')) return;
+    
+    setRevokingSessionId(sessionId);
+    try {
+      await revokeSession(user.uid, sessionId);
+      showSuccess('Session revoked successfully.');
+      await loadSessions();
+    } catch (error) {
+      console.error('Error revoking session:', error);
+      showError('Failed to revoke session.');
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
+
+  const handleRevokeOtherSessions = async () => {
+    if (!user?.uid) return;
+    if (!confirm('Are you sure you want to log out all other devices? Only this device will remain logged in.')) return;
+    
+    setSessionsLoading(true);
+    try {
+      await revokeOtherSessions(user.uid, currentSessionId);
+      showSuccess('All other sessions have been revoked.');
+      await loadSessions();
+    } catch (error) {
+      console.error('Error revoking sessions:', error);
+      showError('Failed to revoke other sessions.');
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      showError('Please fill in all fields.');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      showError('New password must be at least 6 characters.');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      showError('New passwords do not match.');
+      return;
+    }
+    
+    setPasswordChanging(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      showSuccess('Password changed successfully. All devices have been logged out for security.');
+      setShowPasswordChange(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      // User will be logged out after password change
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      if (error.code === 'auth/wrong-password') {
+        showError('Current password is incorrect.');
+      } else if (error.code === 'auth/weak-password') {
+        showError('New password is too weak.');
+      } else {
+        showError('Failed to change password. Please try again.');
+      }
+    } finally {
+      setPasswordChanging(false);
     }
   };
 
@@ -823,7 +939,184 @@ const Settings: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 7: Action PIN */}
+          {/* Section 7: Device Sessions & Security */}
+          <div className="settings-card card">
+            <div className="card-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+              </svg>
+              <h2>Device Sessions & Security</h2>
+            </div>
+            <p className="card-desc">
+              View and manage devices where you're currently logged in. You can revoke access from unfamiliar devices for security.
+            </p>
+
+            <div className="form-grid">
+              {/* Password Change Section */}
+              <div className="form-group full-width">
+                <div className="sessions-header">
+                  <h3 className="sessions-title">Change Password</h3>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowPasswordChange(!showPasswordChange)}
+                  >
+                    {showPasswordChange ? 'Cancel' : 'Change Password'}
+                  </button>
+                </div>
+                {showPasswordChange && (
+                  <div className="password-change-form fade-in">
+                    <form onSubmit={handlePasswordChange}>
+                      <div className="form-group">
+                        <label className="label">Current Password *</label>
+                        <input
+                          type="password"
+                          className="input"
+                          value={currentPassword}
+                          onChange={e => setCurrentPassword(e.target.value)}
+                          placeholder="Enter current password"
+                          disabled={passwordChanging}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="label">New Password *</label>
+                        <input
+                          type="password"
+                          className="input"
+                          value={newPassword}
+                          onChange={e => setNewPassword(e.target.value)}
+                          placeholder="Enter new password (min 6 characters)"
+                          disabled={passwordChanging}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="label">Confirm New Password *</label>
+                        <input
+                          type="password"
+                          className="input"
+                          value={confirmPassword}
+                          onChange={e => setConfirmPassword(e.target.value)}
+                          placeholder="Confirm new password"
+                          disabled={passwordChanging}
+                          required
+                        />
+                      </div>
+                      <div className="password-change-warning">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>Changing your password will log you out from all devices for security.</span>
+                      </div>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={passwordChanging}
+                      >
+                        {passwordChanging ? 'Changing Password...' : 'Change Password'}
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+
+              {/* Active Sessions Section */}
+              <div className="form-group full-width">
+                <div className="sessions-header">
+                  <h3 className="sessions-title">Active Device Sessions ({sessions.length})</h3>
+                  {sessions.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn btn-danger-outline"
+                      onClick={handleRevokeOtherSessions}
+                      disabled={sessionsLoading}
+                    >
+                      Logout All Other Devices
+                    </button>
+                  )}
+                </div>
+                <small className="help-text" style={{ marginBottom: '1rem', display: 'block' }}>
+                  These are the devices currently logged into your account. Revoke access from unfamiliar devices.
+                </small>
+
+                {sessionsLoading ? (
+                  <div className="sessions-loading">
+                    <div className="settings-spinner" />
+                    <p>Loading sessions...</p>
+                  </div>
+                ) : sessions.length === 0 ? (
+                  <div className="sessions-empty">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                    </svg>
+                    <p>No active sessions found</p>
+                  </div>
+                ) : (
+                  <div className="sessions-list">
+                    {sessions.map(session => {
+                      const isCurrentSession = session.id === currentSessionId;
+                      const timeAgo = getTimeAgo(session.lastActive);
+                      
+                      return (
+                        <div key={session.id} className={`session-item ${isCurrentSession ? 'current-session' : ''}`}>
+                          <div className="session-icon">
+                            {session.os.includes('Windows') || session.os.includes('Mac') || session.os.includes('Linux') ? (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2" />
+                                <line x1="8" y1="21" x2="16" y2="21" />
+                                <line x1="12" y1="17" x2="12" y2="21" />
+                              </svg>
+                            ) : (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="5" y="2" width="14" height="20" rx="2" />
+                                <line x1="12" y1="18" x2="12.01" y2="18" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="session-info">
+                            <div className="session-device">
+                              {session.deviceName}
+                              {isCurrentSession && <span className="current-badge">Current Device</span>}
+                            </div>
+                            <div className="session-meta">
+                              <span>{session.ipAddress}</span>
+                              <span>•</span>
+                              <span>Last active {timeAgo}</span>
+                            </div>
+                          </div>
+                          {!isCurrentSession && (
+                            <button
+                              type="button"
+                              className="btn-revoke"
+                              onClick={() => handleRevokeSession(session.id)}
+                              disabled={revokingSessionId === session.id}
+                              title="Revoke this session"
+                            >
+                              {revokingSessionId === session.id ? (
+                                <span className="login-spinner" />
+                              ) : (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 8: Action PIN */}
           <div className="settings-card card">
             <div className="card-header-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

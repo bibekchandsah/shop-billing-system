@@ -21,6 +21,11 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
+      // User can read/write their own sessions subcollection (device session management)
+      match /sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
       // User can read/write their own customers subcollection and nested ledger entries
       match /customers/{customerId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
