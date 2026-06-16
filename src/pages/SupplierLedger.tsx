@@ -456,6 +456,14 @@ const SupplierLedger: React.FC = () => {
       });
       showSuccess('Party added successfully');
       setShowAddSupplier(false);
+      setSelectedSupplier({
+        id: partyId,
+        name: payload.name,
+        address: payload.address,
+        contactNumber: payload.contactNumber,
+        partyCode: payload.partyCode,
+        currentBalance: 0
+      } as Party);
       await loadSuppliers();
     } catch (error: any) {
       console.error('Error adding party:', error);
@@ -1224,7 +1232,7 @@ const SupplierLedger: React.FC = () => {
               <p>Delete <strong>{selectedSupplier.name}</strong> and all of its ledger entries?</p>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-danger" onClick={handleDeleteSupplier} disabled={deleteSupplierLoading}>{deleteSupplierLoading ? 'Deleting...' : 'Delete Party'}</button>
+              <button autoFocus className="btn btn-danger" onClick={handleDeleteSupplier} disabled={deleteSupplierLoading}>{deleteSupplierLoading ? 'Deleting...' : 'Delete Party'}</button>
               <button className="btn btn-secondary" type="button" onClick={() => setShowDeleteSupplierConfirm(false)}>Cancel</button>
             </div>
           </div>

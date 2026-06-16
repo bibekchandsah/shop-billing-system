@@ -499,6 +499,14 @@ const CustomerLedger: React.FC = () => {
 
       showSuccess('Customer added successfully');
       setShowAddCustomer(false);
+      setSelectedCustomer({
+        id: customerId,
+        name: payload.name,
+        address: payload.address,
+        contactNumber: payload.contactNumber,
+        customerCode: payload.customerCode,
+        currentBalance: newCustomerOpeningAmount > 0 ? newCustomerOpeningAmount : 0
+      } as Customer);
       await loadCustomers();
     } catch (error: any) {
       console.error('Error adding customer:', error);
@@ -1306,7 +1314,7 @@ const CustomerLedger: React.FC = () => {
               <p>Delete <strong>{selectedCustomer.name}</strong> and all of its ledger entries?</p>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-danger" onClick={handleDeleteCustomer} disabled={deleteCustomerLoading}>{deleteCustomerLoading ? 'Deleting...' : 'Delete Customer'}</button>
+              <button autoFocus className="btn btn-danger" onClick={handleDeleteCustomer} disabled={deleteCustomerLoading}>{deleteCustomerLoading ? 'Deleting...' : 'Delete Customer'}</button>
               <button className="btn btn-secondary" type="button" onClick={() => setShowDeleteCustomerConfirm(false)}>Cancel</button>
             </div>
           </div>

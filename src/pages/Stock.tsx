@@ -1343,6 +1343,7 @@ const Stock: React.FC = () => {
             <div className="modal-footer">
               <button
                 type="button"
+                autoFocus
                 className="btn btn-danger"
                 onClick={handleDeleteParticular}
                 disabled={deletePartLoading}
