@@ -668,6 +668,10 @@ const CreateBill: React.FC = () => {
   const isPrimaryAction = (action: BillPrimaryAction) => primaryBillAction === action;
   const unitOptions = settings?.unitCategories ?? DEFAULT_SETTINGS.unitCategories;
 
+  const hasValidItem = items.some(item => 
+    item.particulars.trim() !== '' && Number(item.qty) > 0 && Number(item.rate) > 0
+  );
+
   return (
     <div className="create-bill-page">
       <div className="container bill-layout-container">
@@ -1003,8 +1007,9 @@ const CreateBill: React.FC = () => {
           <div className="bill-footer">
           </div>
 
-          <div className="form-actions">
-            <button
+          {hasValidItem && (
+            <div className="form-actions fade-in">
+              <button
               onClick={isPrimaryAction('save') ? handlePrimaryAction : handleSaveBill}
               className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
               disabled={loading}
@@ -1073,10 +1078,12 @@ const CreateBill: React.FC = () => {
                 </>
               )}
             </button>
-          </div>
+            </div>
+          )}
         </div>
 
-        <div className="form-actions-sidebar card fade-in">
+        {hasValidItem && (
+          <div className="form-actions-sidebar card fade-in">
             <button
               onClick={isPrimaryAction('save') ? handlePrimaryAction : handleSaveBill}
               className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
@@ -1140,7 +1147,8 @@ const CreateBill: React.FC = () => {
                 </svg>
               )}
             </button>
-        </div>
+          </div>
+        )}
       </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
