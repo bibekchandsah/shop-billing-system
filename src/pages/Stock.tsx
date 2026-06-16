@@ -497,6 +497,79 @@ const Stock: React.FC = () => {
   };
 
   // ── Export & Import Handlers ──
+  const printStockList = () => {
+    const list = filteredParticulars.length > 0 ? filteredParticulars : particulars;
+    if (list.length === 0) {
+      showError('No stock items to print.');
+      return;
+    }
+
+    const win = window.open('', '_blank', 'width=1100,height=800');
+    if (!win) {
+      showError('Pop-up blocked. Please allow pop-ups for this site and try again.');
+      return;
+    }
+
+    const rows = list
+      .map((p) => {
+        return `
+          <tr>
+            <td>${p.name || '—'}</td>
+            <td>${p.particularCode || '—'}</td>
+            <td class="right"><strong>${p.currentStock}</strong> ${p.defaultUnit || 'Qty'}</td>
+          </tr>`;
+      })
+      .join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stock Items List</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #111; background: #fff; }
+    h1 { font-size: 22px; margin-bottom: 6px; }
+    .subtitle { color: #555; margin-bottom: 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { border: 1px solid #cfcfcf; padding: 8px 10px; vertical-align: top; }
+    th { background: #1e3a5f; color: #fff; text-align: left; }
+    .right { text-align: right; }
+    .toolbar { margin-bottom: 12px; display: flex; justify-content: flex-end; gap: 10px; }
+    .btn { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .btn-print { background: #10b981; color: #fff; }
+    .btn-close { background: #e5e7eb; color: #111; }
+    @media print { .toolbar { display: none; } body { padding: 0; } @page { size: A4 portrait; margin: 1.5cm; } }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="btn btn-print" onclick="window.print()">Print / Save PDF</button>
+    <button class="btn btn-close" onclick="window.close()">Close</button>
+  </div>
+  <h1>Stock Items List</h1>
+  <div class="subtitle">${list.length} item(s)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Item Name</th>
+        <th>Item Code</th>
+        <th class="right">Current Stock</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <script>
+    window.onload = function () { window.print(); };
+  </script>
+</body>
+</html>`;
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  };
+
   const handleExport = async () => {
     if (particulars.length === 0) {
       showError('No stock particulars to export.');
@@ -693,17 +766,38 @@ const Stock: React.FC = () => {
           <div className={`col-12 col-md-4 particulars-panel card ${isParticularsCollapsed ? 'collapsed' : ''}`}>
             <div className="panel-header">
               <div className="panel-header-title-row">
-                <h2>Inventory Particulars</h2>
-                <button
-                  type="button"
-                  onClick={() => setIsParticularsCollapsed(true)}
-                  className="btn-collapse-particulars"
-                  title="Collapse Particulars List"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <h2 style={{ margin: 0 }}>Particulars</h2>
+                  <span className="badge" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', borderRadius: '12px', padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-color)' }}>
+                    {particulars.length}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={printStockList}
+                    className="btn-icon-action"
+                    title="Print stock list"
+                    aria-label="Print stock list"
+                    style={{ width: '34px', height: '34px', borderRadius: '8px' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6 9 6 2 18 2 18 9" />
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                      <rect x="6" y="14" width="12" height="8" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsParticularsCollapsed(true)}
+                    className="btn-collapse-particulars"
+                    title="Collapse Particulars List"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                </div>
               </div>
               <button
                 onClick={() => {
