@@ -5,6 +5,7 @@ import { useFiscalYear } from '../context/FiscalYearContext';
 import ToastContainer from '../components/ToastContainer';
 import { getAppSettings, saveAppSettings, DEFAULT_SETTINGS, getFiscalYearOptions, hashActionPin, verifyActionPin } from '../services/settingsService';
 import { getUserSessions, revokeSession, revokeOtherSessions, getCurrentSessionId, type DeviceSession } from '../services/sessionService';
+import { exportFullBackup } from '../utils/backupExport';
 import type { AppSettings } from '../types';
 import './Settings.css';
 
@@ -60,6 +61,10 @@ const Settings: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordChanging, setPasswordChanging] = useState(false);
+
+  // Backup states
+  const [backupFiscalYear, setBackupFiscalYear] = useState<string>('active');
+  const [backupLoading, setBackupLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -1327,6 +1332,148 @@ const Settings: React.FC = () => {
                   </label>
                 </div>
                 <small className="help-text">Extra actions run only after the primary action succeeds.</small>
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Data Backup */}
+          <div className="settings-card card">
+            <div className="card-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <h2>Data Backup</h2>
+            </div>
+            <p className="card-desc">
+              Export all your records, stock, customers, and party data as a backup file.
+              A single <strong>.xlsx</strong> file (6 sheets) is created for one fiscal year, or a <strong>.zip</strong> of per-year Excel files for All Years.
+            </p>
+
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label className="label">Backup Scope</label>
+                <div className="radio-group-cards">
+                  <label className={`radio-card ${backupFiscalYear === 'all' ? 'active' : ''}`}>
+                    <input type="radio" name="backupScope" value="all"
+                      checked={backupFiscalYear === 'all'}
+                      onChange={() => setBackupFiscalYear('all')}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>All Years</strong>
+                    </div>
+                    <p className="radio-card-desc">Exports every record regardless of fiscal year.</p>
+                  </label>
+
+                  <label className={`radio-card ${backupFiscalYear === 'active' ? 'active' : ''}`}>
+                    <input type="radio" name="backupScope" value="active"
+                      checked={backupFiscalYear === 'active'}
+                      onChange={() => setBackupFiscalYear('active')}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>Active Fiscal Year</strong>
+                    </div>
+                    <p className="radio-card-desc">Exports only data from the currently active fiscal year ({settings.activeFiscalYear}).</p>
+                  </label>
+
+                  <label className={`radio-card ${backupFiscalYear !== 'all' && backupFiscalYear !== 'active' ? 'active' : ''}`}>
+                    <input type="radio" name="backupScope" value="custom"
+                      checked={backupFiscalYear !== 'all' && backupFiscalYear !== 'active'}
+                      onChange={() => setBackupFiscalYear(getFiscalYearOptions()[0])}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>Specific Fiscal Year</strong>
+                    </div>
+                    <p className="radio-card-desc">Select a specific year to export.</p>
+                  </label>
+                </div>
+              </div>
+
+              {backupFiscalYear !== 'all' && backupFiscalYear !== 'active' && (
+                <div className="form-group full-width fade-in">
+                  <label className="label">Select Fiscal Year</label>
+                  <div className="fy-year-grid">
+                    {getFiscalYearOptions().map(fy => (
+                      <button
+                        key={fy}
+                        type="button"
+                        className={`fy-year-btn ${backupFiscalYear === fy ? 'active' : ''}`}
+                        onClick={() => setBackupFiscalYear(fy)}
+                      >
+                        {fy}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="form-group full-width">
+                <div className="settings-preview-box" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div>
+                    <span className="preview-label">Backup Includes: </span>
+                    <strong className="preview-value" style={{ color: 'var(--primary)' }}>
+                      Bills · Customers · Parties · Stock
+                    </strong>
+                  </div>
+                  <div style={{ marginLeft: 'auto' }}>
+                    <span className="preview-label">Fiscal Year: </span>
+                    <strong className="preview-value">
+                      {backupFiscalYear === 'all' ? 'All Years' : backupFiscalYear === 'active' ? settings.activeFiscalYear : backupFiscalYear}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group full-width">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-large"
+                  disabled={backupLoading}
+                  onClick={async () => {
+                    if (!user?.uid) return;
+                    setBackupLoading(true);
+                    try {
+                      const fy = backupFiscalYear === 'active' ? settings.activeFiscalYear : backupFiscalYear === 'all' ? undefined : backupFiscalYear;
+                      await exportFullBackup(user.uid, settings.businessName, {
+                        fiscalYear: fy,
+                        startMonth: settings.fiscalYearStart ?? 4,
+                        endMonth: settings.fiscalYearEnd ?? 3,
+                      });
+                      showSuccess('Backup downloaded successfully!');
+                    } catch (err) {
+                      console.error('Backup error:', err);
+                      showError('Failed to export backup. Please try again.');
+                    } finally {
+                      setBackupLoading(false);
+                    }
+                  }}
+                >
+                  {backupLoading ? (
+                    <>
+                      <div className="btn-spinner" />
+                      Exporting Backup...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      {backupFiscalYear === 'all' ? 'Download Backup (.zip)' : 'Download Backup (.xlsx)'}
+                    </>
+                  )}
+                </button>
+                <small className="help-text" style={{ marginTop: '0.5rem', display: 'block' }}>
+                  The backup file can be used to restore or migrate your data. Keep it in a safe location.
+                </small>
               </div>
             </div>
           </div>
