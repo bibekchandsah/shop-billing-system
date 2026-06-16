@@ -214,11 +214,22 @@ const CreateBill: React.FC = () => {
           newItems[index].qty = 0;
           newItems[index].amount = 0;
           showError(`Item "${newItems[index].particulars}" does not exist in stock. Please select a valid item from the suggestions dropdown.`);
-        } else if (stockItem && Number(newItems[index].qty) > stockItem.currentStock) {
-          // Clear the input (use 0 in state so the input renders blank) instead of clamping
-          newItems[index].qty = 0;
-          newItems[index].amount = 0;
-          showError(`Entered quantity exceeds available stock (${stockItem.currentStock}) for "${stockItem.name}". Please enter a smaller quantity.`);
+        } else if (stockItem) {
+          // Calculate qty in all OTHER rows for the same item
+          const otherRowsQty = items.reduce((sum, item, idx) => {
+            if (idx !== index && item.particulars.trim().toLowerCase() === part) {
+              return sum + Number(item.qty || 0);
+            }
+            return sum;
+          }, 0);
+          const availableStock = stockItem.currentStock - otherRowsQty;
+
+          if (Number(newItems[index].qty) > availableStock) {
+            // Clear the input (use 0 in state so the input renders blank) instead of clamping
+            newItems[index].qty = 0;
+            newItems[index].amount = 0;
+            showError(`Entered quantity exceeds available stock (${availableStock}) for "${stockItem.name}". Please enter a smaller quantity.`);
+          }
         }
       }
     }
@@ -426,8 +437,16 @@ const CreateBill: React.FC = () => {
         return null;
       }
 
-      if (item.qty > stockItem.currentStock) {
-        showError(`Insufficient stock for "${stockItem.name}" at row ${i + 1}. Only ${stockItem.currentStock} Qty available.`);
+      const otherRowsQty = validItems.reduce((sum, otherItem, idx) => {
+        if (idx !== i && otherItem.particulars.trim().toLowerCase() === selectedParticular) {
+          return sum + Number(otherItem.qty || 0);
+        }
+        return sum;
+      }, 0);
+      const availableStock = stockItem.currentStock - otherRowsQty;
+
+      if (item.qty > availableStock) {
+        showError(`Insufficient stock for "${stockItem.name}" at row ${i + 1}. Only ${availableStock} Qty available.`);
         return null;
       }
     }
@@ -885,7 +904,15 @@ const CreateBill: React.FC = () => {
                                   onMouseEnter={() => setHighlightedSuggestionIndex(sIdx)}
                                 >
                                   <span className="suggestion-name">{p.name}</span>
-                                  <span className="suggestion-stock">Stock: {p.currentStock} {p.defaultUnit || 'Qty'}</span>
+                                  <span className="suggestion-stock">Stock: {(() => {
+                                    const otherRowsQty = items.reduce((sum, otherItem, idx) => {
+                                      if (idx !== index && otherItem.particulars.trim().toLowerCase() === p.name.toLowerCase()) {
+                                        return sum + Number(otherItem.qty || 0);
+                                      }
+                                      return sum;
+                                    }, 0);
+                                    return p.currentStock - otherRowsQty;
+                                  })()} {p.defaultUnit || 'Qty'}</span>
                                 </div>
                               ))}
                             </div>
@@ -906,7 +933,12 @@ const CreateBill: React.FC = () => {
                               onChange={(e) => handleItemChange(index, 'qty', parseFloat(e.target.value) || 0)}
                               onKeyDown={(e) => handleQtyTab(e, index)}
                               min="0"
-                              max={stockItem ? stockItem.currentStock : undefined}
+                              max={stockItem ? stockItem.currentStock - items.reduce((sum, otherItem, idx) => {
+                                if (idx !== index && otherItem.particulars.trim().toLowerCase() === item.particulars.trim().toLowerCase()) {
+                                  return sum + Number(otherItem.qty || 0);
+                                }
+                                return sum;
+                              }, 0) : undefined}
                               step="1"
                             />
                           );
