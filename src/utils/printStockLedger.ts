@@ -19,7 +19,7 @@ export const printStockLedger = (
     ? `${filterStartDate || 'Beginning'} to ${filterEndDate || 'Present'}`
     : 'All Time';
 
-  const rows = [...ledger].reverse().map(
+  const rows = [...ledger].map(
     (entry) =>
       `<tr>
         <td>${entry.date}</td>
