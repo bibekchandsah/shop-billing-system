@@ -1056,7 +1056,7 @@ const CustomerLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Customer Name *</label>
-                  <input className="input" value={editCustomerName} onChange={(event) => setEditCustomerName(titleCase(event.target.value))} />
+                  <input autoFocus className="input" value={editCustomerName} onChange={(event) => setEditCustomerName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
@@ -1097,7 +1097,7 @@ const CustomerLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Customer Name *</label>
-                  <input className="input" value={newCustomerName} onChange={(event) => setNewCustomerName(titleCase(event.target.value))} />
+                  <input autoFocus className="input" value={newCustomerName} onChange={(event) => setNewCustomerName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>

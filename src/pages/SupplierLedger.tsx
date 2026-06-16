@@ -1017,7 +1017,7 @@ const SupplierLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Party Name *</label>
-                  <input className="input" value={newSupplierName} onChange={(event) => setNewSupplierName(titleCase(event.target.value))} />
+                  <input autoFocus className="input" value={newSupplierName} onChange={(event) => setNewSupplierName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
@@ -1064,7 +1064,7 @@ const SupplierLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Party Name *</label>
-                  <input className="input" value={editSupplierName} onChange={(event) => setEditSupplierName(titleCase(event.target.value))} />
+                  <input autoFocus className="input" value={editSupplierName} onChange={(event) => setEditSupplierName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
