@@ -268,13 +268,16 @@ const Records: React.FC = () => {
       }
       
       const snap = await getDocs(q);
-      const newBills = snap.docs.map((d) => ({
-        id: d.id,
-        userId: user?.uid,
-        ...d.data(),
-        createdAt: d.data().createdAt?.toDate() || new Date(),
-        updatedAt: d.data().updatedAt?.toDate() || new Date(),
-      })) as Bill[];
+      const newBills = snap.docs.map((d) => {
+        const data = d.data() as any;
+        return {
+          id: d.id,
+          userId: user?.uid,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date(),
+        };
+      }) as Bill[];
       
       setBills(newBills);
       setCurrentPage(targetPage);
