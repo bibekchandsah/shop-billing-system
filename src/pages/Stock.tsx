@@ -85,6 +85,8 @@ const Stock: React.FC = () => {
   const [showAddParticular, setShowAddParticular] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [isParticularsCollapsed, setIsParticularsCollapsed] = useState(false);
+  const [pinAddParticular, setPinAddParticular] = useState(false);
+  const [pinAddTx, setPinAddTx] = useState(false);
 
   // New Particular Form States
   const [newPartName, setNewPartName] = useState('');
@@ -213,7 +215,9 @@ const Stock: React.FC = () => {
       );
 
       showSuccess(`Particular "${newPartName}" added successfully.`);
-      setShowAddParticular(false);
+      if (!pinAddParticular) {
+        setShowAddParticular(false);
+      }
       
       // Reset Form
       setNewPartName('');
@@ -281,7 +285,9 @@ const Stock: React.FC = () => {
       });
 
       showSuccess('Transaction added to ledger.');
-      setShowAddTransaction(false);
+      if (!pinAddTx) {
+        setShowAddTransaction(false);
+      }
 
       // Reset transaction form
       setTxQty(0);
@@ -775,6 +781,35 @@ const Stock: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button
                     type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn-icon-action"
+                    title="Import stock list"
+                    aria-label="Import stock list"
+                    style={{ width: '34px', height: '34px', borderRadius: '8px' }}
+                    disabled={importLoading}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExport}
+                    className="btn-icon-action"
+                    title="Export stock list"
+                    aria-label="Export stock list"
+                    style={{ width: '34px', height: '34px', borderRadius: '8px' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
                     onClick={printStockList}
                     className="btn-icon-action"
                     title="Print stock list"
@@ -1107,12 +1142,25 @@ const Stock: React.FC = () => {
           <div className="modal-content stock-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Add New Stock Particular</h2>
-              <button className="modal-close" onClick={() => setShowAddParticular(false)}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setPinAddParticular(!pinAddParticular)}
+                  title={pinAddParticular ? "Unpin modal" : "Pin modal to keep it open"}
+                  style={{ background: 'none', border: 'none', color: pinAddParticular ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={pinAddParticular ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 17v5"/>
+                    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>
+                  </svg>
+                </button>
+                <button className="modal-close" onClick={() => setShowAddParticular(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <form onSubmit={handleCreateParticular}>
               <div className="modal-body">
@@ -1218,12 +1266,25 @@ const Stock: React.FC = () => {
           <div className="modal-content stock-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Record Stock Transaction</h2>
-              <button className="modal-close" onClick={() => setShowAddTransaction(false)}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setPinAddTx(!pinAddTx)}
+                  title={pinAddTx ? "Unpin modal" : "Pin modal to keep it open"}
+                  style={{ background: 'none', border: 'none', color: pinAddTx ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={pinAddTx ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 17v5"/>
+                    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>
+                  </svg>
+                </button>
+                <button className="modal-close" onClick={() => setShowAddTransaction(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <form onSubmit={handleAddTransaction}>
               <div className="modal-body">

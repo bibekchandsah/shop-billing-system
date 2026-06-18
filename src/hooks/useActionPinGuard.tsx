@@ -83,7 +83,9 @@ export const useActionPinGuard = ({ pinHash, showError }: UseActionPinGuardOptio
       <div className="modal-content" onClick={(event) => event.stopPropagation()} style={{ maxWidth: '420px' }}>
         <div className="modal-header">
           <h2>Enter PIN</h2>
-          <button className="modal-close" onClick={close} type="button">×</button>
+          <button className="modal-close" onClick={close} type="button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
         </div>
         <div className="modal-body">
           <p style={{ marginTop: 0, color: 'var(--text-secondary)' }}>

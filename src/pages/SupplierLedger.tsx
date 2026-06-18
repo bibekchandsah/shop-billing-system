@@ -49,6 +49,7 @@ const SupplierLedger: React.FC = () => {
   const [editSupplierCodeError, setEditSupplierCodeError] = useState('');
 
   const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [pinAddSupplier, setPinAddSupplier] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
   const [newSupplierAddress, setNewSupplierAddress] = useState('');
   const [newSupplierContact, setNewSupplierContact] = useState('');
@@ -57,6 +58,7 @@ const SupplierLedger: React.FC = () => {
   const [newSupplierCodeError, setNewSupplierCodeError] = useState('');
 
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [pinAddTx, setPinAddTx] = useState(false);
   const [txDate, setTxDate] = useState('');
   const [txParticular, setTxParticular] = useState('');
   const [txAmount, setTxAmount] = useState<number>(0);
@@ -455,7 +457,15 @@ const SupplierLedger: React.FC = () => {
         currentBalance: 0,
       });
       showSuccess('Party added successfully');
-      setShowAddSupplier(false);
+      if (!pinAddSupplier) {
+        setShowAddSupplier(false);
+      } else {
+        setNewSupplierName('');
+        setNewSupplierAddress('');
+        setNewSupplierContact('');
+        setNewSupplierCode('');
+        setNewSupplierCodeError('');
+      }
       setSelectedSupplier({
         id: partyId,
         name: payload.name,
@@ -545,7 +555,9 @@ const SupplierLedger: React.FC = () => {
         note: txNote.trim() || '',
       });
       showSuccess('Transaction added successfully');
-      setShowAddTransaction(false);
+      if (!pinAddTx) {
+        setShowAddTransaction(false);
+      }
       await loadSuppliers();
       await loadLedger(selectedSupplier.id);
     } catch (error: any) {
@@ -693,6 +705,35 @@ const SupplierLedger: React.FC = () => {
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn-icon-action"
+                    title="Import party list"
+                    aria-label="Import party list"
+                    style={{ width: '34px', height: '34px', borderRadius: '8px' }}
+                    disabled={loadingSuppliers}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExport}
+                    className="btn-icon-action"
+                    title="Export party list"
+                    aria-label="Export party list"
+                    style={{ width: '34px', height: '34px', borderRadius: '8px' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </button>
                   <button
                     type="button"
                     onClick={printPartyList}
@@ -1019,7 +1060,22 @@ const SupplierLedger: React.FC = () => {
           <div className="modal-content stock-modal customer-edit-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Add Party</h2>
-              <button className="modal-close" onClick={() => setShowAddSupplier(false)}>×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setPinAddSupplier(!pinAddSupplier)}
+                  title={pinAddSupplier ? "Unpin modal" : "Pin modal to keep it open"}
+                  style={{ background: 'none', border: 'none', color: pinAddSupplier ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={pinAddSupplier ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 17v5"/>
+                    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>
+                  </svg>
+                </button>
+                <button className="modal-close" onClick={() => setShowAddSupplier(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
             </div>
             <form onSubmit={handleAddSupplierSubmit}>
               <div className="modal-body">
@@ -1066,7 +1122,9 @@ const SupplierLedger: React.FC = () => {
           <div className="modal-content stock-modal customer-edit-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Edit Party</h2>
-              <button className="modal-close" onClick={() => setShowEditSupplier(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowEditSupplier(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
             <form onSubmit={handleEditSupplierSubmit}>
               <div className="modal-body">
@@ -1113,7 +1171,22 @@ const SupplierLedger: React.FC = () => {
           <div className="modal-content stock-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Add Transaction</h2>
-              <button className="modal-close" onClick={() => setShowAddTransaction(false)}>×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setPinAddTx(!pinAddTx)}
+                  title={pinAddTx ? "Unpin modal" : "Pin modal to keep it open"}
+                  style={{ background: 'none', border: 'none', color: pinAddTx ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={pinAddTx ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 17v5"/>
+                    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>
+                  </svg>
+                </button>
+                <button className="modal-close" onClick={() => setShowAddTransaction(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
             </div>
             <form onSubmit={handleAddTransaction}>
               <div className="modal-body">
@@ -1160,7 +1233,9 @@ const SupplierLedger: React.FC = () => {
           <div className="modal-content stock-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Edit Transaction</h2>
-              <button className="modal-close" onClick={() => setShowEditTransaction(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowEditTransaction(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
             <form onSubmit={handleEditTransactionSubmit}>
               <div className="modal-body">
@@ -1207,7 +1282,9 @@ const SupplierLedger: React.FC = () => {
           <div className="modal-content stock-modal customer-edit-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Delete Transaction</h2>
-              <button className="modal-close" onClick={() => setShowDeleteTransactionConfirm(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowDeleteTransactionConfirm(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
             <div className="modal-body">
               <p>Are you sure you want to delete this ledger entry?</p>
@@ -1226,7 +1303,9 @@ const SupplierLedger: React.FC = () => {
           <div className="modal-content stock-modal customer-edit-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Delete Party</h2>
-              <button className="modal-close" onClick={() => setShowDeleteSupplierConfirm(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowDeleteSupplierConfirm(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
             <div className="modal-body">
               <p>Delete <strong>{selectedSupplier.name}</strong> and all of its ledger entries?</p>
