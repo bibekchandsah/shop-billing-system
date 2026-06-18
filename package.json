@@ -1,9 +1,9 @@
 {
-  "name": "shop-bill",
+  "name": "invoice-bill",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Modern shop billing system with Nepali date support, PDF generation, and Firebase backend",
+  "description": "Modern invoice billing system with Nepali date support, PDF generation, and Firebase backend",
   "author": "Your Name",
   "license": "MIT",
   "scripts": {

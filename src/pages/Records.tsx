@@ -433,7 +433,7 @@ const Records: React.FC = () => {
     try {
       generateBillPDF(
         bill,
-        settings?.businessName || 'Shop Billing System',
+        settings?.businessName || 'Invoice Billing System',
         settings?.businessAddress || 'Garuda, Rautahat, Nepal',
         settings?.businessContact || '',
         settings?.printFontSize ?? DEFAULT_SETTINGS.printFontSize
@@ -448,7 +448,7 @@ const Records: React.FC = () => {
   const handlePrintBill = (bill: Bill) => {
     printBill(
       bill,
-      settings?.businessName || 'Shop Billing System',
+      settings?.businessName || 'Invoice Billing System',
       settings?.businessAddress || 'Garuda, Rautahat, Nepal',
       settings?.businessContact || '',
       settings?.printFontSize ?? DEFAULT_SETTINGS.printFontSize,

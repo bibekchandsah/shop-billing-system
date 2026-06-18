@@ -1,7 +1,7 @@
 {
- "name": "Shop Billing System",
- "short_name": "Shop Bill",
- "description": "Modern shop billing system with Nepali date support, PDF generation, and secure database storage",
+ "name": "Invoice Billing System",
+ "short_name": "Invoice Bill",
+ "description": "Modern invoice billing system with Nepali date support, PDF generation, and secure database storage",
  "start_url": "/",
  "scope": "/",
  "display": "standalone",

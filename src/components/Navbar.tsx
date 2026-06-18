@@ -78,7 +78,7 @@ const Navbar: React.FC = () => {
               <path d="M3 9h18" />
               <path d="M9 21V9" />
             </svg>
-            <span>Shop Billing System</span>
+            <span>Invoice Billing System</span>
           </Link>
 
           <div className="navbar-links">

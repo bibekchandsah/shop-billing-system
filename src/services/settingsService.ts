@@ -94,7 +94,7 @@ export const isBillInFiscalYear = (
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
-  businessName: 'Shop Billing System',
+  businessName: 'Invoice Billing System',
   businessAddress: 'Garuda, Rautahat, Nepal',
   businessContact: '',
   actionPinHash: undefined,

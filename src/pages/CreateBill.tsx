@@ -561,7 +561,7 @@ const CreateBill: React.FC = () => {
     try {
       generateBillPDF(
         payload.bill,
-        latestSettings.businessName || 'Shop Billing System',
+        latestSettings.businessName || 'Invoice Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
         latestSettings.businessContact || '',
         latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize
@@ -578,7 +578,7 @@ const CreateBill: React.FC = () => {
     try {
       printBill(
         payload.bill,
-        latestSettings.businessName || 'Shop Billing System',
+        latestSettings.businessName || 'Invoice Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
         latestSettings.businessContact || '',
         latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
@@ -698,7 +698,7 @@ const CreateBill: React.FC = () => {
           <div className="bill-header">
             <h1>Estimate Bill</h1>
             <p className="business-name" style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-              {settings?.businessName || 'Shop Billing System'}
+              {settings?.businessName || 'Invoice Billing System'}
             </p>
             <p className="business-address">
               {settings?.businessAddress || 'Garuda, Rautahat, Nepal'}

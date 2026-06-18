@@ -7,7 +7,7 @@ const Home: React.FC = () => {
     <div className="home-page">
       <div className="container">
         <div className="hero-section fade-in">
-          <h1 className="hero-title">Welcome to Shop Billing System</h1>
+          <h1 className="hero-title">Welcome to Invoice Billing System</h1>
           <p className="hero-subtitle">
             A modern, efficient, and user-friendly billing solution for your business
           </p>

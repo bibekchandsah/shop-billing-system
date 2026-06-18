@@ -497,7 +497,7 @@ const Settings: React.FC = () => {
                   className="input"
                   value={settings.businessName}
                   onChange={e => handleFieldChange('businessName', e.target.value)}
-                  placeholder="e.g. Shop Billing System"
+                  placeholder="e.g. Invoice Billing System"
                   required
                 />
               </div>
@@ -792,7 +792,7 @@ const Settings: React.FC = () => {
                     Estimate Bill
                   </div>
                   <div className="print-font-preview-subtitle" style={{ fontSize: `${Math.max(10, getPreviewPrintFontSize() + 1)}px` }}>
-                    {settings.businessName || 'Shop Billing System'}
+                    {settings.businessName || 'Invoice Billing System'}
                   </div>
                   <div className="print-font-preview-meta" style={{ fontSize: `${Math.max(9, getPreviewPrintFontSize() - 1)}px` }}>
                     Bill No: {getPreviewBillNo()} | Qty: 5 | Amount: Rs. 1,250
