@@ -95,6 +95,8 @@ const CustomerLedger: React.FC = () => {
   const newCustomerOpeningDatePickerRef = useRef<NepaliDatePickerHandle>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const newCustomerNameInputRef = useRef<HTMLInputElement>(null);
+  const txParticularInputRef = useRef<HTMLInputElement>(null);
 
   const printCustomerList = () => {
     const list = filteredCustomers.length > 0 ? filteredCustomers : customers;
@@ -512,6 +514,9 @@ const CustomerLedger: React.FC = () => {
         setNewCustomerOpeningParticular('');
         setNewCustomerOpeningBillNo('');
         setNewCustomerCodeError('');
+        if (newCustomerNameInputRef.current) {
+          newCustomerNameInputRef.current.focus();
+        }
       }
       setSelectedCustomer({
         id: customerId,
@@ -600,6 +605,14 @@ const CustomerLedger: React.FC = () => {
       showSuccess('Transaction added successfully');
       if (!pinAddTx) {
         setShowAddTransaction(false);
+      } else {
+        setTxParticular('');
+        setTxBillNo('');
+        setTxAmount(0);
+        setTxNote('');
+        if (txParticularInputRef.current) {
+          txParticularInputRef.current.focus();
+        }
       }
       await loadCustomers();
       await loadLedger(selectedCustomer.id);
@@ -1167,7 +1180,7 @@ const CustomerLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Customer Name *</label>
-                  <input autoFocus className="input" value={newCustomerName} onChange={(event) => setNewCustomerName(titleCase(event.target.value))} />
+                  <input autoFocus ref={newCustomerNameInputRef} className="input" value={newCustomerName} onChange={(event) => setNewCustomerName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
@@ -1286,7 +1299,7 @@ const CustomerLedger: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label className="label">Particular *</label>
-                  <input className="input" value={txParticular} onChange={(event) => setTxParticular(event.target.value)} placeholder="bill_0001 or payment" />
+                  <input autoFocus ref={txParticularInputRef} className="input" value={txParticular} onChange={(event) => setTxParticular(event.target.value)} placeholder="bill_0001 or payment" />
                 </div>
                 <div className="form-group">
                   <label className="label">Bill Number *</label>

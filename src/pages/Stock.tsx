@@ -98,6 +98,8 @@ const Stock: React.FC = () => {
   const [addPartLoading, setAddPartLoading] = useState(false);
   const addPartDatePickerRef = useRef<NepaliDatePickerHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const newPartNameInputRef = useRef<HTMLInputElement>(null);
+  const txQtyInputRef = useRef<HTMLInputElement>(null);
 
   // New Transaction Form States
   const [txType, setTxType] = useState<'debit' | 'credit'>('debit');
@@ -219,19 +221,8 @@ const Stock: React.FC = () => {
         setShowAddParticular(false);
       }
       
-      // Reset Form
-      setNewPartName('');
-      setNewPartInitialStock(0);
-      setNewPartUnit(defaultUnit);
-      setNewPartCode(getNextParticularCode());
-      setNewPartDate('');
-      setNewPartBillNo('');
-
-      // Reload particulars list
-      await loadParticulars();
-      
-      // Auto-select the newly created item
-      const addedParticular = particulars.find(p => p.id === particularId) || {
+      // Create optimistic item
+      const addedParticular = {
         id: particularId,
         name: newPartName.trim(),
         currentStock: newPartInitialStock,
@@ -239,7 +230,43 @@ const Stock: React.FC = () => {
         particularCode: resolvedCode,
         createdAt: new Date(),
         updatedAt: new Date()
+      } as StockParticular;
+
+      const newParticularsList = [...particulars, addedParticular];
+      setParticulars(newParticularsList);
+
+      const getNextCodeFromList = (list: StockParticular[]) => {
+        const usedCodes = new Set(list.map(p => formatParticularCode(p.particularCode || '')).filter(Boolean));
+        let max = 0;
+        usedCodes.forEach((code) => {
+          const value = parseInt(code, 10);
+          if (!Number.isNaN(value)) {
+            max = Math.max(max, value);
+          }
+        });
+        let next = max + 1;
+        let nextCode = String(next).padStart(5, '0');
+        while (usedCodes.has(nextCode)) {
+          next += 1;
+          nextCode = String(next).padStart(5, '0');
+        }
+        return nextCode;
       };
+
+      // Reset Form
+      setNewPartName('');
+      setNewPartInitialStock(0);
+      setNewPartUnit(defaultUnit);
+      setNewPartCode(getNextCodeFromList(newParticularsList));
+      setNewPartDate('');
+      setNewPartBillNo('');
+      if (pinAddParticular && newPartNameInputRef.current) {
+        newPartNameInputRef.current.focus();
+      }
+
+      // Reload particulars list
+      await loadParticulars();
+      
       setSelectedParticular(addedParticular);
     } catch (error: any) {
       console.error('Error creating particular:', error);
@@ -287,6 +314,10 @@ const Stock: React.FC = () => {
       showSuccess('Transaction added to ledger.');
       if (!pinAddTx) {
         setShowAddTransaction(false);
+      } else {
+        if (txQtyInputRef.current) {
+          txQtyInputRef.current.focus();
+        }
       }
 
       // Reset transaction form
@@ -1167,13 +1198,14 @@ const Stock: React.FC = () => {
                 <div className="form-group">
                   <label className="label">Particular Name (Item Description) *</label>
                   <input
+                    autoFocus
+                    ref={newPartNameInputRef}
                     type="text"
                     className="input"
                     value={newPartName}
                     onChange={e => setNewPartName(capitalizeWords(e.target.value))}
                     placeholder="e.g. Rice, Dal, Soap"
                     required
-                    autoFocus
                   />
                 </div>
                 <div className="form-group">
@@ -1314,6 +1346,7 @@ const Stock: React.FC = () => {
                   <label className="label">Quantity *</label>
                   <div className="qty-unit-row">
                     <input
+                      ref={txQtyInputRef}
                       type="number"
                       className="input"
                       value={txQty || ''}
@@ -1683,6 +1716,7 @@ const Stock: React.FC = () => {
             <div className="modal-footer">
               <button
                 type="button"
+                autoFocus
                 className="btn btn-danger"
                 onClick={handleDeleteTransactionSubmit}
                 disabled={deleteTxLoading}

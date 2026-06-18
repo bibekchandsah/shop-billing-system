@@ -208,7 +208,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05" />
               </svg>
             </div>
-            {!collapsed && <span className="sidebar-brand-text">Shop Billing</span>}
+            {!collapsed && <span className="sidebar-brand-text">Invoice Billing</span>}
           </Link>
 
           <button

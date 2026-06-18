@@ -85,6 +85,8 @@ const SupplierLedger: React.FC = () => {
   const editDatePickerRef = useRef<NepaliDatePickerHandle>(null);
   const txDatePickerRef = useRef<NepaliDatePickerHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const newPartyNameInputRef = useRef<HTMLInputElement>(null);
+  const txParticularInputRef = useRef<HTMLInputElement>(null);
 
   const formatBalanceDisplay = (balance: number) => ({
     amount: Math.abs(balance),
@@ -384,11 +386,34 @@ const SupplierLedger: React.FC = () => {
     setShowEditSupplier(true);
   };
 
+  const formatPartyCode = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    return digits ? digits.padStart(4, '0') : '';
+  };
+
+  const getNextPartyCodeFromList = (list: Party[]) => {
+    const usedCodes = new Set(list.map(p => formatPartyCode(p.partyCode || '')).filter(Boolean));
+    let max = 0;
+    usedCodes.forEach((code) => {
+      const value = parseInt(code, 10);
+      if (!Number.isNaN(value)) {
+        max = Math.max(max, value);
+      }
+    });
+    let next = max + 1;
+    let nextCode = String(next).padStart(4, '0');
+    while (usedCodes.has(nextCode)) {
+      next += 1;
+      nextCode = String(next).padStart(4, '0');
+    }
+    return nextCode;
+  };
+
   const openAddSupplier = () => {
     setNewSupplierName('');
     setNewSupplierAddress('');
     setNewSupplierContact('');
-    setNewSupplierCode('');
+    setNewSupplierCode(getNextPartyCodeFromList(suppliers));
     setNewSupplierCodeError('');
     setShowAddSupplier(true);
   };
@@ -460,11 +485,25 @@ const SupplierLedger: React.FC = () => {
       if (!pinAddSupplier) {
         setShowAddSupplier(false);
       } else {
+        const addedParty = {
+          id: partyId,
+          name: payload.name,
+          address: payload.address,
+          contactNumber: payload.contactNumber,
+          partyCode: payload.partyCode,
+          currentBalance: 0
+        } as Party;
+        const newSuppliersList = [...suppliers, addedParty];
+        setSuppliers(newSuppliersList);
+
         setNewSupplierName('');
         setNewSupplierAddress('');
         setNewSupplierContact('');
-        setNewSupplierCode('');
+        setNewSupplierCode(getNextPartyCodeFromList(newSuppliersList));
         setNewSupplierCodeError('');
+        if (newPartyNameInputRef.current) {
+          newPartyNameInputRef.current.focus();
+        }
       }
       setSelectedSupplier({
         id: partyId,
@@ -557,6 +596,13 @@ const SupplierLedger: React.FC = () => {
       showSuccess('Transaction added successfully');
       if (!pinAddTx) {
         setShowAddTransaction(false);
+      } else {
+        setTxParticular('');
+        setTxAmount(0);
+        setTxNote('');
+        if (txParticularInputRef.current) {
+          txParticularInputRef.current.focus();
+        }
       }
       await loadSuppliers();
       await loadLedger(selectedSupplier.id);
@@ -869,9 +915,9 @@ const SupplierLedger: React.FC = () => {
                       <div className="particular-action-buttons">
                         <button
                           className="btn-icon-action btn-edit-row"
-                            onClick={() => void requestAction({ label: 'edit party', onConfirm: openSupplierEdit })}
-                            aria-label="Edit party"
-                            title="Edit party"
+                          onClick={() => void requestAction({ label: 'edit party', onConfirm: openSupplierEdit })}
+                          aria-label="Edit party"
+                          title="Edit party"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -880,9 +926,9 @@ const SupplierLedger: React.FC = () => {
                         </button>
                         <button
                           className="btn-icon-action btn-delete-row"
-                            onClick={() => void requestAction({ label: 'delete party', onConfirm: () => setShowDeleteSupplierConfirm(true) })}
-                            aria-label="Delete party"
-                            title="Delete party"
+                          onClick={() => void requestAction({ label: 'delete party', onConfirm: () => setShowDeleteSupplierConfirm(true) })}
+                          aria-label="Delete party"
+                          title="Delete party"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polyline points="3 6 5 6 21 6" />
@@ -906,13 +952,13 @@ const SupplierLedger: React.FC = () => {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                           </svg>
-                            <span style={{ fontSize: '0.875rem' }}>{selectedSupplier.contactNumber}</span>
+                          <span style={{ fontSize: '0.875rem' }}>{selectedSupplier.contactNumber}</span>
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="lh-right" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-end' }}>
-                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
                       <div style={{ width: '160px' }}>
                         <NepaliDatePickerComponent placeholder="From Date (BS)" value={filterStartDate} onChange={(bs) => setFilterStartDate(bs)} />
                       </div>
@@ -924,7 +970,7 @@ const SupplierLedger: React.FC = () => {
                           Clear
                         </button>
                       )}
-                        <button 
+                      <button
                         onClick={() => printPartyLedger(selectedSupplier!, filteredLedger, settings?.businessName || 'Party Ledger', settings?.businessAddress || '', filterStartDate, filterEndDate)}
                         className="btn btn-primary"
                         style={{ height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -975,12 +1021,12 @@ const SupplierLedger: React.FC = () => {
 
                 <div className="table-container">
                   {loadingLedger ? (
-                      <div className="panel-loader">
+                    <div className="panel-loader">
                       <div className="spinner-small" />
                       <p>Loading party ledger entries...</p>
                     </div>
                   ) : ledger.length === 0 ? (
-                      <div className="panel-empty">
+                    <div className="panel-empty">
                       <p>No transactions recorded for this party.</p>
                     </div>
                   ) : (
@@ -1028,10 +1074,12 @@ const SupplierLedger: React.FC = () => {
 
                                   <button
                                     className="btn-icon-action btn-delete-row"
-                                    onClick={() => void requestAction({ label: 'delete transaction', onConfirm: () => {
-                                      setDeletingTransaction(entry);
-                                      setShowDeleteTransactionConfirm(true);
-                                    } })}
+                                    onClick={() => void requestAction({
+                                      label: 'delete transaction', onConfirm: () => {
+                                        setDeletingTransaction(entry);
+                                        setShowDeleteTransactionConfirm(true);
+                                      }
+                                    })}
                                     aria-label={`Delete transaction ${entry.particular}`}
                                     title="Delete"
                                   >
@@ -1061,15 +1109,15 @@ const SupplierLedger: React.FC = () => {
             <div className="modal-header">
               <h2>Add Party</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setPinAddSupplier(!pinAddSupplier)}
                   title={pinAddSupplier ? "Unpin modal" : "Pin modal to keep it open"}
                   style={{ background: 'none', border: 'none', color: pinAddSupplier ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={pinAddSupplier ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 17v5"/>
-                    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>
+                    <path d="M12 17v5" />
+                    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
                   </svg>
                 </button>
                 <button className="modal-close" onClick={() => setShowAddSupplier(false)}>
@@ -1081,7 +1129,7 @@ const SupplierLedger: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="label">Party Name *</label>
-                  <input autoFocus className="input" value={newSupplierName} onChange={(event) => setNewSupplierName(titleCase(event.target.value))} />
+                  <input autoFocus ref={newPartyNameInputRef} className="input" value={newSupplierName} onChange={(event) => setNewSupplierName(titleCase(event.target.value))} />
                 </div>
                 <div className="form-group">
                   <label className="label">Address *</label>
@@ -1172,15 +1220,15 @@ const SupplierLedger: React.FC = () => {
             <div className="modal-header">
               <h2>Add Transaction</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setPinAddTx(!pinAddTx)}
                   title={pinAddTx ? "Unpin modal" : "Pin modal to keep it open"}
                   style={{ background: 'none', border: 'none', color: pinAddTx ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={pinAddTx ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 17v5"/>
-                    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>
+                    <path d="M12 17v5" />
+                    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
                   </svg>
                 </button>
                 <button className="modal-close" onClick={() => setShowAddTransaction(false)}>
@@ -1208,7 +1256,7 @@ const SupplierLedger: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label className="label">Particular *</label>
-                  <input className="input" value={txParticular} onChange={(event) => setTxParticular(event.target.value)} placeholder="purchase, payment, adjustment" />
+                  <input autoFocus ref={txParticularInputRef} className="input" value={txParticular} onChange={(event) => setTxParticular(event.target.value)} placeholder="purchase, payment, adjustment" />
                 </div>
                 <div className="form-group">
                   <label className="label">Amount *</label>
