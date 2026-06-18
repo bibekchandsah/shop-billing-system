@@ -15,12 +15,6 @@ export interface BackupOptions {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function fmtDate(value: any): string {
-  if (!value) return '';
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  return String(value);
-}
-
 function isInFiscalYear(dateStr: string, fy: string, startMonth: number, endMonth: number): boolean {
   if (!dateStr) return false;
   const parts = dateStr.split('-');
