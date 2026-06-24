@@ -25,7 +25,6 @@ export const printStockLedger = (
         <td>${entry.date}</td>
         <td>${entry.note || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
-        <td class="center">${entry.unit || '—'}</td>
         <td class="right text-success">${entry.debit > 0 ? `${entry.debit}` : '—'}</td>
         <td class="right text-danger">${entry.credit > 0 ? `${entry.credit}` : '—'}</td>
         <td class="right"><strong>${entry.currentStock}</strong></td>
@@ -61,18 +60,27 @@ export const printStockLedger = (
     .meta-label { font-weight: 700; white-space: nowrap; color: #222; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12.5px; }
     thead th {
-      background: #1e3a5f;
-      color: #fff;
+      background: transparent;
+      color: #000;
       padding: 7px 10px;
-      font-weight: 600;
-      border: 1px solid #1e3a5f;
+      font-weight: 700;
+      border: 1px solid #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     thead th.left { text-align: left; }
     thead th.center { text-align: center; }
     thead th.right { text-align: right; }
-    td { padding: 6px 10px; border: 1px solid #ccc; vertical-align: middle; }
+    td {
+      padding: 6px 10px;
+      border-left: 1px solid #000;
+      border-right: 1px solid #000;
+      border-top: none;
+      border-bottom: none;
+      vertical-align: middle;
+      color: #000;
+    }
+    tbody tr:last-child td { border-bottom: 1px solid #000; }
     .center { text-align: center; }
     .right  { text-align: right; }
     .text-success { color: #10b981; }
@@ -119,7 +127,7 @@ export const printStockLedger = (
   <div class="meta-grid">
     <div class="meta-row">
       <span class="meta-label">Item Name:</span>
-      <span>${particular.name}</span>
+      <span>${particular.name} ${particular.defaultUnit || (ledger[0] && ledger[0].unit) ? `(${particular.defaultUnit || ledger[0].unit})` : ''}</span>
     </div>
     <div class="meta-row">
       <span class="meta-label">Date Range:</span>
@@ -133,10 +141,9 @@ export const printStockLedger = (
         <th class="left" style="width:100px;">Date (BS)</th>
         <th class="left">Note / Description</th>
         <th class="center" style="width:90px;">Bill No</th>
-        <th class="center" style="width:70px;">Unit</th>
-        <th class="right" style="width:80px;">Debit (+ In)</th>
-        <th class="right" style="width:80px;">Credit (- Out)</th>
-        <th class="right" style="width:90px;">Running Bal.</th>
+        <th class="right" style="width:90px;">Stock (+ In)</th>
+        <th class="right" style="width:90px;">Stock (- Out)</th>
+        <th class="right" style="width:100px;">Running Bal.</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>

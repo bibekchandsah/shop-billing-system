@@ -68,18 +68,27 @@ export const printCustomerLedger = (
     .meta-right { text-align: right; display: flex; flex-direction: column; gap: 4px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12.5px; }
     thead th {
-      background: #1e3a5f;
-      color: #fff;
+      background: transparent;
+      color: #000;
       padding: 7px 10px;
-      font-weight: 600;
-      border: 1px solid #1e3a5f;
+      font-weight: 700;
+      border: 1px solid #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     thead th.left { text-align: left; }
     thead th.center { text-align: center; }
     thead th.right { text-align: right; }
-    td { padding: 6px 10px; border: 1px solid #ccc; vertical-align: middle; }
+    td {
+      padding: 6px 10px;
+      border-left: 1px solid #000;
+      border-right: 1px solid #000;
+      border-top: none;
+      border-bottom: none;
+      vertical-align: middle;
+      color: #000;
+    }
+    tbody tr:last-child td { border-bottom: 1px solid #000; }
     .center { text-align: center; }
     .right  { text-align: right; }
     .text-success { color: #10b981; }
@@ -155,7 +164,7 @@ export const printCustomerLedger = (
         <th class="center" style="width:90px;">Bill No</th>
         <th class="right" style="width:90px;">Debit</th>
         <th class="right" style="width:90px;">Credit</th>
-        <th class="right" style="width:110px;">Running Balance</th>
+        <th class="right" style="width:110px;">Running Bal.</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
