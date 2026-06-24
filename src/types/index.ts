@@ -57,6 +57,8 @@ export interface AppSettings {
   businessName: string;
   businessAddress: string;
   businessContact: string;
+  /** Custom bill header title shown on bills and PDFs */
+  billTitle: string;
   actionPinHash?: string;
   maxBillNumber: number;
   billNumberFormat: 'numeric' | 'prefix';

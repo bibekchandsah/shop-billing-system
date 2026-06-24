@@ -8,7 +8,8 @@ export const generateBillPDF = (
   businessName: string,
   businessAddress: string,
   businessContact?: string,
-  printFontSize = 13
+  printFontSize = 13,
+  billTitle = 'Estimate Bill'
 ): void => {
   const doc = new jsPDF();
   const scale = Math.max(0.8, Math.min(1.6, printFontSize / 13));
@@ -20,7 +21,7 @@ export const generateBillPDF = (
   // Header
   doc.setFontSize(scaled(20));
   doc.setFont('helvetica', 'bold');
-  doc.text('Estimate Bill', 105, 20, { align: 'center' });
+  doc.text(billTitle, 105, 20, { align: 'center' });
   
   doc.setFontSize(scaled(12));
   doc.setFont('helvetica', 'normal');
@@ -63,9 +64,7 @@ export const generateBillPDF = (
     doc.text(bill.contactNumber, 148, 60);
   }
 
-  // Separator before table
-  doc.setLineWidth(0.3);
-  doc.line(15, 64, 195, 64);
+  // Separator before table removed
   
   // Items table
   const tableData = bill.items.map(item => [
@@ -76,64 +75,95 @@ export const generateBillPDF = (
     formatCurrency(item.amount)
   ]);
 
+  // Pad with empty rows to simulate stretched table borders
+  while (tableData.length < 15) {
+    tableData.push(['', '', '', '', '', '', '', '', '']);
+  }
+
   // Calculate total quantity of items
   const totalQty = bill.items.reduce((sum, item) => sum + item.qty, 0);
   
   autoTable(doc, {
     startY: 68,
-    head: [['S.N.', 'Particulars', 'Qty.', 'Rate', 'Amount']],
+    head: [['S.N.', 'PARTICULARS', 'QTY.', 'RATE', 'AMOUNT']],
     body: tableData,
     theme: 'grid',
     showFoot: 'lastPage',
     headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
       fontStyle: 'bold',
-      halign: 'center'
+      halign: 'center',
+      lineWidth: 0.2,
+      lineColor: [0, 0, 0]
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: scaled(20) },
-      1: { halign: 'left', cellWidth: scaled(70) },
-      2: { halign: 'center', cellWidth: scaled(25) },
-      3: { halign: 'center', cellWidth: scaled(35) },
-      4: { halign: 'center', cellWidth: scaled(35) }
+      0: { halign: 'center', cellWidth: 15 },
+      1: { halign: 'left', cellWidth: 'auto' },
+      2: { halign: 'center', cellWidth: 25 },
+      3: { halign: 'center', cellWidth: 35 },
+      4: { halign: 'center', cellWidth: 35 }
     },
     styles: {
-      fontSize: Math.max(9, scaled(10)),
-      cellPadding: scaled(3)
+      fontSize: 8.5,
+      cellPadding: 1.5,
+      textColor: [0, 0, 0],
+      lineColor: [0, 0, 0],
+      lineWidth: 0.2
+    },
+    bodyStyles: {
+      lineWidth: 0,
+      fillColor: false as any
     },
     foot: [[
-      { content: 'Total', colSpan: 2, styles: { halign: 'right', fillColor: [240, 244, 248], textColor: 17, fontStyle: 'bold' } },
-      { content: `${totalQty}`, styles: { halign: 'center', fillColor: [240, 244, 248], textColor: 17, fontStyle: 'bold' } },
-      { content: '', styles: { fillColor: [240, 244, 248] } },
-      { content: formatCurrency(bill.totalAmount), styles: { halign: 'center', fillColor: [240, 244, 248], textColor: 17, fontStyle: 'bold' } },
+      { content: 'Total', colSpan: 2, styles: { halign: 'right', fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, lineColor: [0, 0, 0] } },
+      { content: `${totalQty}`, styles: { halign: 'center', fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, lineColor: [0, 0, 0] } },
+      { content: '', styles: { fillColor: [255, 255, 255], lineWidth: 0.2, lineColor: [0, 0, 0] } },
+      { content: formatCurrency(bill.totalAmount), styles: { halign: 'center', fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, lineColor: [0, 0, 0] } },
     ]],
     footStyles: {
-      fillColor: [240, 244, 248],
-      textColor: 17
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0]
     },
-    didDrawPage: () => {
-      // keep the table footer aligned like the HTML print preview
+    didDrawCell: (data) => {
+      if (data.section === 'body') {
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.2);
+        doc.line(data.cell.x, data.cell.y, data.cell.x, data.cell.y + data.cell.height);
+        doc.line(data.cell.x + data.cell.width, data.cell.y, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+      }
+      if (data.section === 'head') {
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.2);
+        doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+      }
     }
   });
   
   // Get the final Y position after the table
-  const finalY = (doc as any).lastAutoTable.finalY || 70;
+  let finalY = (doc as any).lastAutoTable.finalY || 70;
   
-  // Amount in words
-  doc.setFont('helvetica', 'normal');
-  doc.text('In Words:', 15, finalY + 20);
+  // If finalY is too close to bottom, add a new page for footer
+  if (finalY > 230) {
+    doc.addPage();
+    finalY = 20;
+  }
   
-  // Split long text into multiple lines
-  const words = bill.totalAmountInWords;
-  const splitWords = doc.splitTextToSize(words, 170);
-  doc.text(splitWords, 15, finalY + 26);
+  // Amount in words box
+  doc.setFont('helvetica', 'bold');
+  doc.text('In Words:', 18, finalY + 8);
+  doc.setFont('helvetica', 'italic');
+  const splitWords = doc.splitTextToSize(bill.totalAmountInWords, 140);
+  doc.text(splitWords, 38, finalY + 8);
   
-  const wordsHeight = splitWords.length * 6;
+  const wordsHeight = splitWords.length * 5 + 3;
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.2);
+  doc.rect(15, finalY + 3, 180, wordsHeight);
   
   if (bill.freeDue) {
     doc.setFont('helvetica', 'normal');
-    doc.text(`Note: ${bill.freeDue}`, 15, finalY + 26 + wordsHeight + 6);
+    doc.text(`Note: ${bill.freeDue}`, 15, finalY + 5 + wordsHeight + 5);
   }
   
   // Signature
@@ -143,9 +173,7 @@ export const generateBillPDF = (
   doc.setFont('helvetica', 'bold');
   doc.text('Authorized Signature', 170, 266, { align: 'center' });
 
-  // Footer
-  doc.setLineWidth(0.5);
-  doc.line(15, 270, 195, 270);
+  // Footer line removed
   
   // Save the PDF
   doc.save(`Bill_${bill.billNo}_${bill.customerName}.pdf`);

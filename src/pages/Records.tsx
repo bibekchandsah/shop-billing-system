@@ -432,14 +432,21 @@ const Records: React.FC = () => {
     }
   };
 
-  const handleDownloadPDF = (bill: Bill) => {
+  // Always fetch fresh settings before printing/downloading so Business Profile changes are reflected
+  const getLatestSettings = async () => {
+    return await getAppSettings(user?.uid || '');
+  };
+
+  const handleDownloadPDF = async (bill: Bill) => {
     try {
+      const latestSettings = await getLatestSettings();
       generateBillPDF(
         bill,
-        settings?.businessName || 'Invoice Billing System',
-        settings?.businessAddress || 'Garuda, Rautahat, Nepal',
-        settings?.businessContact || '',
-        settings?.printFontSize ?? DEFAULT_SETTINGS.printFontSize
+        latestSettings.businessName || 'Invoice Billing System',
+        latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
+        latestSettings.businessContact || '',
+        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
+        latestSettings.billTitle || DEFAULT_SETTINGS.billTitle
       );
       showSuccess('PDF downloaded successfully');
     } catch (error) {
@@ -448,15 +455,22 @@ const Records: React.FC = () => {
     }
   };
 
-  const handlePrintBill = (bill: Bill) => {
-    printBill(
-      bill,
-      settings?.businessName || 'Invoice Billing System',
-      settings?.businessAddress || 'Garuda, Rautahat, Nepal',
-      settings?.businessContact || '',
-      settings?.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
-      settings?.printCopies ?? DEFAULT_SETTINGS.printCopies
-    );
+  const handlePrintBill = async (bill: Bill) => {
+    try {
+      const latestSettings = await getLatestSettings();
+      printBill(
+        bill,
+        latestSettings.businessName || 'Invoice Billing System',
+        latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
+        latestSettings.businessContact || '',
+        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
+        latestSettings.printCopies ?? DEFAULT_SETTINGS.printCopies,
+        latestSettings.billTitle || DEFAULT_SETTINGS.billTitle
+      );
+    } catch (error) {
+      console.error('Error printing bill:', error);
+      showError('Failed to print bill');
+    }
   };
 
   const handleExport = async () => {

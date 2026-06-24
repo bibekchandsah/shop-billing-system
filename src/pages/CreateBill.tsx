@@ -564,7 +564,8 @@ const CreateBill: React.FC = () => {
         latestSettings.businessName || 'Invoice Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
         latestSettings.businessContact || '',
-        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize
+        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
+        latestSettings.billTitle || DEFAULT_SETTINGS.billTitle
       );
       showSuccess('PDF generated successfully!');
       flashAndScroll(customerCodeRef);
@@ -582,7 +583,8 @@ const CreateBill: React.FC = () => {
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
         latestSettings.businessContact || '',
         latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
-        latestSettings.printCopies ?? DEFAULT_SETTINGS.printCopies
+        latestSettings.printCopies ?? DEFAULT_SETTINGS.printCopies,
+        latestSettings.billTitle || DEFAULT_SETTINGS.billTitle
       );
     } catch (error) {
       console.error('Error printing bill:', error);
@@ -696,7 +698,7 @@ const CreateBill: React.FC = () => {
       <div className="container bill-layout-container">
         <div className="bill-form card fade-in">
           <div className="bill-header">
-            <h1>Estimate Bill</h1>
+            <h1>{settings?.billTitle || 'Estimate Bill'}</h1>
             <p className="business-name" style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
               {settings?.businessName || 'Invoice Billing System'}
             </p>

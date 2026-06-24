@@ -11,7 +11,8 @@ export const printBill = (
   businessAddress: string,
   businessContact?: string,
   printFontSize = 13,
-  printCopies = 2
+  printCopies = 2,
+  billTitle = 'Estimate Bill'
 ): void => {
   const win = window.open('', '_blank', 'width=900,height=700');
   if (!win) {
@@ -61,7 +62,7 @@ export const printBill = (
   const renderCopyHtml = () => `
     <div class="print-scale-wrap">
       <div class="header">
-        <h1>Estimate Bill</h1>
+        <h1>${billTitle}</h1>
         <p class="biz-name">${businessName}</p>
         <p class="biz-addr">${businessAddress}${businessContact ? ' | Contact: ' + businessContact : ''}</p>
       </div>
@@ -145,7 +146,7 @@ export const printBill = (
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
       font-size: ${printFontSize}px;
-      color: #111;
+      color: #000;
       background: #fff;
       padding: 2cm 2.5cm;
     }
@@ -153,7 +154,7 @@ export const printBill = (
       transform: scale(${wrapperScale});
       transform-origin: top left;
       width: calc(100% / ${wrapperScale});
-      min-height: calc(255mm / ${wrapperScale});
+      min-height: calc(235mm / ${wrapperScale});
       display: flex;
       flex-direction: column;
       position: relative;
@@ -161,8 +162,8 @@ export const printBill = (
     .header { text-align: center; margin-bottom: 1em; }
     .header h1 { font-size: 2.15em; font-weight: 700; letter-spacing: 0.5px; }
     .header .biz-name { font-size: 1.1em; font-weight: 600; margin-top: 0.2em; }
-    .header .biz-addr { font-size: 0.95em; color: #555; margin-top: 0.15em; }
-    hr { border: none; border-top: 1.5px solid #333; margin: 10px 0; }
+    .header .biz-addr { font-size: 0.95em; color: #000; margin-top: 0.15em; }
+    hr { border: none; border-top: 1.5px solid #000; margin: 10px 0; }
     .meta-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -171,24 +172,25 @@ export const printBill = (
       font-size: 0.95em;
     }
     .meta-row { display: flex; gap: 5px; align-items: baseline; }
-    .meta-label { font-weight: 700; white-space: nowrap; color: #222; }
+    .meta-label { font-weight: 700; white-space: nowrap; color: #000; }
     .meta-full { grid-column: 1 / -1; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 0.75em; font-size: 0.95em; flex-grow: 1; }
     thead th {
-      background: #1e3a5f;
-      color: #fff;
+      background: transparent;
+      color: #000;
       padding: 0.55em 0.8em;
-      font-weight: 600;
+      font-weight: 700;
+      text-transform: uppercase;
       text-align: center;
-      border: 1px solid #1e3a5f;
+      border: 1px solid #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     thead th.left { text-align: left; }
     tbody td {
       padding: 0.45em 0.8em;
-      border-left: 1px solid #ccc;
-      border-right: 1px solid #ccc;
+      border-left: 1px solid #000;
+      border-right: 1px solid #000;
       border-top: none;
       border-bottom: none;
       vertical-align: middle;
@@ -200,44 +202,44 @@ export const printBill = (
     .right  { text-align: right; }
     tfoot td {
       padding: 0.55em 0.8em;
-      border: 1px solid #ccc;
-      background: #f0f4f8;
+      border: 1px solid #000;
+      background: transparent;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
       font-size: 0.95em;
     }
     tr.total-row { page-break-inside: avoid; break-inside: avoid; }
     tbody tr.total-row td {
-      background: #f0f4f8;
+      background: transparent;
       font-weight: 700;
       font-size: 0.95em;
       padding: 0.55em 0.8em;
-      border-top: 1px solid #ccc;
-      border-bottom: 1px solid #ccc;
-      border-left: 1px solid #ccc;
-      border-right: 1px solid #ccc;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
+      border-left: 1px solid #000;
+      border-right: 1px solid #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .total-label { text-align: right; }
     .total-value { font-weight: 700; }
     .words {
-      background: #f8f9fa;
-      border: 1px solid #ddd;
+      background: transparent;
+      border: 1px solid #000;
       border-radius: 4px;
       padding: 0.5em 0.8em;
       margin-bottom: 0.75em;
       font-size: 0.95em;
     }
     .words strong { font-weight: 600; }
-    .words em { font-style: italic; color: #444; }
+    .words em { font-style: italic; color: #000; }
     .payment { display: flex; gap: 2em; flex-wrap: wrap; margin-bottom: 0.75em; font-size: 0.95em; }
     .payment-row { display: flex; gap: 6px; }
-    .signature { margin-top: 2em; display: flex; justify-content: flex-end; page-break-inside: avoid; }
+    .signature { margin-top: 5em; display: flex; justify-content: flex-end; page-break-inside: avoid; }
     .sig-box { width: 12em; text-align: center; }
-    .sig-line { border-top: 1px solid #111; margin-bottom: 5px; }
+    .sig-line { border-top: 1px solid #000; margin-bottom: 5px; }
     .sig-text { font-size: 1em; font-weight: 600; }
-    .footer { text-align: center; font-style: italic; font-size: 0.9em; color: #555; margin-top: 0.5em; }
+    .footer { text-align: center; font-style: italic; font-size: 0.9em; color: #000; margin-top: 0.5em; }
     /* Screen-only toolbar */
     .toolbar {
       position: fixed;
@@ -290,7 +292,7 @@ export const printBill = (
       .print-scale-wrap { 
         transform: none !important; 
         width: auto !important; 
-        min-height: 255mm !important;
+        min-height: 235mm !important;  /*table height adjustment */
       }
       @page { size: A4 portrait; margin: 1.5cm 2cm; }
       .page-break {
