@@ -164,6 +164,8 @@ export const addLedgerEntry = async (
 /**
  * Automatically records credits (stock outputs) for items in a saved bill.
  * Creates particulars with negative stock dynamically if they don't already exist.
+ * Items with the same particularId are merged so only ONE transaction touches each
+ * stock document — avoiding Firestore optimistic-concurrency conflicts.
  */
 export const recordBillInventory = async (
   userId: string,
@@ -173,16 +175,35 @@ export const recordBillInventory = async (
 ): Promise<void> => {
   if (!userId || items.length === 0) return;
 
+  // Merge rows that refer to the same stock particular so we never run two
+  // concurrent transactions on the same Firestore document (which would cause
+  // "stored version does not match required base version" errors).
+  const merged = new Map<string, { name: string; totalQty: number; unit: string }>();
   for (const item of items) {
     const name = item.particulars.trim();
     const particularId = name.toLowerCase().trim();
     if (!particularId) continue;
+    const existing = merged.get(particularId);
+    if (existing) {
+      existing.totalQty += item.qty;
+    } else {
+      merged.set(particularId, { name, totalQty: item.qty, unit: item.unit || '' });
+    }
+  }
 
-    const particularRef = particularDoc(userId, particularId);
+  const mergedEntries = Array.from(merged.entries());
+  if (mergedEntries.length === 0) return;
 
-    try {
-      await runTransaction(db, async (transaction) => {
-        const snap = await transaction.get(particularRef);
+  try {
+    await runTransaction(db, async (transaction) => {
+      // 1. Fetch all stock particular documents inside the transaction in parallel (Reads)
+      const stockRefs = mergedEntries.map(([particularId]) => particularDoc(userId, particularId));
+      const snaps = await Promise.all(stockRefs.map(ref => transaction.get(ref)));
+
+      // 2. Perform calculations and write all updates (Writes)
+      snaps.forEach((snap, idx) => {
+        const [particularId, { name, totalQty, unit }] = mergedEntries[idx];
+        const particularRef = stockRefs[idx];
         let currentStock = 0;
 
         if (!snap.exists()) {
@@ -190,7 +211,7 @@ export const recordBillInventory = async (
           transaction.set(particularRef, {
             name,
             currentStock: 0,
-            defaultUnit: item.unit || null,
+            defaultUnit: unit || null,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now()
           });
@@ -198,16 +219,16 @@ export const recordBillInventory = async (
           currentStock = snap.data().currentStock || 0;
         }
 
-        const newStock = currentStock - item.qty;
+        const newStock = currentStock - totalQty;
 
-        // Add ledger record
+        // Add a single merged ledger record for this bill
         const entryRef = doc(ledgerCol(userId, particularId));
         transaction.set(entryRef, {
           date: dateBs,
           billNo,
           debit: 0,
-          credit: item.qty,
-          unit: item.unit || undefined,
+          credit: totalQty,
+          unit: unit || undefined,
           currentStock: newStock,
           note: `Sale (Bill #${billNo})`,
           createdAt: Timestamp.now()
@@ -219,11 +240,13 @@ export const recordBillInventory = async (
           updatedAt: Timestamp.now()
         });
       });
-    } catch (err) {
-      console.error(`Failed to record stock deduction for item "${name}":`, err);
-    }
+    });
+  } catch (err) {
+    console.error(`Failed to record stock deduction:`, err);
+    throw err;
   }
 };
+
 
 /**
  * Updates the display name for a stock particular document
@@ -424,18 +447,32 @@ export const removeBillInventory = async (
 ): Promise<void> => {
   if (!userId || !billNo || !items || items.length === 0) return;
 
+  // Deduplicate items by particularId so we only query each particular once
+  const uniqueParticulars = new Map<string, string>(); // particularId -> originalName
   for (const item of items) {
     const name = item.particulars.trim();
     const particularId = name.toLowerCase().trim();
     if (!particularId) continue;
+    uniqueParticulars.set(particularId, name);
+  }
 
-    const particularRef = particularDoc(userId, particularId);
+  const particularEntries = Array.from(uniqueParticulars.entries());
+  if (particularEntries.length === 0) return;
 
-    try {
-      const q = query(ledgerCol(userId, particularId), orderBy('createdAt', 'asc'));
-      const snap = await getDocs(q);
+  try {
+    // 1. Fetch all ledger subcollections in parallel
+    const ledgerSnaps = await Promise.all(
+      particularEntries.map(([particularId]) => {
+        const q = query(ledgerCol(userId, particularId), orderBy('createdAt', 'asc'));
+        return getDocs(q);
+      })
+    );
 
-      await runTransaction(db, async (transaction) => {
+    // 2. Perform all deletions and updates in a single runTransaction
+    await runTransaction(db, async (transaction) => {
+      particularEntries.forEach(([particularId], idx) => {
+        const snap = ledgerSnaps[idx];
+        const particularRef = particularDoc(userId, particularId);
         let runningStock = 0;
         let modified = false;
 
@@ -465,9 +502,10 @@ export const removeBillInventory = async (
           });
         }
       });
-    } catch (err) {
-      console.error(`Failed to remove stock ledger entries for item "${name}":`, err);
-    }
+    });
+  } catch (err) {
+    console.error(`Failed to remove stock ledger entries for bill ${billNo}:`, err);
+    throw err;
   }
 };
 

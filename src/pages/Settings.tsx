@@ -491,6 +491,17 @@ const Settings: React.FC = () => {
             
             <div className="form-grid">
               <div className="form-group full-width">
+                <label className="label">Bill Title</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={settings.billTitle ?? 'Estimate Bill'}
+                  onChange={e => handleFieldChange('billTitle', e.target.value)}
+                  placeholder="e.g. Estimate Bill, Tax Invoice, Receipt"
+                />
+              </div>
+
+              <div className="form-group full-width">
                 <label className="label">Business Name *</label>
                 <input
                   type="text"
@@ -524,19 +535,8 @@ const Settings: React.FC = () => {
                   placeholder="e.g. +977-98XXXXXXXX"
                 />
               </div>
-
-              <div className="form-group full-width">
-                <label className="label">Bill Title</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={settings.billTitle ?? 'Estimate Bill'}
-                  onChange={e => handleFieldChange('billTitle', e.target.value)}
-                  placeholder="e.g. Estimate Bill, Tax Invoice, Receipt"
-                />
-                <small className="help-text">This title appears at the top of every printed bill and downloaded PDF.</small>
-              </div>
             </div>
+            <small className="help-text">This details will appears at the top of every printed bill and downloaded PDF.</small>
           </div>
 
           {/* Section 2: Invoice & Numbering Settings */}

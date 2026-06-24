@@ -13,12 +13,43 @@ export const printBill = (
   printFontSize = 13,
   printCopies = 2,
   billTitle = 'Estimate Bill'
-): void => {
-  const win = window.open('', '_blank', 'width=900,height=700');
-  if (!win) {
-    alert('Pop-up blocked. Please allow pop-ups for this site and try again.');
-    return;
-  }
+): Promise<void> => {
+  return new Promise((resolve) => {
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) {
+      alert('Pop-up blocked. Please allow pop-ups for this site and try again.');
+      resolve();
+      return;
+    }
+
+    let cleanedUp = false;
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      clearInterval(timer);
+      clearTimeout(fallbackTimeout);
+      window.removeEventListener('message', handleMessage);
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'PRINT_DONE') {
+        cleanup();
+        resolve();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
+    const timer = setInterval(() => {
+      if (win.closed) {
+        cleanup();
+        resolve();
+      }
+    }, 500);
+
+    const fallbackTimeout = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, 30000);
 
   // Calculate total quantity of items
   const totalQty = bill.items.reduce((sum, item) => sum + item.qty, 0);
@@ -316,12 +347,26 @@ export const printBill = (
 
   <script>
     // Auto-open print dialog once the page has fully rendered
-    window.onload = function () { window.print(); };
+    window.onload = function () {
+      window.print();
+    };
+    window.onafterprint = function () {
+      if (window.opener) {
+        window.opener.postMessage({ type: 'PRINT_DONE' }, '*');
+      }
+    };
+    // Also post message on unload/close just to be sure
+    window.onunload = function () {
+      if (window.opener) {
+        window.opener.postMessage({ type: 'PRINT_DONE' }, '*');
+      }
+    };
   </script>
 </body>
 </html>`;
 
-  win.document.write(html);
-  win.document.close();
-  win.focus();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  });
 };

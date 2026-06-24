@@ -172,11 +172,14 @@ export const recordBillCustomerLedger = async (
   const ledgerRef = doc(customerLedgerCol(userId, customerId), entryId);
   const customerRef = customerDoc(userId, customerId);
 
-  const existingEntries = await getCustomerLedgerEntries(userId, customerId);
-  const previousBalance = existingEntries.length > 0 ? existingEntries[existingEntries.length - 1].currentBalance : 0;
-  const newBalance = previousBalance + (bill.totalAmount || 0);
-
   await runTransaction(db, async (transaction) => {
+    // Read the customer doc inside the transaction to get the current balance
+    const customerSnap = await transaction.get(customerRef);
+    const previousBalance = customerSnap.exists()
+      ? Number(customerSnap.data().currentBalance || 0)
+      : 0;
+    const newBalance = previousBalance + (bill.totalAmount || 0);
+
     transaction.set(customerRef, {
       name: bill.customerName.trim(),
       address: bill.address.trim(),

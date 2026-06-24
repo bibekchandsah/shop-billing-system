@@ -46,12 +46,14 @@ const Records: React.FC = () => {
   // View modal
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [modalLoadingAction, setModalLoadingAction] = useState<'pdf' | 'print' | null>(null);
 
   // Edit modal
   const [editBill, setEditBill] = useState<Bill | null>(null);
   const [originalBill, setOriginalBill] = useState<Bill | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { user } = useAuth();
@@ -400,7 +402,7 @@ const Records: React.FC = () => {
   };
 
   const handleDeleteBill = async (id: string) => {
-    const billToDelete = bills.find(b => b.id === id) || allBills.find(b => b.id === id);
+    const billToDelete = bills.find((b) => b.id === id) || allBills.find((b) => b.id === id);
     if (!billToDelete) {
       showError('Could not find the bill record.');
       return;
@@ -410,6 +412,7 @@ const Records: React.FC = () => {
       return;
     }
 
+    setDeletingId(id);
     try {
       // 1. Delete from Firestore
       await deleteBill(user?.uid || '', id);
@@ -429,6 +432,8 @@ const Records: React.FC = () => {
     } catch (error) {
       console.error('Error deleting bill:', error);
       showError('Failed to delete bill');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -438,27 +443,42 @@ const Records: React.FC = () => {
   };
 
   const handleDownloadPDF = async (bill: Bill) => {
+    setModalLoadingAction('pdf');
     try {
       const latestSettings = await getLatestSettings();
-      generateBillPDF(
-        bill,
-        latestSettings.businessName || 'Invoice Billing System',
-        latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
-        latestSettings.businessContact || '',
-        latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
-        latestSettings.billTitle || DEFAULT_SETTINGS.billTitle
-      );
-      showSuccess('PDF downloaded successfully');
+      // Defer synchronous PDF work to next tick so React can repaint the button
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          try {
+            generateBillPDF(
+              bill,
+              latestSettings.businessName || 'Invoice Billing System',
+              latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
+              latestSettings.businessContact || '',
+              latestSettings.printFontSize ?? DEFAULT_SETTINGS.printFontSize,
+              latestSettings.billTitle || DEFAULT_SETTINGS.billTitle
+            );
+            showSuccess('PDF downloaded successfully');
+          } catch (error) {
+            console.error('Error generating PDF:', error);
+            showError('Failed to generate PDF');
+          }
+          resolve();
+        }, 0);
+      });
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error('Error fetching settings for PDF:', error);
       showError('Failed to generate PDF');
+    } finally {
+      setModalLoadingAction(null);
     }
   };
 
   const handlePrintBill = async (bill: Bill) => {
+    setModalLoadingAction('print');
     try {
       const latestSettings = await getLatestSettings();
-      printBill(
+      await printBill(
         bill,
         latestSettings.businessName || 'Invoice Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
@@ -470,6 +490,8 @@ const Records: React.FC = () => {
     } catch (error) {
       console.error('Error printing bill:', error);
       showError('Failed to print bill');
+    } finally {
+      setModalLoadingAction(null);
     }
   };
 
@@ -894,11 +916,16 @@ const Records: React.FC = () => {
                           onClick={() => void requestAction({ label: 'delete bill', onConfirm: () => handleDeleteBill(bill.id) })}
                           className="btn btn-sm btn-danger"
                           title="Delete bill"
+                          disabled={deletingId === bill.id}
                         >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
+                          {deletingId === bill.id ? (
+                            <span className="loading-spinner-small"></span>
+                          ) : (
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -1087,23 +1114,53 @@ const Records: React.FC = () => {
               </div>
 
               <div className="modal-footer">
-                <button onClick={() => handlePrintBill(selectedBill)} className="btn btn-info">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="6 9 6 2 18 2 18 9" />
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                    <rect x="6" y="14" width="12" height="8" />
-                  </svg>
-                  Print
+                <button
+                  onClick={() => handlePrintBill(selectedBill)}
+                  className="btn btn-info"
+                  disabled={modalLoadingAction !== null}
+                >
+                  {modalLoadingAction === 'print' ? (
+                    <>
+                      <span className="loading-spinner-small" style={{ marginRight: '8px' }}></span>
+                      Printing...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="6 9 6 2 18 2 18 9" />
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                        <rect x="6" y="14" width="12" height="8" />
+                      </svg>
+                      Print
+                    </>
+                  )}
                 </button>
-                <button onClick={() => handleDownloadPDF(selectedBill)} className="btn btn-primary">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  Download PDF
+                <button
+                  onClick={() => handleDownloadPDF(selectedBill)}
+                  className="btn btn-primary"
+                  disabled={modalLoadingAction !== null}
+                >
+                  {modalLoadingAction === 'pdf' ? (
+                    <>
+                      <span className="loading-spinner-small" style={{ marginRight: '8px' }}></span>
+                      Downloading PDF...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download PDF
+                    </>
+                  )}
                 </button>
-                <button onClick={() => setShowModal(false)} className="btn btn-secondary">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="btn btn-secondary"
+                  disabled={modalLoadingAction !== null}
+                >
                   Close
                 </button>
               </div>

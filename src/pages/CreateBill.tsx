@@ -29,7 +29,7 @@ const CreateBill: React.FC = () => {
     { sn: 1, particulars: '', qty: 0, unit: DEFAULT_SETTINGS.unitCategories[0] ?? '', rate: 0, amount: 0 }
   ]);
   const [freeDue, setFreeDue] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<'save' | 'pdf' | 'print' | null>(null);
   const [saved, setSaved] = useState(false);
   const [cleared, setCleared] = useState(false);
   const [stockParticulars, setStockParticulars] = useState<StockParticular[]>([]);
@@ -92,6 +92,8 @@ const CreateBill: React.FC = () => {
   };
 
   const getLatestPrintSettings = async () => {
+    // Re-use already-loaded settings if available; only fetch from Firestore if missing
+    if (settings) return settings;
     const latestSettings = await getAppSettings(user?.uid || '');
     setSettings(latestSettings);
     return latestSettings;
@@ -484,7 +486,7 @@ const CreateBill: React.FC = () => {
     options: { autoClear: boolean; manageLoading: boolean }
   ): Promise<boolean> => {
     if (options.manageLoading) {
-      setLoading(true);
+      setLoadingAction('save');
     }
 
     try {
@@ -530,9 +532,12 @@ const CreateBill: React.FC = () => {
       bill.customerCode = customerCodeToUse;
       const { id, createdAt, updatedAt, ...billForSave } = bill;
 
+      // Save the bill document first, then run stock + customer ledger updates in parallel
       await createBill(billForSave);
-      await recordBillInventory(user?.uid || '', bill.billNo, bsDate, validItems);
-      await syncBillCustomerLedger(user?.uid || '', null, billForSave);
+      await Promise.all([
+        recordBillInventory(user?.uid || '', bill.billNo, bsDate, validItems),
+        syncBillCustomerLedger(user?.uid || '', null, billForSave),
+      ]);
 
       showSuccess('Bill saved successfully!');
       setSaved(true);
@@ -553,7 +558,7 @@ const CreateBill: React.FC = () => {
       return false;
     } finally {
       if (options.manageLoading) {
-        setLoading(false);
+        setLoadingAction(null);
       }
     }
   };
@@ -576,9 +581,9 @@ const CreateBill: React.FC = () => {
     }
   };
 
-  const printCore = (payload: BillPayload, latestSettings: AppSettings) => {
+  const printCore = async (payload: BillPayload, latestSettings: AppSettings) => {
     try {
-      printBill(
+      await printBill(
         payload.bill,
         latestSettings.businessName || 'Invoice Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
@@ -595,36 +600,65 @@ const CreateBill: React.FC = () => {
   };
 
   const handleSaveBill = async () => {
-    const payload = await buildBillPayload();
-    if (!payload) return;
-    await saveBillCore(payload, { autoClear: true, manageLoading: true });
+    if (loadingAction) return;
+    setLoadingAction('save');
+    try {
+      const payload = await buildBillPayload();
+      if (!payload) return;
+      await saveBillCore(payload, { autoClear: true, manageLoading: false });
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
   const handleGeneratePDF = async () => {
-    const payload = await buildBillPayload();
-    if (!payload) return;
+    if (loadingAction) return;
+    // Set loading state FIRST so the button re-renders before any async work
+    setLoadingAction('pdf');
     try {
+      const payload = await buildBillPayload();
+      if (!payload) return;
       const latestSettings = await getLatestPrintSettings();
-      generatePdfCore(payload, latestSettings);
+      // Defer synchronous PDF work to next tick so React can repaint the button
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          try {
+            generatePdfCore(payload, latestSettings);
+          } catch (err) {
+            console.error('Error generating PDF:', err);
+            showError('Failed to generate PDF. Please try again.');
+          }
+          resolve();
+        }, 0);
+      });
     } catch (error) {
       console.error('Error generating PDF:', error);
       showError('Failed to generate PDF. Please try again.');
+    } finally {
+      setLoadingAction(null);
     }
   };
 
   const handlePrint = async () => {
-    const payload = await buildBillPayload();
-    if (!payload) return;
+    if (loadingAction) return;
+    // Set loading state FIRST so the button re-renders before any async work
+    setLoadingAction('print');
     try {
+      const payload = await buildBillPayload();
+      if (!payload) return;
       const latestSettings = await getLatestPrintSettings();
-      printCore(payload, latestSettings);
+      await printCore(payload, latestSettings);
     } catch (error) {
       console.error('Error printing bill:', error);
       showError('Failed to print bill. Please try again.');
+    } finally {
+      setLoadingAction(null);
     }
   };
 
   const handlePrimaryAction = async () => {
+    if (loadingAction) return;
+    // Use cached settings first; only fetch from Firestore if not yet loaded
     const latestSettings = await getLatestPrintSettings();
     const primaryAction = latestSettings.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
     const actions = new Set<BillAction>([primaryAction]);
@@ -634,33 +668,35 @@ const CreateBill: React.FC = () => {
     if (latestSettings.billActionAutoPrint) actions.add('print');
     if (latestSettings.billActionAutoClear) actions.add('clear');
 
-    const payload = await buildBillPayload();
-    if (!payload) return;
+    // Set loading Action based on primary action
+    let activeAction: 'save' | 'pdf' | 'print' = 'save';
+    if (primaryAction === 'pdf') activeAction = 'pdf';
+    else if (primaryAction === 'print') activeAction = 'print';
 
-    const manageLoading = actions.has('save');
-    if (manageLoading) {
-      setLoading(true);
-    }
+    setLoadingAction(activeAction);
 
-    let saveOk = true;
-    if (actions.has('save')) {
-      saveOk = await saveBillCore(payload, { autoClear: false, manageLoading: false });
-    }
+    try {
+      const payload = await buildBillPayload();
+      if (!payload) return;
 
-    if (saveOk) {
-      if (actions.has('pdf')) {
-        generatePdfCore(payload, latestSettings);
+      let saveOk = true;
+      if (actions.has('save')) {
+        saveOk = await saveBillCore(payload, { autoClear: false, manageLoading: false });
       }
-      if (actions.has('print')) {
-        printCore(payload, latestSettings);
-      }
-      if (actions.has('clear')) {
-        await handleClearForm();
-      }
-    }
 
-    if (manageLoading) {
-      setLoading(false);
+      if (saveOk) {
+        if (actions.has('pdf')) {
+          generatePdfCore(payload, latestSettings);
+        }
+        if (actions.has('print')) {
+          await printCore(payload, latestSettings);
+        }
+        if (actions.has('clear')) {
+          await handleClearForm();
+        }
+      }
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -689,6 +725,7 @@ const CreateBill: React.FC = () => {
   const primaryBillAction = settings?.billPrimaryAction ?? DEFAULT_SETTINGS.billPrimaryAction;
   const isPrimaryAction = (action: BillPrimaryAction) => primaryBillAction === action;
   const unitOptions = settings?.unitCategories ?? DEFAULT_SETTINGS.unitCategories;
+  const isLoading = loadingAction !== null;
 
   const hasValidItem = items.some(item => 
     item.particulars.trim() !== '' && Number(item.qty) > 0 && Number(item.rate) > 0
@@ -1047,7 +1084,7 @@ const CreateBill: React.FC = () => {
               <button
               onClick={isPrimaryAction('save') ? handlePrimaryAction : handleSaveBill}
               className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
-              disabled={loading}
+              disabled={isLoading}
             >
               {saved ? (
                 <>
@@ -1063,7 +1100,7 @@ const CreateBill: React.FC = () => {
                     <polyline points="17 21 17 13 7 13 7 21" />
                     <polyline points="7 3 7 8 15 8" />
                   </svg>
-                  {loading ? 'Saving...' : 'Save Bill'}
+                  {loadingAction === 'save' ? 'Saving...' : 'Save Bill'}
                 </>
               )}
             </button>
@@ -1071,30 +1108,30 @@ const CreateBill: React.FC = () => {
             <button
               onClick={isPrimaryAction('pdf') ? handlePrimaryAction : handleGeneratePDF}
               className="btn btn-primary"
-              disabled={loading}
+              disabled={isLoading}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Generate PDF
+              {loadingAction === 'pdf' ? 'Generating...' : 'Generate PDF'}
             </button>
 
             <button
               onClick={isPrimaryAction('print') ? handlePrimaryAction : handlePrint}
               className="btn btn-info"
-              disabled={loading}
+              disabled={isLoading}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                 <rect x="6" y="14" width="12" height="8" />
               </svg>
-              Print
+              {loadingAction === 'print' ? 'Printing...' : 'Print'}
             </button>
 
-            <button onClick={handleClearForm} className={`btn btn-secondary ${cleared ? 'btn-feedback-clear' : ''}`} disabled={loading}>
+            <button onClick={handleClearForm} className={`btn btn-secondary ${cleared ? 'btn-feedback-clear' : ''}`} disabled={isLoading}>
               {cleared ? (
                 <>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1124,8 +1161,8 @@ const CreateBill: React.FC = () => {
                 <button
                   onClick={handleSaveBill}
                   className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
-                  disabled={loading}
-                  title={loading ? 'Saving...' : 'Save Bill'}
+                  disabled={isLoading}
+                  title={loadingAction === 'save' ? 'Saving...' : 'Save Bill'}
                 >
                   {saved ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1145,8 +1182,8 @@ const CreateBill: React.FC = () => {
                 <button
                   onClick={handleGeneratePDF}
                   className="btn btn-primary"
-                  disabled={loading}
-                  title="Generate PDF"
+                  disabled={isLoading}
+                  title={loadingAction === 'pdf' ? 'Generating PDF...' : 'Generate PDF'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -1160,8 +1197,8 @@ const CreateBill: React.FC = () => {
                 <button
                   onClick={handlePrint}
                   className="btn btn-info"
-                  disabled={loading}
-                  title="Print Bill"
+                  disabled={isLoading}
+                  title={loadingAction === 'print' ? 'Printing...' : 'Print Bill'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="6 9 6 2 18 2 18 9" />
@@ -1174,7 +1211,7 @@ const CreateBill: React.FC = () => {
               <button
                 onClick={handleClearForm}
                 className={`btn btn-secondary ${cleared ? 'btn-feedback-clear' : ''}`}
-                disabled={loading}
+                disabled={isLoading}
                 title="Clear Form"
               >
                 {cleared ? (
@@ -1196,8 +1233,8 @@ const CreateBill: React.FC = () => {
                 <button
                   onClick={handlePrimaryAction}
                   className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
-                  disabled={loading}
-                  title={loading ? 'Saving...' : 'Save Bill (Primary)'}
+                  disabled={isLoading}
+                  title={loadingAction === 'save' ? 'Saving...' : 'Save Bill (Primary)'}
                 >
                   {saved ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1216,8 +1253,8 @@ const CreateBill: React.FC = () => {
                 <button
                   onClick={handlePrimaryAction}
                   className="btn btn-primary"
-                  disabled={loading}
-                  title="Generate PDF (Primary)"
+                  disabled={isLoading}
+                  title={loadingAction === 'pdf' ? 'Generating PDF...' : 'Generate PDF (Primary)'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -1230,8 +1267,8 @@ const CreateBill: React.FC = () => {
                 <button
                   onClick={handlePrimaryAction}
                   className="btn btn-info"
-                  disabled={loading}
-                  title="Print Bill (Primary)"
+                  disabled={isLoading}
+                  title={loadingAction === 'print' ? 'Printing...' : 'Print Bill (Primary)'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="6 9 6 2 18 2 18 9" />
