@@ -13,6 +13,7 @@ import Records from './pages/Records';
 import PartyLedger from './pages/PartyLedger';
 import Settings from './pages/Settings';
 import Stock from './pages/Stock';
+import QuickEntry from './pages/QuickEntry';
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -42,6 +43,7 @@ function AppRoutes() {
                 <Route path="/customers" element={<CustomerLedger />} />
                 <Route path="/parties" element={<PartyLedger />} />
                 <Route path="/create-bill" element={<CreateBill />} />
+                <Route path="/quick-entry" element={<QuickEntry />} />
                 <Route path="/records" element={<Records />} />
                 <Route path="/stock" element={<Stock />} />
                 <Route path="/settings" element={<Settings />} />

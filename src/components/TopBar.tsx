@@ -48,6 +48,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/customers': 'Customers',
   '/parties': 'Parties',
   '/create-bill': 'Create Bill',
+  '/quick-entry': 'Quick Entry',
   '/records': 'Records',
   '/stock': 'Stock',
   '/settings': 'Settings',

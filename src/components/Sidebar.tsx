@@ -15,6 +15,11 @@ const TOOLTIP_CONTENT: Record<string, { label: string; description: string; tag:
     description: 'Smart Invoice — Dual English/Nepali calendar support, automated VAT/Discount math, and instant print/PDF downloads.',
     tag: '✨ SMART BILLING'
   },
+  'Quick Entry': {
+    label: 'Quick Entry',
+    description: 'Fast entry panel to add stock particulars, stock transactions, customer profiles, customer transactions, party profiles, and party transactions in one click.',
+    tag: '⚡ QUICK ACTIONS'
+  },
   'Records': {
     label: 'Records Archive',
     description: 'Advanced Archive — Complete billing history, dynamic filters, secure Firestore backups, and print re-generation.',
@@ -54,6 +59,16 @@ const NAV_ITEMS = [
         <polyline points="14 2 14 8 20 8" />
         <line x1="12" y1="18" x2="12" y2="12" />
         <line x1="9" y1="15" x2="15" y2="15" />
+      </svg>
+    ),
+  },
+  {
+    to: '/quick-entry',
+    label: 'Quick Entry',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 5v14" />
+        <path d="M5 12h14" />
       </svg>
     ),
   },
