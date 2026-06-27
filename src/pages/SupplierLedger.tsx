@@ -11,6 +11,7 @@ import type { Party, PartyLedgerEntry, SupplierLedgerEntry } from '../types';
 import { printPartyLedger } from '../utils/printPartyLedger';
 import {
   addPartyLedgerEntry,
+  checkPartyExists,
   deletePartyLedgerEntry,
   deletePartyProfile,
   buildPartyId,
@@ -178,17 +179,59 @@ const SupplierLedger: React.FC = () => {
       showError('No parties to export.');
       return;
     }
-    showSuccess('Preparing party ledger data for export...');
+    showSuccess('Preparing party data for export...');
+    try {
+      const exportRows: any[] = [];
+      for (const party of suppliers) {
+        const entries = await getPartyLedgerEntries(user?.uid || '', party.id);
+        const firstEntry = entries.length > 0 ? entries[0] : null;
+        exportRows.push({
+          "party name": party.name || '',
+          "address": party.address || '',
+          "contact number": party.contactNumber || '',
+          "party ID": party.partyCode || '',
+          "current balance": party.currentBalance ?? '',
+          "opening amount": firstEntry ? (firstEntry.debit ?? '') : '',
+          "date": firstEntry ? (firstEntry.date || '') : '',
+          "particular": firstEntry ? (firstEntry.particular || '') : '',
+          "bill number": firstEntry ? (firstEntry.billNo || '') : '',
+        });
+      }
+
+      const csv = Papa.unparse(exportRows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', 'party_list.csv');
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      showSuccess(`Parties exported successfully (${exportRows.length} records).`);
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Failed to export party data.');
+    }
+  };
+
+  const handleExportFull = async () => {
+    if (suppliers.length === 0) {
+      showError('No parties to export.');
+      return;
+    }
+    showSuccess('Preparing full party backup...');
     try {
       const exportRows: any[] = [];
       for (const party of suppliers) {
         const entries = await getPartyLedgerEntries(user?.uid || '', party.id);
         exportRows.push({
-          partyId: party.id,
-          name: party.name,
-          address: party.address,
-          contactNumber: party.contactNumber,
-          currentBalance: party.currentBalance,
+          "party ID": party.partyCode || '',
+          "party name": party.name || '',
+          "address": party.address || '',
+          "contact number": party.contactNumber || '',
+          "current balance": party.currentBalance ?? '',
           ledger_json: JSON.stringify(entries.map(e => ({
             date: e.date,
             particular: e.particular,
@@ -212,7 +255,7 @@ const SupplierLedger: React.FC = () => {
       a.click();
       document.body.removeChild(a);
 
-      showSuccess(`Parties exported successfully (${exportRows.length} records).`);
+      showSuccess(`Full party backup exported (${exportRows.length} records).`);
     } catch (error) {
       console.error('Export error:', error);
       showError('Failed to export party data.');
@@ -240,33 +283,95 @@ const SupplierLedger: React.FC = () => {
 
           let importedCount = 0;
           for (const row of rows) {
-            if (!row.name) continue;
+            const name = (row['party name'] || row.name || '').trim();
+            if (!name) continue;
 
-            const name = row.name.trim();
-            const partyId = row.partyId || name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const rawCode = (row['party ID'] || row.partyId || '').trim();
+            const contactNumber = (row['contact number'] || row.contactNumber || '').trim();
+            const address = (row.address || '').trim();
+            const rawBalance = row['current balance'] ?? row.currentBalance;
+            const currentBalance = rawBalance !== '' && rawBalance != null ? parseFloat(rawBalance) || 0 : 0;
 
-            let ledgerEntries: any[] = [];
+            let partyCode: string | undefined = undefined;
+            let partyId = '';
+
+            if (rawCode) {
+              partyCode = rawCode;
+              partyId = `code-${rawCode}`;
+            } else if (contactNumber) {
+              const digits = contactNumber.replace(/\D/g, '');
+              partyId = digits ? `contact-${digits}` : name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, '') || 'party';
+            } else {
+              partyId = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, '') || 'party';
+            }
+
+            // Fetch existing entries and profile
+            const existingEntries = await getPartyLedgerEntries(user?.uid || '', partyId);
+            const profileExists = await checkPartyExists(user?.uid || '', partyId);
+
+            // Parse incoming entries
+            let incomingEntries: any[] = [];
             try {
               if (row.ledger_json) {
-                ledgerEntries = JSON.parse(row.ledger_json);
+                incomingEntries = JSON.parse(row.ledger_json);
               }
             } catch (err) {
               console.warn('Could not parse ledger for:', name);
             }
 
+            if (incomingEntries.length === 0) {
+              const openingAmountRaw = row['opening amount'];
+              const hasOpeningAmount = openingAmountRaw !== '' && openingAmountRaw != null;
+              const openingAmount = hasOpeningAmount ? parseFloat(openingAmountRaw) || 0 : null;
+              if (openingAmount !== null && openingAmount !== 0) {
+                const openingDate = (row['date'] || '').trim() || getCurrentNepaliDate();
+                const openingParticular = (row['particular'] || '').trim() || 'Opening Balance';
+                const openingBillNo = (row['bill number'] || '').trim();
+                incomingEntries.push({
+                  date: openingDate,
+                  particular: openingParticular,
+                  billNo: openingBillNo,
+                  debit: openingAmount,
+                  credit: 0,
+                  note: ''
+                });
+              }
+            }
+
+            // Filter out duplicate entries
+            const uniqueEntries = incomingEntries.filter(incoming => {
+              const isDuplicate = existingEntries.some(existing => 
+                existing.date === incoming.date &&
+                existing.particular === incoming.particular &&
+                (existing.billNo || '') === (incoming.billNo || '') &&
+                existing.debit === (parseFloat(incoming.debit) || 0) &&
+                existing.credit === (parseFloat(incoming.credit) || 0)
+              );
+              return !isDuplicate;
+            });
+
             try {
+              // If profile doesn't exist, we set the initial balance to 0 if there are new entries
+              // (which will update it), or currentBalance if no entries. If profile exists, we don't
+              // pass currentBalance to avoid resetting it (ledger updates will handle balance changes).
+              const balanceToSet = profileExists 
+                ? undefined 
+                : (uniqueEntries.length > 0 ? 0 : currentBalance);
+
               await upsertPartyProfile(user?.uid || '', partyId, {
                 name: name,
-                address: row.address || '',
-                contactNumber: row.contactNumber || '',
-                currentBalance: parseFloat(row.currentBalance) || 0,
+                address: address,
+                contactNumber: contactNumber,
+                currentBalance: balanceToSet,
+                partyCode: partyCode,
               });
             } catch (err: any) {
               console.warn('Error creating/updating party:', name, err);
               continue;
             }
 
-            for (const entry of ledgerEntries) {
+            // Add unique entries sequentially
+            for (const entry of uniqueEntries) {
               try {
                 await addPartyLedgerEntry(user?.uid || '', partyId, {
                   date: entry.date || getCurrentNepaliDate(),
@@ -277,7 +382,7 @@ const SupplierLedger: React.FC = () => {
                   note: entry.note || '',
                 });
               } catch (err) {
-                console.warn('Error importing ledger entry for', name, ':', err);
+                console.warn('Error adding ledger entry for', name, ':', err);
               }
             }
             importedCount++;
@@ -546,7 +651,7 @@ const SupplierLedger: React.FC = () => {
 
     setEditSupplierLoading(true);
     try {
-      await upsertPartyProfile(user?.uid || '', selectedSupplier.id, {
+      const newId = await upsertPartyProfile(user?.uid || '', selectedSupplier.id, {
         name: editSupplierName,
         address: editSupplierAddress,
         contactNumber: editSupplierContact,
@@ -556,6 +661,17 @@ const SupplierLedger: React.FC = () => {
       showSuccess('Party details updated successfully');
       setShowEditSupplier(false);
       await loadSuppliers();
+      // Re-select the party under its (possibly new) ID
+      if (newId && newId !== selectedSupplier.id) {
+        setSelectedSupplier(prev => prev ? {
+          ...prev,
+          id: newId,
+          name: editSupplierName,
+          address: editSupplierAddress,
+          contactNumber: editSupplierContact,
+          partyCode: editSupplierCode.trim(),
+        } : null);
+      }
     } catch (error: any) {
       console.error('Error updating supplier:', error);
       showError(error.message || 'Failed to update party details');
@@ -719,7 +835,7 @@ const SupplierLedger: React.FC = () => {
               </svg>
               Import
             </button>
-            <button onClick={handleExport} className="btn btn-secondary">
+            <button onClick={handleExportFull} className="btn btn-secondary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
@@ -829,12 +945,40 @@ const SupplierLedger: React.FC = () => {
                 </svg>
               </span>
               <input
-                className="input customer-search"
                 type="text"
+                className="input customer-search"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search by name, ID, contact, or address"
+                style={{ paddingRight: searchTerm ? '2rem' : undefined }}
               />
+              {searchTerm && (
+                <button 
+                  type="button" 
+                  className="clear-search-btn" 
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2px'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              )}
             </div>
 
             <div className="customer-list">

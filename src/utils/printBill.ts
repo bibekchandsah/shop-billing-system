@@ -65,7 +65,8 @@ export const printBill = (
         `<tr>
           <td class="center">${item.sn}</td>
           <td>${item.particulars}</td>
-          <td class="center">${item.unit ? `${item.qty} ${item.unit}` : item.qty}</td>
+          <td class="center">${item.qty}</td>
+          <td class="center">${item.unit || '-'}</td>
           <td class="center">${formatCurrency(item.rate)}</td>
           <td class="center">${formatCurrency(item.amount)}</td>
         </tr>`
@@ -73,13 +74,13 @@ export const printBill = (
     .join('');
 
   // Empty filler row that stretches to fill remaining table height
-  const fillerRows = `<tr class="filler-stretch"><td></td><td></td><td></td><td></td><td></td></tr>`;
+  const fillerRows = `<tr class="filler-stretch"><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
 
   const totalRow = `
     <tr class="total-row">
       <td colspan="2" class="total-label">Total</td>
       <td class="center">${totalQty}</td>
-      <td></td>
+      <td colspan="2" ></td>
       <td class="center total-value">${formatCurrency(bill.totalAmount)}</td>
     </tr>`;
 
@@ -129,10 +130,11 @@ export const printBill = (
         <thead>
           <tr>
             <th style="width:42px">S.N.</th>
-            <th class="left">Particulars</th>
-            <th style="width:80px">Qty.</th>
-            <th style="width:100px">Rate</th>
-            <th style="width:110px">Amount</th>
+            <th>Particulars</th>
+            <th style="width:60px">Qty.</th>
+            <th style="width:60px">Unit</th>
+            <th style="width:90px">Rate</th>
+            <th style="width:105px">Amount</th>
           </tr>
         </thead>
         <tbody>${itemRows}${fillerRows}${totalRow}</tbody>
@@ -198,13 +200,14 @@ export const printBill = (
     .meta-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 5px 0;
+      // gap: 5px 0;
       margin-bottom: 14px;
-      font-size: 0.95em;
+      font-size: 1.05em;
     }
     .meta-row { display: flex; gap: 5px; align-items: baseline; }
     .meta-label { font-weight: 700; white-space: nowrap; color: #000; }
     .meta-full { grid-column: 1 / -1; }
+    span { font-weight: 500; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 0.75em; font-size: 0.95em; flex-grow: 1; }
     thead th {
       background: transparent;
@@ -219,12 +222,13 @@ export const printBill = (
     }
     thead th.left { text-align: left; }
     tbody td {
-      padding: 0.45em 0.8em;
+      padding: 0.1em 0.8em;
       border-left: 1px solid #000;
       border-right: 1px solid #000;
       border-top: none;
       border-bottom: none;
       vertical-align: middle;
+      font-weight: 600;
     }
     tr.filler td { height: 1.9em; }
     tbody tr:not(.filler-stretch) td { height: 1px; }
@@ -262,8 +266,8 @@ export const printBill = (
       margin-bottom: 0.75em;
       font-size: 0.95em;
     }
-    .words strong { font-weight: 600; }
-    .words em { font-style: italic; color: #000; }
+    .words strong { font-weight: 700; }
+    .words em { font-style: italic; color: #000; font-weight: 500; }
     .payment { display: flex; gap: 2em; flex-wrap: wrap; margin-bottom: 0.75em; font-size: 0.95em; }
     .payment-row { display: flex; gap: 6px; }
     .signature { margin-top: 5em; display: flex; justify-content: flex-end; page-break-inside: avoid; }

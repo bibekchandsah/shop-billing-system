@@ -3,6 +3,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  setDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -107,7 +109,7 @@ export const findCustomerByCode = async (userId: string, customerCode: string): 
 
 export const upsertCustomerProfile = async (
   userId: string,
-  customerId: string,
+  oldCustomerId: string,
   customerData: {
     name: string;
     address: string;
@@ -116,49 +118,137 @@ export const upsertCustomerProfile = async (
     currentBalance?: number;
     lastBillNo?: string;
   }
-): Promise<void> => {
-  if (!userId || !customerId) {
+): Promise<string> => {
+  if (!userId || !oldCustomerId) {
     throw new Error('User ID and Customer ID are required.');
   }
 
-  const ref = customerDoc(userId, customerId);
-
-  // Normalize provided customerCode to a safe 4-char value (preserve as-is but trimmed)
   const code = (customerData.customerCode || '').trim();
 
-  // If a customerCode is provided, check for duplicate by looking up the canonical doc id
-  // that would be used when building a customer id from a code (buildCustomerId -> code-{code}).
-  if (code) {
-    const codeDocRef = customerDoc(userId, `code-${code}`);
-    const existing = await getDoc(codeDocRef);
-    if (existing.exists() && existing.id !== customerId) {
+  // Build the new document ID based on the new data
+  const newCustomerId = code
+    ? `code-${code}`
+    : oldCustomerId; // keep old id if no code
+
+  // If a code is used and there's an existing doc with that new ID that isn't this customer, reject
+  if (newCustomerId !== oldCustomerId) {
+    const newDocRef = customerDoc(userId, newCustomerId);
+    const existing = await getDoc(newDocRef);
+    if (existing.exists()) {
       throw new Error('Customer ID already in use by another customer.');
     }
   }
 
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    const payload = {
-      name: customerData.name.trim(),
-      address: customerData.address.trim(),
-      contactNumber: customerData.contactNumber.trim(),
-      customerCode: code || '',
-      currentBalance: Number(customerData.currentBalance || 0),
-      lastBillNo: customerData.lastBillNo || '',
-      updatedAt: Timestamp.now(),
-    };
+  const oldRef = customerDoc(userId, oldCustomerId);
+  const oldSnap = await getDoc(oldRef);
 
-    if (!snap.exists()) {
-      transaction.set(ref, {
-        ...payload,
-        purchaseHistory: [],
-        createdAt: Timestamp.now(),
-      });
-      return;
+  const payload = {
+    name: customerData.name.trim(),
+    address: customerData.address.trim(),
+    contactNumber: customerData.contactNumber.trim(),
+    customerCode: code || '',
+    currentBalance: Number(customerData.currentBalance ?? (oldSnap.exists() ? oldSnap.data().currentBalance : 0)),
+    lastBillNo: customerData.lastBillNo || (oldSnap.exists() ? oldSnap.data().lastBillNo || '' : ''),
+    purchaseHistory: (oldSnap.exists() ? oldSnap.data().purchaseHistory : []) || [],
+    createdAt: oldSnap.exists() ? oldSnap.data().createdAt : Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+
+  if (newCustomerId !== oldCustomerId && oldSnap.exists()) {
+    // ── ID migration: copy profile + ledger to new doc, delete old ──
+    const newRef = customerDoc(userId, newCustomerId);
+    await setDoc(newRef, payload);
+
+    // Copy all ledger entries to new doc
+    const ledgerSnap = await getDocs(customerLedgerCol(userId, oldCustomerId));
+    if (!ledgerSnap.empty) {
+      let batch = writeBatch(db);
+      let batchCount = 0;
+      for (const entry of ledgerSnap.docs) {
+        const newEntryRef = doc(customerLedgerCol(userId, newCustomerId), entry.id);
+        batch.set(newEntryRef, entry.data());
+        batch.delete(entry.ref);
+        batchCount += 2;
+        if (batchCount >= 450) {
+          await batch.commit();
+          batch = writeBatch(db);
+          batchCount = 0;
+        }
+      }
+      if (batchCount > 0) await batch.commit();
     }
 
-    transaction.update(ref, payload);
-  });
+    // Delete old profile doc
+    await deleteDoc(oldRef);
+  } else {
+    // Same ID — just update
+    if (!oldSnap.exists()) {
+      await setDoc(oldRef, payload);
+    } else {
+      await runTransaction(db, async (transaction) => {
+        transaction.update(oldRef, {
+          name: payload.name,
+          address: payload.address,
+          contactNumber: payload.contactNumber,
+          customerCode: payload.customerCode,
+          currentBalance: payload.currentBalance,
+          updatedAt: Timestamp.now(),
+        });
+      });
+    }
+  }
+
+  // ── Cascade name/address/contact changes to historical bills ──
+  try {
+    const oldName = oldSnap.exists() ? (oldSnap.data().name || '').trim() : '';
+    const oldCode = oldSnap.exists() ? (oldSnap.data().customerCode || '').trim() : '';
+    const newName = payload.name;
+    const newAddress = payload.address;
+    const newContact = payload.contactNumber;
+    const newCode = payload.customerCode;
+
+    const nameChanged = oldName && oldName.toLowerCase() !== newName.toLowerCase();
+    const codeChanged = oldCode !== newCode;
+
+    if (nameChanged || codeChanged) {
+      const billsSnap = await getDocs(collection(db, 'users', userId, 'bills'));
+      let batch = writeBatch(db);
+      let batchCount = 0;
+
+      for (const billDoc of billsSnap.docs) {
+        const data = billDoc.data();
+        const billCustomerName = (data.customerName || '').trim();
+        const billCustomerCode = (data.customerCode || '').trim();
+
+        // Match by old name or old code
+        const matches =
+          (oldName && billCustomerName.toLowerCase() === oldName.toLowerCase()) ||
+          (oldCode && billCustomerCode === oldCode);
+
+        if (matches) {
+          batch.update(billDoc.ref, {
+            customerName: newName,
+            address: newAddress,
+            contactNumber: newContact,
+            customerCode: newCode,
+            updatedAt: Timestamp.now(),
+          });
+          batchCount++;
+          if (batchCount >= 450) {
+            await batch.commit();
+            batch = writeBatch(db);
+            batchCount = 0;
+          }
+        }
+      }
+
+      if (batchCount > 0) await batch.commit();
+    }
+  } catch (err) {
+    console.error('Failed to cascade customer changes to bills:', err);
+  }
+
+  return newCustomerId;
 };
 
 export const recordBillCustomerLedger = async (
@@ -239,16 +329,21 @@ export const removeBillCustomerLedger = async (
       }
     });
 
+    const profileData: any = {
+      name: bill.customerName.trim(),
+      address: bill.address.trim(),
+      contactNumber: bill.contactNumber.trim(),
+      currentBalance: runningBalance,
+      lastBillNo: bill.billNo,
+      updatedAt: Timestamp.now(),
+    };
+    if (bill.customerCode) {
+      profileData.customerCode = bill.customerCode;
+    }
+
     transaction.set(
       customerRef,
-      {
-        name: bill.customerName.trim(),
-        address: bill.address.trim(),
-        contactNumber: bill.contactNumber.trim(),
-        currentBalance: runningBalance,
-        lastBillNo: bill.billNo,
-        updatedAt: Timestamp.now(),
-      },
+      profileData,
       { merge: true }
     );
   });
@@ -420,4 +515,10 @@ export const deleteCustomerProfile = async (userId: string, customerId: string):
   batch.delete(customerDoc(userId, customerId));
 
   await batch.commit();
+};
+
+export const checkCustomerExists = async (userId: string, customerId: string): Promise<boolean> => {
+  if (!userId || !customerId) return false;
+  const snap = await getDoc(customerDoc(userId, customerId));
+  return snap.exists();
 };

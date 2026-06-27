@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Bill, BillItem } from '../types';
 import { collection, query, orderBy, limit, getDocs, endBefore, startAfter, limitToLast, Timestamp, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { getAllBills, deleteBill, updateBill, createBill } from '../services/billService';
+import { getAllBills, deleteBill, updateBill, createBill, getBillByNumber } from '../services/billService';
 import { DEFAULT_SETTINGS, isBillInFiscalYear, getAppSettings } from '../services/settingsService';
 import { getStockParticulars } from '../services/stockService';
 import { recordBillInventory, removeBillInventory } from '../services/stockService';
@@ -560,6 +560,8 @@ const Records: React.FC = () => {
                 console.warn('Could not parse items for bill:', row.billNo);
               }
 
+              const customerCode = (row.customerCode || row['customer code'] || row['customer ID'] || row.customerId || row.customerID || '').trim();
+
               const billData: any = {
                 userId: user?.uid || '',
                 billNo: row.billNo,
@@ -568,12 +570,20 @@ const Records: React.FC = () => {
                 customerName: row.customerName,
                 address: row.address || '',
                 contactNumber: row.contactNumber || '',
+                customerCode: customerCode || undefined,
                 totalAmount: parseFloat(row.totalAmount) || 0,
                 totalAmountInWords: row.totalAmountInWords || '',
                 paymentMethod: row.paymentMethod || 'Cash',
                 freeDue: row.freeDue || '',
                 items: items,
               };
+
+              // Check if bill already exists to prevent duplicate imports
+              const exists = await getBillByNumber(user?.uid || '', row.billNo);
+              if (exists) {
+                console.info('Bill already exists, skipping:', row.billNo);
+                continue;
+              }
 
               await createBill(billData);
               await syncBillCustomerLedger(user?.uid || '', null, billData as Bill);
@@ -811,7 +821,7 @@ const Records: React.FC = () => {
 
         <div className="table-container-card card fade-in">
           
-          <div className="table-search-bar">
+          <div className="table-search-bar" style={{ position: 'relative' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.35-4.35" />
@@ -822,7 +832,35 @@ const Records: React.FC = () => {
               placeholder="Search by Bill No, Name, Address, Contact, or Date..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ paddingRight: searchTerm ? '2.5rem' : undefined }}
             />
+            {searchTerm && (
+              <button 
+                type="button" 
+                className="clear-search-btn" 
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+                style={{
+                  position: 'absolute',
+                  right: '1.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '4px'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            )}
           </div>
 
         {loading ? (

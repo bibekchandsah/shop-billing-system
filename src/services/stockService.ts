@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -175,14 +176,22 @@ export const recordBillInventory = async (
 ): Promise<void> => {
   if (!userId || items.length === 0) return;
 
+  // Resolve true particular IDs from names to handle renamed items properly.
+  const allStock = await getStockParticulars(userId);
+  const nameToId = new Map(allStock.map(s => [s.name.toLowerCase().trim(), s.id]));
+
   // Merge rows that refer to the same stock particular so we never run two
   // concurrent transactions on the same Firestore document (which would cause
   // "stored version does not match required base version" errors).
   const merged = new Map<string, { name: string; totalQty: number; unit: string }>();
   for (const item of items) {
     const name = item.particulars.trim();
-    const particularId = name.toLowerCase().trim();
-    if (!particularId) continue;
+    if (!name) continue;
+    const lookupName = name.toLowerCase();
+    
+    // Use the actual ID if the particular exists, otherwise fallback to lowercase name
+    const particularId = nameToId.get(lookupName) || lookupName;
+
     const existing = merged.get(particularId);
     if (existing) {
       existing.totalQty += item.qty;
@@ -254,6 +263,7 @@ export const recordBillInventory = async (
 export const updateStockParticularName = async (
   userId: string,
   particularId: string,
+  oldName: string,
   newName: string,
   defaultUnit?: string,
   particularCode?: string
@@ -277,6 +287,64 @@ export const updateStockParticularName = async (
       updatedAt: Timestamp.now()
     });
   });
+
+  // 2. Cascade changes to ledgers and bills
+  try {
+    let batch = writeBatch(db);
+    let opsCount = 0;
+
+    const addOpAndCommitIfFull = async (docRef: any, updateData: any) => {
+      batch.update(docRef, updateData);
+      opsCount++;
+      if (opsCount >= 450) {
+        await batch.commit();
+        batch = writeBatch(db);
+        opsCount = 0;
+      }
+    };
+
+    // A. Update Ledger Entries (if defaultUnit is provided or explicitly empty)
+    if (defaultUnit !== undefined) {
+      const ledgerQuery = query(ledgerCol(userId, particularId));
+      const ledgerSnap = await getDocs(ledgerQuery);
+      for (const docSnap of ledgerSnap.docs) {
+        await addOpAndCommitIfFull(docSnap.ref, { unit: defaultUnit || null });
+      }
+    }
+
+    // B. Update Historical Bills
+    if (oldName.trim()) {
+      const billsQuery = query(collection(db, 'users', userId, 'bills'));
+      const billsSnap = await getDocs(billsQuery);
+      for (const docSnap of billsSnap.docs) {
+        const data = docSnap.data();
+        let updated = false;
+        const items = data.items || [];
+        
+        const newItems = items.map((item: any) => {
+          if (item.particulars?.trim().toLowerCase() === oldName.trim().toLowerCase()) {
+            updated = true;
+            return {
+              ...item,
+              particulars: newName.trim(),
+              ...(defaultUnit !== undefined && { unit: defaultUnit || '' })
+            };
+          }
+          return item;
+        });
+
+        if (updated) {
+          await addOpAndCommitIfFull(docSnap.ref, { items: newItems, updatedAt: Timestamp.now() });
+        }
+      }
+    }
+
+    if (opsCount > 0) {
+      await batch.commit();
+    }
+  } catch (error) {
+    console.error('Failed to cascade particular updates to ledgers/bills:', error);
+  }
 };
 
 /**
@@ -507,5 +575,11 @@ export const removeBillInventory = async (
     console.error(`Failed to remove stock ledger entries for bill ${billNo}:`, err);
     throw err;
   }
+};
+
+export const checkStockParticularExists = async (userId: string, particularId: string): Promise<boolean> => {
+  if (!userId || !particularId) return false;
+  const snap = await getDoc(particularDoc(userId, particularId));
+  return snap.exists();
 };
 

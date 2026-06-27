@@ -3,6 +3,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  setDoc,
+  deleteDoc,
   orderBy,
   query,
   where,
@@ -85,7 +87,7 @@ export const getPartyLedgerEntries = async (
 
 export const upsertPartyProfile = async (
   userId: string,
-  partyId: string,
+  oldPartyId: string,
   partyData: {
     name: string;
     address: string;
@@ -94,53 +96,95 @@ export const upsertPartyProfile = async (
     currentBalance?: number;
     lastBillNo?: string;
   }
-): Promise<void> => {
-  if (!userId || !partyId) {
+): Promise<string> => {
+  if (!userId || !oldPartyId) {
     throw new Error('User ID and Party ID are required.');
   }
 
-  const ref = partyDoc(userId, partyId);
   const code = (partyData.partyCode || '').trim();
 
-  if (code) {
-    const codeDocRef = partyDoc(userId, `code-${code}`);
-    const existing = await getDoc(codeDocRef);
-    if (existing.exists() && existing.id !== partyId) {
+  // Build the new document ID based on updated code
+  const newPartyId = code ? `code-${code}` : oldPartyId;
+
+  // If ID will change, check the new doc doesn't already belong to someone else
+  if (newPartyId !== oldPartyId) {
+    const newDocRef = partyDoc(userId, newPartyId);
+    const existing = await getDoc(newDocRef);
+    if (existing.exists()) {
       throw new Error('Party ID already in use by another party.');
     }
-    // Also check any other documents that may have partyCode stored as a field (legacy records)
+  } else if (code) {
+    // Same ID but check field-level duplicates (legacy records)
     const q = query(partiesCol(userId), where('partyCode', '==', code));
     const snap = await getDocs(q);
     for (const d of snap.docs) {
-      if (d.id !== partyId) {
+      if (d.id !== oldPartyId) {
         throw new Error('Party ID already in use by another party.');
       }
     }
   }
 
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    const payload = {
-      name: partyData.name.trim(),
-      address: partyData.address.trim(),
-      contactNumber: partyData.contactNumber.trim(),
-      partyCode: code || '',
-      supplierCode: code || '',
-      currentBalance: Number(partyData.currentBalance || 0),
-      lastBillNo: partyData.lastBillNo || '',
-      updatedAt: Timestamp.now(),
-    };
+  const oldRef = partyDoc(userId, oldPartyId);
+  const oldSnap = await getDoc(oldRef);
 
-    if (!snap.exists()) {
-      transaction.set(ref, {
-        ...payload,
-        createdAt: Timestamp.now(),
-      });
-      return;
+  const payload = {
+    name: partyData.name.trim(),
+    address: partyData.address.trim(),
+    contactNumber: partyData.contactNumber.trim(),
+    partyCode: code || '',
+    supplierCode: code || '',
+    currentBalance: Number(partyData.currentBalance ?? (oldSnap.exists() ? oldSnap.data().currentBalance : 0)),
+    lastBillNo: partyData.lastBillNo || (oldSnap.exists() ? oldSnap.data().lastBillNo || '' : ''),
+    createdAt: oldSnap.exists() ? oldSnap.data().createdAt : Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+
+  if (newPartyId !== oldPartyId && oldSnap.exists()) {
+    // ── ID migration: copy profile + ledger to new doc, delete old ──
+    const newRef = partyDoc(userId, newPartyId);
+    await setDoc(newRef, payload);
+
+    // Copy all ledger entries to new doc
+    const ledgerSnap = await getDocs(partyLedgerCol(userId, oldPartyId));
+    if (!ledgerSnap.empty) {
+      let batch = writeBatch(db);
+      let batchCount = 0;
+      for (const entry of ledgerSnap.docs) {
+        const newEntryRef = doc(partyLedgerCol(userId, newPartyId), entry.id);
+        batch.set(newEntryRef, entry.data());
+        batch.delete(entry.ref);
+        batchCount += 2;
+        if (batchCount >= 450) {
+          await batch.commit();
+          batch = writeBatch(db);
+          batchCount = 0;
+        }
+      }
+      if (batchCount > 0) await batch.commit();
     }
 
-    transaction.update(ref, payload);
-  });
+    // Delete old profile doc
+    await deleteDoc(oldRef);
+  } else {
+    // Same ID — just update in place
+    if (!oldSnap.exists()) {
+      await setDoc(oldRef, payload);
+    } else {
+      await runTransaction(db, async (transaction) => {
+        transaction.update(oldRef, {
+          name: payload.name,
+          address: payload.address,
+          contactNumber: payload.contactNumber,
+          partyCode: payload.partyCode,
+          supplierCode: payload.supplierCode,
+          currentBalance: payload.currentBalance,
+          updatedAt: Timestamp.now(),
+        });
+      });
+    }
+  }
+
+  return newPartyId;
 };
 
 export const addPartyLedgerEntry = async (
@@ -295,4 +339,10 @@ export const deletePartyProfile = async (userId: string, partyId: string): Promi
   batch.delete(partyDoc(userId, partyId));
 
   await batch.commit();
+};
+
+export const checkPartyExists = async (userId: string, partyId: string): Promise<boolean> => {
+  if (!userId || !partyId) return false;
+  const snap = await getDoc(partyDoc(userId, partyId));
+  return snap.exists();
 };

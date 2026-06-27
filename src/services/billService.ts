@@ -10,6 +10,7 @@ import {
   limit,
   startAfter,
   Timestamp,
+  where,
 } from 'firebase/firestore';
 import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -45,6 +46,7 @@ export const sanitizeBill = (id: string, userId: string, data: any): Bill => {
         sn: Number(item.sn || 0),
         particulars: String(item.particulars || ''),
         qty: Number(item.qty || 0),
+        unit: item.unit ? String(item.unit) : undefined,
         rate: Number(item.rate || 0),
         amount: Number(item.amount || 0),
       }))
@@ -163,4 +165,12 @@ export const getNextBillNumber = async (userId: string): Promise<string> => {
       return '0001';
     }
   }
+};
+
+export const getBillByNumber = async (userId: string, billNo: string): Promise<Bill | null> => {
+  if (!userId || !billNo) return null;
+  const q = query(billsCol(userId), where('billNo', '==', billNo.trim()), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return sanitizeBill(snap.docs[0].id, userId, snap.docs[0].data());
 };

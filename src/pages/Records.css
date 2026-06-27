@@ -62,7 +62,7 @@
   background-color: var(--bg-primary); /* Or slightly darker */
 }
 
-.table-search-bar svg {
+.table-search-bar > svg {
   position: absolute;
   left: 1.75rem;
   top: 50%;

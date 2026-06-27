@@ -12,6 +12,7 @@ import { printCustomerLedger } from '../utils/printCustomerLedger';
 import {
   addCustomerLedgerEntry,
   buildCustomerId,
+  checkCustomerExists,
   deleteCustomerLedgerEntry,
   deleteCustomerProfile,
   findCustomerByCode,
@@ -183,18 +184,59 @@ const CustomerLedger: React.FC = () => {
       showError('No customers to export.');
       return;
     }
-    showSuccess('Preparing customer ledger data for export...');
+    showSuccess('Preparing customer data for export...');
     try {
       const exportRows: any[] = [];
       for (const c of customers) {
-        // Fetch full ledger for this customer to ensure complete backup
+        const entries = await getCustomerLedgerEntries(user?.uid || '', c.id);
+        const firstEntry = entries.length > 0 ? entries[0] : null;
+        exportRows.push({
+          "customer name": c.name || '',
+          "address": c.address || '',
+          "contact number": c.contactNumber || '',
+          "customer ID": c.customerCode || '',
+          "current balance": c.currentBalance ?? '',
+          "opening amount": firstEntry ? (firstEntry.debit ?? '') : '',
+          "date": firstEntry ? (firstEntry.date || '') : '',
+          "particular": firstEntry ? (firstEntry.particular || '') : '',
+          "bill number": firstEntry ? (firstEntry.billNo || '') : '',
+        });
+      }
+
+      const csv = Papa.unparse(exportRows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', 'customer_list.csv');
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      showSuccess(`Customers exported successfully (${exportRows.length} records).`);
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Failed to export customer data.');
+    }
+  };
+
+  const handleExportFull = async () => {
+    if (customers.length === 0) {
+      showError('No customers to export.');
+      return;
+    }
+    showSuccess('Preparing full customer backup...');
+    try {
+      const exportRows: any[] = [];
+      for (const c of customers) {
         const entries = await getCustomerLedgerEntries(user?.uid || '', c.id);
         exportRows.push({
-          customerId: c.id,
-          name: c.name,
-          address: c.address,
-          contactNumber: c.contactNumber,
-          currentBalance: c.currentBalance,
+          "customer ID": c.customerCode || '',
+          "customer name": c.name || '',
+          "address": c.address || '',
+          "contact number": c.contactNumber || '',
+          "current balance": c.currentBalance ?? '',
           ledger_json: JSON.stringify(entries.map(e => ({
             date: e.date,
             particular: e.particular,
@@ -218,7 +260,7 @@ const CustomerLedger: React.FC = () => {
       a.click();
       document.body.removeChild(a);
 
-      showSuccess(`Customers exported successfully (${exportRows.length} records).`);
+      showSuccess(`Full customer backup exported (${exportRows.length} records).`);
     } catch (error) {
       console.error('Export error:', error);
       showError('Failed to export customer data.');
@@ -246,33 +288,95 @@ const CustomerLedger: React.FC = () => {
 
           let importedCount = 0;
           for (const row of rows) {
-            if (!row.name) continue;
+            const name = (row['customer name'] || row.name || '').trim();
+            if (!name) continue;
 
-            const name = row.name.trim();
-            const customerId = row.customerId || name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const rawCode = (row['customer ID'] || row.customerId || '').trim();
+            const contactNumber = (row['contact number'] || row.contactNumber || '').trim();
+            const address = (row.address || '').trim();
+            const rawBalance = row['current balance'] ?? row.currentBalance;
+            const currentBalance = rawBalance !== '' && rawBalance != null ? parseFloat(rawBalance) || 0 : 0;
 
-            let ledgerEntries: any[] = [];
+            let customerCode: string | undefined = undefined;
+            let customerId = '';
+
+            if (rawCode) {
+              customerCode = rawCode;
+              customerId = `code-${rawCode}`;
+            } else if (contactNumber) {
+              const digits = contactNumber.replace(/\D/g, '');
+              customerId = digits ? `contact-${digits}` : name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, '') || 'customer';
+            } else {
+              customerId = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, '') || 'customer';
+            }
+
+            // Fetch existing entries and profile
+            const existingEntries = await getCustomerLedgerEntries(user?.uid || '', customerId);
+            const profileExists = await checkCustomerExists(user?.uid || '', customerId);
+
+            // Parse incoming entries
+            let incomingEntries: any[] = [];
             try {
               if (row.ledger_json) {
-                ledgerEntries = JSON.parse(row.ledger_json);
+                incomingEntries = JSON.parse(row.ledger_json);
               }
             } catch (err) {
               console.warn('Could not parse ledger for:', name);
             }
 
+            if (incomingEntries.length === 0) {
+              const openingAmountRaw = row['opening amount'];
+              const hasOpeningAmount = openingAmountRaw !== '' && openingAmountRaw != null;
+              const openingAmount = hasOpeningAmount ? parseFloat(openingAmountRaw) || 0 : null;
+              if (openingAmount !== null && openingAmount !== 0) {
+                const openingDate = (row['date'] || '').trim() || getCurrentNepaliDate();
+                const openingParticular = (row['particular'] || '').trim() || 'Opening Balance';
+                const openingBillNo = (row['bill number'] || '').trim();
+                incomingEntries.push({
+                  date: openingDate,
+                  particular: openingParticular,
+                  billNo: openingBillNo,
+                  debit: openingAmount,
+                  credit: 0,
+                  note: ''
+                });
+              }
+            }
+
+            // Filter out duplicate entries
+            const uniqueEntries = incomingEntries.filter(incoming => {
+              const isDuplicate = existingEntries.some(existing => 
+                existing.date === incoming.date &&
+                existing.particular === incoming.particular &&
+                (existing.billNo || '') === (incoming.billNo || '') &&
+                existing.debit === (parseFloat(incoming.debit) || 0) &&
+                existing.credit === (parseFloat(incoming.credit) || 0)
+              );
+              return !isDuplicate;
+            });
+
             try {
+              // If profile doesn't exist, we set the initial balance to 0 if there are new entries
+              // (which will update it), or currentBalance if no entries. If profile exists, we don't
+              // pass currentBalance to avoid resetting it (ledger updates will handle balance changes).
+              const balanceToSet = profileExists 
+                ? undefined 
+                : (uniqueEntries.length > 0 ? 0 : currentBalance);
+
               await upsertCustomerProfile(user?.uid || '', customerId, {
                 name: name,
-                address: row.address || '',
-                contactNumber: row.contactNumber || '',
-                currentBalance: parseFloat(row.currentBalance) || 0,
+                address: address,
+                contactNumber: contactNumber,
+                currentBalance: balanceToSet,
+                customerCode: customerCode,
               });
             } catch (err: any) {
               console.warn('Error creating/updating customer:', name, err);
               continue;
             }
 
-            for (const entry of ledgerEntries) {
+            // Add unique entries sequentially
+            for (const entry of uniqueEntries) {
               try {
                 await addCustomerLedgerEntry(user?.uid || '', customerId, {
                   date: entry.date || getCurrentNepaliDate(),
@@ -283,7 +387,7 @@ const CustomerLedger: React.FC = () => {
                   note: entry.note || '',
                 });
               } catch (err) {
-                console.warn('Error importing ledger entry for', name, ':', err);
+                console.warn('Error adding ledger entry for', name, ':', err);
               }
             }
             importedCount++;
@@ -550,7 +654,7 @@ const CustomerLedger: React.FC = () => {
     }
     setEditCustomerLoading(true);
     try {
-      await upsertCustomerProfile(user?.uid || '', selectedCustomer.id, {
+      const newId = await upsertCustomerProfile(user?.uid || '', selectedCustomer.id, {
         name: editCustomerName,
         address: editCustomerAddress,
         contactNumber: editCustomerContact,
@@ -560,6 +664,17 @@ const CustomerLedger: React.FC = () => {
       showSuccess('Customer details updated successfully');
       setShowEditCustomer(false);
       await loadCustomers();
+      // Re-select the customer under its (possibly new) ID
+      if (newId && newId !== selectedCustomer.id) {
+        setSelectedCustomer(prev => prev ? {
+          ...prev,
+          id: newId,
+          name: editCustomerName,
+          address: editCustomerAddress,
+          contactNumber: editCustomerContact,
+          customerCode: editCustomerCode.trim(),
+        } : null);
+      }
     } catch (error: any) {
       console.error('Error updating customer:', error);
       showError(error.message || 'Failed to update customer details');
@@ -734,7 +849,7 @@ const CustomerLedger: React.FC = () => {
               </svg>
               Import
             </button>
-            <button onClick={handleExport} className="btn btn-secondary">
+            <button onClick={handleExportFull} className="btn btn-secondary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
@@ -835,12 +950,40 @@ const CustomerLedger: React.FC = () => {
                 </svg>
               </span>
               <input
-                className="input customer-search"
                 type="text"
+                className="input customer-search"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search by name, ID, contact, or address"
+                style={{ paddingRight: searchTerm ? '2rem' : undefined }}
               />
+              {searchTerm && (
+                <button 
+                  type="button" 
+                  className="clear-search-btn" 
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2px'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              )}
             </div>
 
             <div className="customer-list">

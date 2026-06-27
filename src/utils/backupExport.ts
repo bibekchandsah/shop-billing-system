@@ -70,11 +70,11 @@ async function buildCustomersRows(
       ? entries.filter(e => fyFilter(e.date))
       : entries;
     exportRows.push({
-      customerId: c.id,
-      name: c.name,
-      address: c.address,
-      contactNumber: c.contactNumber,
-      currentBalance: c.currentBalance,
+      "customer ID": c.customerCode || '',
+      "customer name": c.name || '',
+      "address": c.address || '',
+      "contact number": c.contactNumber || '',
+      "current balance": c.currentBalance ?? '',
       ledger_json: JSON.stringify(filtered.map(e => ({
         date: e.date,
         particular: e.particular,
@@ -104,11 +104,11 @@ async function buildPartiesRows(
       ? entries.filter(e => fyFilter(e.date))
       : entries;
     exportRows.push({
-      partyId: party.id,
-      name: party.name,
-      address: party.address,
-      contactNumber: party.contactNumber,
-      currentBalance: party.currentBalance,
+      "party ID": party.partyCode || '',
+      "party name": party.name || '',
+      "address": party.address || '',
+      "contact number": party.contactNumber || '',
+      "current balance": party.currentBalance ?? '',
       ledger_json: JSON.stringify(filtered.map(e => ({
         date: e.date,
         particular: e.particular,
@@ -138,10 +138,10 @@ async function buildStockRows(
       ? entries.filter(e => fyFilter(e.date))
       : entries;
     exportRows.push({
-      particularId: p.id,
-      name: p.name,
-      particularCode: p.particularCode || '',
-      currentStock: p.currentStock,
+      "particular ID": p.particularCode || '',
+      "particular name": p.name,
+      "default unit": p.defaultUnit || '',
+      "current stock": p.currentStock,
       ledger_json: JSON.stringify(filtered.map(e => ({
         date: e.date,
         billNo: e.billNo || '',

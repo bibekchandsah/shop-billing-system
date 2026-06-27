@@ -13,7 +13,8 @@ import {
   updateStockParticularName,
   deleteStockParticular,
   updateLedgerEntry,
-  deleteLedgerEntry
+  deleteLedgerEntry,
+  checkStockParticularExists
 } from '../services/stockService';
 import { DEFAULT_SETTINGS } from '../services/settingsService';
 import type { StockParticular, StockLedgerEntry } from '../types';
@@ -370,6 +371,7 @@ const Stock: React.FC = () => {
       await updateStockParticularName(
         user?.uid || '',
         selectedParticular.id,
+        selectedParticular.name,
         editPartName.trim(),
         editPartUnit || undefined,
         resolvedCode
@@ -619,11 +621,51 @@ const Stock: React.FC = () => {
       const exportRows: any[] = [];
       for (const p of particulars) {
         const entries = await getLedgerEntries(user?.uid || '', p.id);
+        const firstEntry = entries.length > 0 ? entries[0] : null;
         exportRows.push({
-          particularId: p.id,
-          name: p.name,
-          particularCode: p.particularCode || '',
-          currentStock: p.currentStock,
+          "particular name": p.name || '',
+          "particular ID": p.particularCode || '',
+          "default unit": p.defaultUnit || '',
+          "current stock": p.currentStock ?? '',
+          "initial stock": firstEntry ? (firstEntry.debit ?? '') : '',
+          "opening date": firstEntry ? (firstEntry.date || '') : '',
+          "bill number": firstEntry ? (firstEntry.billNo || '') : '',
+        });
+      }
+
+      const csv = Papa.unparse(exportRows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', 'stock_list.csv');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showSuccess(`Stock data exported successfully (${exportRows.length} items).`);
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Failed to export stock data.');
+    }
+  };
+
+  // Full backup export with ledger_json — used from the top header button
+  const handleExportFull = async () => {
+    if (particulars.length === 0) {
+      showError('No stock particulars to export.');
+      return;
+    }
+    showSuccess('Preparing full stock backup...');
+    try {
+      const exportRows: any[] = [];
+      for (const p of particulars) {
+        const entries = await getLedgerEntries(user?.uid || '', p.id);
+        exportRows.push({
+          "particular ID": p.particularCode || '',
+          "particular name": p.name || '',
+          "default unit": p.defaultUnit || '',
+          "current stock": p.currentStock ?? '',
           ledger_json: JSON.stringify(entries.map(e => ({
             date: e.date,
             billNo: e.billNo || '',
@@ -646,7 +688,7 @@ const Stock: React.FC = () => {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      showSuccess(`Stock data exported successfully (${exportRows.length} items).`);
+      showSuccess(`Full stock backup exported (${exportRows.length} items).`);
     } catch (error) {
       console.error('Export error:', error);
       showError('Failed to export stock data.');
@@ -671,53 +713,99 @@ const Stock: React.FC = () => {
 
           let importedCount = 0;
           for (const row of rows) {
-            if (!row.name) continue;
+            const name = (row['particular name'] || row.name || '').trim();
+            if (!name) continue;
 
-            const name = row.name.trim();
-            let ledgerEntries: any[] = [];
+            const defaultUnit = (row['default unit'] || row.defaultUnit || '').trim();
+            const particularCode = (row['particular ID'] || row.particularId || row.particularCode || row['particular code'] || '').trim();
+            const particularId = name.toLowerCase().trim();
+
+            const currentStockValRaw = row['current stock'] ?? row.currentStock;
+            const currentStockVal = currentStockValRaw !== '' && currentStockValRaw != null ? parseFloat(currentStockValRaw) || 0 : 0;
+
+            // Fetch existing entries and profile
+            const existingEntries = await getLedgerEntries(user?.uid || '', particularId);
+            const particularExists = await checkStockParticularExists(user?.uid || '', particularId);
+
+            // Parse incoming entries
+            let incomingEntries: any[] = [];
             try {
               if (row.ledger_json) {
-                ledgerEntries = JSON.parse(row.ledger_json);
+                incomingEntries = JSON.parse(row.ledger_json);
               }
             } catch (e) {
               console.warn('Could not parse ledger for:', name);
             }
 
-            try {
-              // Create the particular with 0 initial stock
-              await createStockParticular(
-                user?.uid || '',
-                name,
-                0,
-                getCurrentNepaliDate(),
-                undefined,
-                undefined,
-                row.particularCode || undefined
-              );
-            } catch (e: any) {
-              // Particular might already exist – skip creation, continue adding ledger entries
-              if (!e.message?.includes('already exists')) {
-                console.warn('Error creating particular:', name, e);
-                continue;
+            if (incomingEntries.length === 0) {
+              const initialStockRaw = row['initial stock'];
+              const hasInitialStock = initialStockRaw !== '' && initialStockRaw != null;
+              const initialStockVal = hasInitialStock ? parseFloat(initialStockRaw) || 0 : null;
+              if (initialStockVal !== null && initialStockVal !== 0) {
+                const openingDate = (row['opening date'] || '').trim() || getCurrentNepaliDate();
+                const billNumber = (row['bill number'] || '').trim();
+                incomingEntries.push({
+                  date: openingDate,
+                  billNo: billNumber,
+                  debit: initialStockVal,
+                  credit: 0,
+                  unit: defaultUnit,
+                  note: 'Initial Stock'
+                });
               }
             }
 
-            // Add ledger entries one by one
-            const particularId = name.toLowerCase().trim();
-            for (const entry of ledgerEntries) {
+            // Filter out duplicate entries
+            const uniqueEntries = incomingEntries.filter(incoming => {
+              const isDuplicate = existingEntries.some(existing =>
+                existing.date === incoming.date &&
+                (existing.billNo || '') === (incoming.billNo || '') &&
+                existing.debit === (parseFloat(incoming.debit) || 0) &&
+                existing.credit === (parseFloat(incoming.credit) || 0)
+              );
+              return !isDuplicate;
+            });
+
+            // Create particular if not exists
+            if (!particularExists) {
+              try {
+                // If there are unique ledger entries to add, we initialize currentStock to 0
+                // (the entries added sequentially will compute the correct stock level).
+                // Otherwise, initialize to currentStockVal.
+                const initialStockToSet = uniqueEntries.length > 0 ? 0 : currentStockVal;
+                await createStockParticular(
+                  user?.uid || '',
+                  name,
+                  initialStockToSet,
+                  getCurrentNepaliDate(),
+                  undefined,
+                  defaultUnit || undefined,
+                  particularCode || undefined
+                );
+              } catch (e: any) {
+                if (!e.message?.includes('already exists')) {
+                  console.warn('Error creating particular:', name, e);
+                  continue;
+                }
+              }
+            }
+
+            // Add unique entries sequentially
+            for (const entry of uniqueEntries) {
               try {
                 await addLedgerEntry(user?.uid || '', particularId, {
                   date: entry.date || getCurrentNepaliDate(),
                   billNo: entry.billNo || undefined,
                   debit: parseFloat(entry.debit) || 0,
                   credit: parseFloat(entry.credit) || 0,
-                  unit: entry.unit || undefined,
-                  note: entry.note || 'Imported entry'
+                  unit: entry.unit || defaultUnit || undefined,
+                  note: entry.note || 'Imported Entry'
                 });
               } catch (err) {
-                console.warn('Error importing ledger entry for', name, ':', err);
+                console.warn('Error adding ledger entry for', name, ':', err);
               }
             }
+
             importedCount++;
           }
 
@@ -781,7 +869,7 @@ const Stock: React.FC = () => {
               </svg>
               {importLoading ? 'Importing...' : 'Import'}
             </button>
-            <button onClick={handleExport} className="btn btn-secondary">
+            <button onClick={handleExportFull} className="btn btn-secondary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
@@ -906,7 +994,35 @@ const Stock: React.FC = () => {
                 className="input search-input"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
+                style={{ paddingRight: searchTerm ? '2rem' : undefined }}
               />
+              {searchTerm && (
+                <button 
+                  type="button" 
+                  className="clear-search-btn" 
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2px'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              )}
             </div>
 
             <div className="particulars-list">

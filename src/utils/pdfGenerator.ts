@@ -70,7 +70,8 @@ export const generateBillPDF = (
   const tableData = bill.items.map(item => [
     item.sn.toString(),
     item.particulars,
-    item.unit ? `${item.qty} ${item.unit}` : item.qty.toString(),
+    item.qty.toString(),
+    item.unit || '-',
     formatCurrency(item.rate),
     formatCurrency(item.amount)
   ]);
@@ -85,7 +86,7 @@ export const generateBillPDF = (
   
   autoTable(doc, {
     startY: 68,
-    head: [['S.N.', 'PARTICULARS', 'QTY.', 'RATE', 'AMOUNT']],
+    head: [['S.N.', { content: 'PARTICULARS', styles: { halign: 'center' } }, 'QTY.', 'UNIT', 'RATE', 'AMOUNT']],
     body: tableData,
     theme: 'grid',
     showFoot: 'lastPage',
@@ -100,9 +101,10 @@ export const generateBillPDF = (
     columnStyles: {
       0: { halign: 'center', cellWidth: 15 },
       1: { halign: 'left', cellWidth: 'auto' },
-      2: { halign: 'center', cellWidth: 25 },
-      3: { halign: 'center', cellWidth: 35 },
-      4: { halign: 'center', cellWidth: 35 }
+      2: { halign: 'center', cellWidth: 15 },
+      3: { halign: 'center', cellWidth: 15 },
+      4: { halign: 'center', cellWidth: 25 },
+      5: { halign: 'center', cellWidth: 35 }
     },
     styles: {
       fontSize: 8.5,
@@ -112,12 +114,14 @@ export const generateBillPDF = (
       lineWidth: 0.2
     },
     bodyStyles: {
+      cellPadding: { top: 0.5, right: 4, bottom: 0.5, left: 4 },
       lineWidth: 0,
       fillColor: false as any
     },
     foot: [[
       { content: 'Total', colSpan: 2, styles: { halign: 'right', fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, lineColor: [0, 0, 0] } },
       { content: `${totalQty}`, styles: { halign: 'center', fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, lineColor: [0, 0, 0] } },
+      { content: '', styles: { fillColor: [255, 255, 255], lineWidth: 0.2, lineColor: [0, 0, 0] } },
       { content: '', styles: { fillColor: [255, 255, 255], lineWidth: 0.2, lineColor: [0, 0, 0] } },
       { content: formatCurrency(bill.totalAmount), styles: { halign: 'center', fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, lineColor: [0, 0, 0] } },
     ]],
