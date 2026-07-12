@@ -6,6 +6,7 @@ import ToastContainer from '../components/ToastContainer';
 import { getAppSettings, saveAppSettings, DEFAULT_SETTINGS, getFiscalYearOptions, hashActionPin, verifyActionPin } from '../services/settingsService';
 import { getUserSessions, revokeSession, revokeOtherSessions, getCurrentSessionId, type DeviceSession } from '../services/sessionService';
 import { exportFullBackup } from '../utils/backupExport';
+import { getDirectoryHandle, saveDirectoryHandle, deleteDirectoryHandle } from '../utils/directoryDB';
 import type { AppSettings } from '../types';
 import './Settings.css';
 
@@ -65,12 +66,27 @@ const Settings: React.FC = () => {
   // Backup states
   const [backupFiscalYear, setBackupFiscalYear] = useState<string>('active');
   const [backupLoading, setBackupLoading] = useState(false);
+  const [backupDirHandle, setBackupDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [dirPickerSupported, setDirPickerSupported] = useState(false);
 
   useEffect(() => {
     loadSettings();
     loadSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
+
+  useEffect(() => {
+    setDirPickerSupported(typeof window !== 'undefined' && 'showDirectoryPicker' in window);
+    const loadDirHandle = async () => {
+      try {
+        const handle = await getDirectoryHandle();
+        setBackupDirHandle(handle);
+      } catch (err) {
+        console.error('Failed to load backup directory handle:', err);
+      }
+    };
+    loadDirHandle();
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1430,8 +1446,8 @@ const Settings: React.FC = () => {
                 <div className="settings-preview-box" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <div>
                     <span className="preview-label">Backup Includes: </span>
-                    <strong className="preview-value" style={{ color: 'var(--primary)' }}>
-                      Bills · Customers · Parties · Stock
+                    <strong className="preview-value" style={{ color: 'var(--primary)', textTransform: 'none' }}>
+                      bills | particulars list | stock | customer list | customer | parties list | parties
                     </strong>
                   </div>
                   <div style={{ marginLeft: 'auto' }}>
@@ -1443,6 +1459,62 @@ const Settings: React.FC = () => {
                 </div>
               </div>
 
+              {dirPickerSupported && (
+                <div className="form-group full-width fade-in">
+                  <label className="label">Backup Destination Folder</label>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', backgroundColor: 'var(--bg-secondary)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, minWidth: '200px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        Choose where backups will be automatically saved:
+                      </span>
+                      <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
+                        {backupDirHandle ? `Selected Directory: ${backupDirHandle.name}` : 'Default (Downloads folder or Save As dialog)'}
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={async () => {
+                          try {
+                            const handle = await (window as any).showDirectoryPicker();
+                            await saveDirectoryHandle(handle);
+                            setBackupDirHandle(handle);
+                            showSuccess('Backup directory path updated successfully!');
+                          } catch (err: any) {
+                            if (err.name !== 'AbortError') {
+                              console.error(err);
+                              showError('Failed to select directory.');
+                            }
+                          }
+                        }}
+                      >
+                        {backupDirHandle ? 'Change Folder' : 'Select Folder'}
+                      </button>
+                      {backupDirHandle && (
+                        <button
+                          type="button"
+                          className="btn btn-danger-action"
+                          style={{ padding: '8px 14px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', border: 'none', background: '#ef4444', color: '#fff' }}
+                          onClick={async () => {
+                            try {
+                              await deleteDirectoryHandle();
+                              setBackupDirHandle(null);
+                              showSuccess('Backup destination reset to default.');
+                            } catch (err) {
+                              console.error(err);
+                              showError('Failed to reset backup path.');
+                            }
+                          }}
+                        >
+                          Reset to Default
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="form-group full-width">
                 <button
                   type="button"
@@ -1450,6 +1522,24 @@ const Settings: React.FC = () => {
                   disabled={backupLoading}
                   onClick={async () => {
                     if (!user?.uid) return;
+
+                    // Request permission synchronously inside user click gesture before starting async work
+                    if (backupDirHandle) {
+                      try {
+                        const options = { mode: 'readwrite' as const };
+                        if ((await (backupDirHandle as any).queryPermission(options)) !== 'granted') {
+                          if ((await (backupDirHandle as any).requestPermission(options)) !== 'granted') {
+                            showError('Permission to write to the backup directory was denied.');
+                            return;
+                          }
+                        }
+                      } catch (err) {
+                        console.error('Failed to query folder permission:', err);
+                        showError('Failed to access selected directory. Please try selecting it again.');
+                        return;
+                      }
+                    }
+
                     setBackupLoading(true);
                     try {
                       const fy = backupFiscalYear === 'active' ? settings.activeFiscalYear : backupFiscalYear === 'all' ? undefined : backupFiscalYear;
@@ -1457,8 +1547,9 @@ const Settings: React.FC = () => {
                         fiscalYear: fy,
                         startMonth: settings.fiscalYearStart ?? 4,
                         endMonth: settings.fiscalYearEnd ?? 3,
+                        directoryHandle: backupDirHandle,
                       });
-                      showSuccess('Backup downloaded successfully!');
+                      showSuccess(backupDirHandle ? `Backup saved to "${backupDirHandle.name}" folder successfully!` : 'Backup downloaded successfully!');
                     } catch (err) {
                       console.error('Backup error:', err);
                       showError('Failed to export backup. Please try again.');
