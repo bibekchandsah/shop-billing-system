@@ -30,6 +30,7 @@ interface FiscalYearContextType {
   filterBillsByFY: (bills: Bill[]) => Bill[];
   /** Check if a single BS date string is in the active fiscal year */
   isInActiveFY: (bsDate: string) => boolean;
+  refreshSettings: () => Promise<void>;
 }
 
 const FiscalYearContext = createContext<FiscalYearContextType | undefined>(undefined);
@@ -49,6 +50,15 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.error('FiscalYearContext: failed to load settings', e);
     } finally {
       setLoading(false);
+    }
+  }, [user?.uid]);
+
+  const refreshSettings = useCallback(async () => {
+    try {
+      const s = await getAppSettings(user?.uid || '');
+      setSettings(s);
+    } catch (e) {
+      console.error('FiscalYearContext: failed to refresh settings', e);
     }
   }, [user?.uid]);
 
@@ -119,6 +129,7 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setActiveFiscalYear,
         filterBillsByFY,
         isInActiveFY,
+        refreshSettings,
       }}
     >
       {children}

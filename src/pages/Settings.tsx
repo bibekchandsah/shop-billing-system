@@ -34,8 +34,8 @@ const getTimeAgo = (date: Date): string => {
 
 const Settings: React.FC = () => {
   const { user, changePassword } = useAuth();
-  const { toasts, showSuccess, showError, removeToast } = useToast();
-  const { setActiveFiscalYear } = useFiscalYear();
+  const { toasts, showSuccess, showError, showToast, removeToast } = useToast();
+  const { setActiveFiscalYear, refreshSettings } = useFiscalYear();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -290,6 +290,7 @@ const Settings: React.FC = () => {
       }
       
       await saveAppSettings(user?.uid || '', settings);
+      await refreshSettings();
       // Sync the fiscal year context so TopBar updates immediately
       await setActiveFiscalYear(settings.activeFiscalYear);
       showSuccess('Settings saved successfully!');
@@ -1515,6 +1516,41 @@ const Settings: React.FC = () => {
                 </div>
               )}
 
+              {/* Backup Reminder Section */}
+              <div className="form-group full-width" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+                <label className="label">Automatic Backup Reminder</label>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '0.375rem' }}>
+                      Reminder Frequency:
+                    </span>
+                    <select
+                      className="input"
+                      value={settings.backupReminderFrequency || 'none'}
+                      onChange={e => handleFieldChange('backupReminderFrequency', e.target.value as any)}
+                    >
+                      <option value="none">None (Disabled)</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+                  {settings.backupReminderFrequency && settings.backupReminderFrequency !== 'none' && (
+                    <div style={{ flex: 1, minWidth: '150px' }}>
+                      <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '0.375rem' }}>
+                        Reminder Time (HH:MM):
+                      </span>
+                      <input
+                        type="time"
+                        className="input"
+                        value={settings.backupReminderTime || '17:00'}
+                        onChange={e => handleFieldChange('backupReminderTime', e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="form-group full-width">
                 <button
                   type="button"
@@ -1541,6 +1577,7 @@ const Settings: React.FC = () => {
                     }
 
                     setBackupLoading(true);
+                    const progressToastId = showToast('info', 'Exporting Backup...', 0);
                     try {
                       const fy = backupFiscalYear === 'active' ? settings.activeFiscalYear : backupFiscalYear === 'all' ? undefined : backupFiscalYear;
                       await exportFullBackup(user.uid, settings.businessName, {
@@ -1549,9 +1586,29 @@ const Settings: React.FC = () => {
                         endMonth: settings.fiscalYearEnd ?? 3,
                         directoryHandle: backupDirHandle,
                       });
+                      removeToast(progressToastId);
                       showSuccess(backupDirHandle ? `Backup saved to "${backupDirHandle.name}" folder successfully!` : 'Backup downloaded successfully!');
+                      
+                      if (settings.backupReminderFrequency && settings.backupReminderFrequency !== 'none') {
+                        const d = new Date();
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        let periodKey = '';
+                        if (settings.backupReminderFrequency === 'daily') {
+                          periodKey = `${year}-${month}-${String(d.getDate()).padStart(2, '0')}`;
+                        } else if (settings.backupReminderFrequency === 'monthly') {
+                          periodKey = `${year}-${month}`;
+                        } else {
+                          const firstDay = new Date(year, 0, 1);
+                          const pastDays = (d.getTime() - firstDay.getTime()) / 86400000;
+                          const weekNum = Math.ceil((pastDays + firstDay.getDay() + 1) / 7);
+                          periodKey = `${year}-W${weekNum}`;
+                        }
+                        localStorage.setItem(`last_backup_completed_${user.uid}`, periodKey);
+                      }
                     } catch (err) {
                       console.error('Backup error:', err);
+                      removeToast(progressToastId);
                       showError('Failed to export backup. Please try again.');
                     } finally {
                       setBackupLoading(false);

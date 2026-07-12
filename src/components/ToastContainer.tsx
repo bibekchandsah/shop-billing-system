@@ -5,7 +5,8 @@ import './Toast.css';
 export interface ToastMessage {
   id: string;
   type: 'success' | 'error' | 'info' | 'warning';
-  message: string;
+  message: React.ReactNode;
+  duration?: number;
 }
 
 interface ToastContainerProps {
@@ -23,6 +24,7 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove }) => 
           key={toast.id}
           type={toast.type}
           message={toast.message}
+          duration={toast.duration}
           onClose={() => onRemove(toast.id)}
         />
       ))}

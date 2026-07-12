@@ -82,6 +82,8 @@ export interface AppSettings {
   fiscalYearEnd: number;
   /** Active fiscal year label, e.g. "2080-81" */
   activeFiscalYear: string;
+  backupReminderFrequency?: 'none' | 'daily' | 'weekly' | 'monthly';
+  backupReminderTime?: string;
 }
 
 export interface StockParticular {

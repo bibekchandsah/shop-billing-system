@@ -113,6 +113,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fiscalYearStart: 4,   // Shrawan (month 4 in BS, 1-indexed)
   fiscalYearEnd: 3,     // Ashadh (month 3 in BS, 1-indexed)
   activeFiscalYear: getDefaultActiveFiscalYear(4),
+  backupReminderFrequency: 'none',
+  backupReminderTime: '17:00',
 };
 
 /** Helper to get settings document reference in Firestore: users/{userId}/settings/preferences */
@@ -194,6 +196,8 @@ export const saveAppSettings = async (userId: string, settings: AppSettings): Pr
       fiscalYearStart: settings.fiscalYearStart ?? DEFAULT_SETTINGS.fiscalYearStart,
       fiscalYearEnd: settings.fiscalYearEnd ?? DEFAULT_SETTINGS.fiscalYearEnd,
       activeFiscalYear: settings.activeFiscalYear || DEFAULT_SETTINGS.activeFiscalYear,
+      backupReminderFrequency: settings.backupReminderFrequency ?? DEFAULT_SETTINGS.backupReminderFrequency,
+      backupReminderTime: settings.backupReminderTime ?? DEFAULT_SETTINGS.backupReminderTime,
       updatedAt: new Date()
     };
 

@@ -3,16 +3,21 @@ import './Toast.css';
 
 interface ToastProps {
   type: 'success' | 'error' | 'info' | 'warning';
-  message: string;
+  message: React.ReactNode;
   onClose: () => void;
   duration?: number;
 }
 
-const Toast: React.FC<ToastProps> = ({ type, message, onClose, duration = 5000 }) => {
+const Toast: React.FC<ToastProps> = ({ type, message, onClose, duration }) => {
   useEffect(() => {
+    if (duration === 0) {
+      return;
+    }
+    const actualDuration = duration !== undefined ? duration : 5000;
+
     const timer = setTimeout(() => {
       onClose();
-    }, duration);
+    }, actualDuration);
 
     return () => clearTimeout(timer);
   }, [duration, onClose]);

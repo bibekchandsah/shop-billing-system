@@ -2,6 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import TopBar from './TopBar';
+import { useFiscalYear } from '../context/FiscalYearContext';
+import { useAuth } from '../context/AuthContext';
+import { exportFullBackup } from '../utils/backupExport';
+import { getDirectoryHandle } from '../utils/directoryDB';
+import ToastContainer, { type ToastMessage } from './ToastContainer';
 import './AppLayout.css';
 import './Sidebar.css';
 
@@ -152,6 +157,197 @@ interface AppLayoutProps {
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+  const { user } = useAuth();
+  const { settings } = useFiscalYear();
+  const [layoutToasts, setLayoutToasts] = useState<ToastMessage[]>([]);
+
+  // Period key generator for daily/weekly/monthly periods
+  const getPeriodKey = (frequency: 'daily' | 'weekly' | 'monthly'): string => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    
+    if (frequency === 'daily') {
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
+    if (frequency === 'monthly') {
+      return `${year}-${month}`;
+    }
+    
+    // Weekly
+    const firstDayOfYear = new Date(year, 0, 1);
+    const pastDaysOfYear = (d.getTime() - firstDayOfYear.getTime()) / 86400000;
+    const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    return `${year}-W${weekNum}`;
+  };
+
+  const triggerGlobalBackup = async () => {
+    if (!user?.uid || !settings) return;
+    
+    let dirHandle: FileSystemDirectoryHandle | null = null;
+    try {
+      dirHandle = await getDirectoryHandle();
+    } catch (err) {
+      console.error('Failed to load directory handle for reminder backup:', err);
+    }
+
+    if (dirHandle) {
+      try {
+        const options = { mode: 'readwrite' as const };
+        if ((await (dirHandle as any).queryPermission(options)) !== 'granted') {
+          if ((await (dirHandle as any).requestPermission(options)) !== 'granted') {
+            const errToastId = Date.now().toString();
+            setLayoutToasts(prev => [...prev, { id: errToastId, type: 'error', message: 'Permission to write to the backup directory was denied.' }]);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to get permission in reminder:', err);
+        const errToastId = Date.now().toString();
+        setLayoutToasts(prev => [...prev, { id: errToastId, type: 'error', message: 'Failed to access selected directory.' }]);
+        return;
+      }
+    }
+
+    const progressToastId = Date.now().toString();
+    setLayoutToasts(prev => [...prev, { id: progressToastId, type: 'info', duration: 0, message: 'Exporting Backup...' }]);
+    
+    try {
+      await exportFullBackup(user.uid, settings.businessName, {
+        fiscalYear: settings.activeFiscalYear,
+        startMonth: settings.fiscalYearStart ?? 4,
+        endMonth: settings.fiscalYearEnd ?? 3,
+        directoryHandle: dirHandle,
+      });
+      setLayoutToasts(prev => prev.filter(t => t.id !== progressToastId));
+      
+      // Mark as completed for this period
+      if (settings.backupReminderFrequency && settings.backupReminderFrequency !== 'none') {
+        const periodKey = getPeriodKey(settings.backupReminderFrequency);
+        localStorage.setItem(`last_backup_completed_${user.uid}`, periodKey);
+      }
+      
+      // Remove any active reminder toasts
+      setLayoutToasts(prev => prev.filter(t => t.id !== 'backup-reminder-toast'));
+
+      const successId = Date.now().toString();
+      setLayoutToasts(prev => [...prev, {
+        id: successId,
+        type: 'success',
+        message: dirHandle 
+          ? `Backup saved to "${dirHandle.name}" folder successfully!` 
+          : 'Backup downloaded successfully!'
+      }]);
+    } catch (err) {
+      console.error('Reminder backup error:', err);
+      setLayoutToasts(prev => prev.filter(t => t.id !== progressToastId));
+      const errorId = Date.now().toString();
+      setLayoutToasts(prev => [...prev, { id: errorId, type: 'error', message: 'Failed to export backup. Please try again.' }]);
+    }
+  };
+
+  useEffect(() => {
+    console.log('[BackupReminder] Hook triggered', {
+      uid: user?.uid,
+      hasSettings: !!settings,
+      frequency: settings?.backupReminderFrequency,
+      time: settings?.backupReminderTime
+    });
+
+    if (!user?.uid || !settings || !settings.backupReminderFrequency || settings.backupReminderFrequency === 'none') {
+      return;
+    }
+
+    const frequency = settings.backupReminderFrequency;
+
+    const checkReminder = () => {
+      const periodKey = getPeriodKey(frequency);
+      const lastCompleted = localStorage.getItem(`last_backup_completed_${user.uid}`);
+      const dismissedTimeStr = localStorage.getItem(`backup_reminder_dismissed_time_${user.uid}`);
+      
+      let shouldShow = lastCompleted !== periodKey;
+
+      if (shouldShow && dismissedTimeStr) {
+        const dismissedTime = Number(dismissedTimeStr);
+        const elapsed = Date.now() - dismissedTime;
+        if (elapsed < 20 * 60 * 1000) { // 20 minutes grace period
+          shouldShow = false;
+        }
+      }
+
+      console.log('[BackupReminder] Running check', {
+        periodKey,
+        lastCompleted,
+        dismissedTimeStr,
+        shouldShow
+      });
+
+      // If backup is missing for current period, we show reminder instantly
+      if (shouldShow) {
+        // Use functional state update to inspect current toasts without requiring layoutToasts in effect dependencies
+        setLayoutToasts((prev) => {
+          const hasReminder = prev.some(t => t.id === 'backup-reminder-toast');
+          if (hasReminder) {
+            return prev;
+          }
+          console.log('[BackupReminder] Dispatching toast reminder');
+          
+          const newToast: ToastMessage = {
+            id: 'backup-reminder-toast',
+            type: 'warning',
+            duration: 0, // stay open until manually closed
+            message: (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                <strong style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  ⚠️ Backup Reminder
+                </strong>
+                <span style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  You haven't backed up your billing data for this period yet.
+                </span>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', cursor: 'pointer', border: 'none', background: 'var(--primary)', color: '#fff' }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setLayoutToasts((currentToasts) => currentToasts.filter((t) => t.id !== 'backup-reminder-toast'));
+                      await triggerGlobalBackup();
+                    }}
+                  >
+                    Backup Now
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      localStorage.setItem(`backup_reminder_dismissed_time_${user.uid}`, Date.now().toString());
+                      setLayoutToasts((currentToasts) => currentToasts.filter((t) => t.id !== 'backup-reminder-toast'));
+                    }}
+                  >
+                    Remind Later
+                  </button>
+                </div>
+              </div>
+            )
+          };
+          return [...prev, newToast];
+        });
+      } else {
+        // If it's already completed or dismissed, make sure any active reminder is cleared
+        setLayoutToasts(prev => prev.filter(t => t.id !== 'backup-reminder-toast'));
+      }
+    };
+
+    checkReminder();
+    const interval = setInterval(checkReminder, 60000); // Check every 1 minute
+    return () => clearInterval(interval);
+  }, [user?.uid, settings]);
+
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
@@ -319,6 +515,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </div>,
         document.body
       )}
+      <ToastContainer
+        toasts={layoutToasts}
+        onRemove={(id) => {
+          if (id === 'backup-reminder-toast' && user?.uid) {
+            localStorage.setItem(`backup_reminder_dismissed_time_${user.uid}`, Date.now().toString());
+          }
+          setLayoutToasts((prev) => prev.filter((t) => t.id !== id));
+        }}
+      />
     </div>
   );
 };
