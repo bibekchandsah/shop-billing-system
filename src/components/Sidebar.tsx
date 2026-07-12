@@ -211,7 +211,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
               key={item.to}
               to={item.to}
               className={`sidebar-nav-item ${isActive(item.to) ? 'active' : ''}`}
-              style={{ display: item.label === 'Quick Entry' ? 'none' : undefined }}
+              // style={{ display: item.label === 'Quick Entry' ? 'none' : undefined }}
               onMouseEnter={e => handleMouseEnter(e, item.label)}
               onMouseLeave={handleMouseLeave}
               onClick={() => {
