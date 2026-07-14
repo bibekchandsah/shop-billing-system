@@ -24,8 +24,7 @@ const Login: React.FC = () => {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Already logged in → go home
-  if (user) return <Navigate to="/" replace />;
+
 
   const cycleTheme = () => {
     const idx = THEME_CYCLE.indexOf(theme);
@@ -134,6 +133,9 @@ const Login: React.FC = () => {
     signup: 'Start managing your bills today',
     forgot: 'Enter your email to receive a reset link',
   };
+
+  // Already logged in → go home
+  if (user) return <Navigate to="/" replace />;
 
   return (
     <div className="login-page">
