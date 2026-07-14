@@ -563,9 +563,9 @@ const CreateBill: React.FC = () => {
     }
   };
 
-  const generatePdfCore = (payload: BillPayload, latestSettings: AppSettings) => {
+  const generatePdfCore = async (payload: BillPayload, latestSettings: AppSettings) => {
     try {
-      generateBillPDF(
+      await generateBillPDF(
         payload.bill,
         latestSettings.businessName || 'Invoice Billing System',
         latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
@@ -621,9 +621,9 @@ const CreateBill: React.FC = () => {
       const latestSettings = await getLatestPrintSettings();
       // Defer synchronous PDF work to next tick so React can repaint the button
       await new Promise<void>((resolve) => {
-        setTimeout(() => {
+        setTimeout(async () => {
           try {
-            generatePdfCore(payload, latestSettings);
+            await generatePdfCore(payload, latestSettings);
           } catch (err) {
             console.error('Error generating PDF:', err);
             showError('Failed to generate PDF. Please try again.');
@@ -686,7 +686,7 @@ const CreateBill: React.FC = () => {
 
       if (saveOk) {
         if (actions.has('pdf')) {
-          generatePdfCore(payload, latestSettings);
+          await generatePdfCore(payload, latestSettings);
         }
         if (actions.has('print')) {
           await printCore(payload, latestSettings);

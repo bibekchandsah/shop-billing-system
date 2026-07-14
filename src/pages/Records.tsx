@@ -448,9 +448,9 @@ const Records: React.FC = () => {
       const latestSettings = await getLatestSettings();
       // Defer synchronous PDF work to next tick so React can repaint the button
       await new Promise<void>((resolve) => {
-        setTimeout(() => {
+        setTimeout(async () => {
           try {
-            generateBillPDF(
+            await generateBillPDF(
               bill,
               latestSettings.businessName || 'Invoice Billing System',
               latestSettings.businessAddress || 'Garuda, Rautahat, Nepal',
