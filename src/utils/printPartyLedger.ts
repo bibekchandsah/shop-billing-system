@@ -50,7 +50,7 @@ export const printPartyLedger = (
     .header .biz-name { font-size: 14px; font-weight: 600; margin-top: 4px; }
     .header .biz-addr { font-size: 12px; color: #555; margin-top: 2px; }
     hr { border: none; border-top: 1.5px solid #333; margin: 10px 0; }
-    .meta-grid { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 13px; gap: 12px; }
+    .meta-grid { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 13px; gap: 12px; font-weight: 600; }
     .meta-left { display: flex; flex-direction: column; gap: 4px; }
     .meta-row { display: flex; gap: 6px; align-items: baseline; }
     .meta-label { font-weight: 700; white-space: nowrap; color: #222; }
@@ -60,7 +60,7 @@ export const printPartyLedger = (
     thead th.left { text-align: left; }
     thead th.center { text-align: center; }
     thead th.right { text-align: right; }
-    td { padding: 6px 10px; border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; vertical-align: middle; color: #000; }
+    td { padding: 6px 10px; border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; vertical-align: middle; color: #000; font-weight: 600; }
     tbody tr:last-child td { border-bottom: 1px solid #000; }
     .center { text-align: center; }
     .right { text-align: right; }

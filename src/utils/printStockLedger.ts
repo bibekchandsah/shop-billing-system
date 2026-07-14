@@ -55,6 +55,7 @@ export const printStockLedger = (
       justify-content: space-between;
       margin-bottom: 14px;
       font-size: 13px;
+      font-weight: 600;
     }
     .meta-row { display: flex; gap: 5px; align-items: baseline; }
     .meta-label { font-weight: 700; white-space: nowrap; color: #222; }
@@ -79,6 +80,7 @@ export const printStockLedger = (
       border-bottom: none;
       vertical-align: middle;
       color: #000;
+      font-weight: 600;
     }
     tbody tr:last-child td { border-bottom: 1px solid #000; }
     .center { text-align: center; }

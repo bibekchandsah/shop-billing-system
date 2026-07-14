@@ -134,7 +134,7 @@ const SupplierLedger: React.FC = () => {
     table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
     th, td { padding: 8px 10px; vertical-align: top; }
     th { background: transparent; color: #000; text-align: left; font-weight: 700; border: 1px solid #000; }
-    td { border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; color: #000; }
+    td { border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; color: #000; font-weight: 600; }
     tbody tr:last-child td { border-bottom: 1px solid #000; }
     .right { text-align: right; }
     .toolbar { margin-bottom: 12px; display: flex; justify-content: flex-end; gap: 10px; }

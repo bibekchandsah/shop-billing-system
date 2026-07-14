@@ -61,6 +61,7 @@ export const printCustomerLedger = (
       margin-bottom: 14px;
       font-size: 13px;
       gap: 12px;
+      font-weight: 600;
     }
     .meta-left { display: flex; flex-direction: column; gap: 4px; }
     .meta-row { display: flex; gap: 6px; align-items: baseline; }
@@ -87,6 +88,7 @@ export const printCustomerLedger = (
       border-bottom: none;
       vertical-align: middle;
       color: #000;
+      font-weight: 600;
     }
     tbody tr:last-child td { border-bottom: 1px solid #000; }
     .center { text-align: center; }
