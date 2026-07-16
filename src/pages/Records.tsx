@@ -56,7 +56,7 @@ const Records: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { toasts, showSuccess, showError, removeToast } = useToast();
-  const { user } = useAuth();
+  const { user, activeUid } = useAuth();
   const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd } = useFiscalYear();
   const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings?.actionPinHash, showError });
 
@@ -151,7 +151,7 @@ const Records: React.FC = () => {
       }, 500); // debounce search
       return () => clearTimeout(timer);
     } else {
-      if (user?.uid) {
+      if (activeUid) {
         fetchTotalCount().then(() => loadPageForward(0));
       }
     }
@@ -159,7 +159,7 @@ const Records: React.FC = () => {
 
   const fetchTotalCount = async () => {
     try {
-      const coll = collection(db, 'users', user?.uid || '', 'bills');
+      const coll = collection(db, 'users', activeUid || '', 'bills');
       const snapshot = await getCountFromServer(coll);
       setTotalCount(snapshot.data().count);
     } catch (e) {
@@ -182,7 +182,7 @@ const Records: React.FC = () => {
   const handleSearchMode = async () => {
     try {
       setLoading(true);
-      const data = await getAllBills(user?.uid || '');
+      const data = await getAllBills(activeUid || '');
       const lowerSearchTerm = searchTerm.toLowerCase();
       const filtered = data.filter(bill => {
         return (
@@ -264,9 +264,9 @@ const Records: React.FC = () => {
       
       let q;
       if (cursorDoc) {
-        q = query(collection(db, 'users', user?.uid || '', 'bills'), orderBy('createdAt', 'desc'), startAfter(cursorDoc), limit(pageSize));
+        q = query(collection(db, 'users', activeUid || '', 'bills'), orderBy('createdAt', 'desc'), startAfter(cursorDoc), limit(pageSize));
       } else {
-        q = query(collection(db, 'users', user?.uid || '', 'bills'), orderBy('createdAt', 'desc'), limit(pageSize));
+        q = query(collection(db, 'users', activeUid || '', 'bills'), orderBy('createdAt', 'desc'), limit(pageSize));
       }
       
       const snap = await getDocs(q);
@@ -274,7 +274,7 @@ const Records: React.FC = () => {
         const data = d.data() as any;
         return {
           id: d.id,
-          userId: user?.uid,
+          userId: activeUid,
           ...data,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
@@ -297,7 +297,7 @@ const Records: React.FC = () => {
       setIsSearchMode(false);
       
       const q = query(
-        collection(db, 'users', user?.uid || '', 'bills'), 
+        collection(db, 'users', activeUid || '', 'bills'), 
         orderBy('createdAt', 'desc'), 
         endBefore(cursorDoc), 
         limitToLast(pageSize)
@@ -306,7 +306,7 @@ const Records: React.FC = () => {
       const snap = await getDocs(q);
       const newBills = snap.docs.map((d) => ({
         id: d.id,
-        userId: user?.uid,
+        userId: activeUid,
         ...d.data(),
         createdAt: d.data().createdAt?.toDate() || new Date(),
         updatedAt: d.data().updatedAt?.toDate() || new Date(),
@@ -347,12 +347,12 @@ const Records: React.FC = () => {
       const remainder = totalCount % pageSize;
       const fetchCount = remainder === 0 ? pageSize : remainder;
       
-      const q = query(collection(db, 'users', user?.uid || '', 'bills'), orderBy('createdAt', 'asc'), limit(fetchCount));
+      const q = query(collection(db, 'users', activeUid || '', 'bills'), orderBy('createdAt', 'asc'), limit(fetchCount));
       const snap = await getDocs(q);
       
       const oldestBills = snap.docs.map((d) => ({
         id: d.id,
-        userId: user?.uid,
+        userId: activeUid,
         ...d.data(),
         createdAt: d.data().createdAt?.toDate() || new Date(),
         updatedAt: d.data().updatedAt?.toDate() || new Date(),
@@ -372,7 +372,7 @@ const Records: React.FC = () => {
   const loadAllBillsForSort = async () => {
     try {
       setLoading(true);
-      const data = await getAllBills(user?.uid || '');
+      const data = await getAllBills(activeUid || '');
       setAllBills(data);
     } catch (error) {
       console.error('Error loading all bills for sorting:', error);
@@ -415,13 +415,13 @@ const Records: React.FC = () => {
     setDeletingId(id);
     try {
       // 1. Delete from Firestore
-      await deleteBill(user?.uid || '', id);
+      await deleteBill(activeUid || '', id);
       
       // 2. Revert stock levels
       if (billToDelete.billNo) {
-        await removeBillInventory(user?.uid || '', billToDelete.billNo, billToDelete.items || []);
+        await removeBillInventory(activeUid || '', billToDelete.billNo, billToDelete.items || []);
       }
-      await syncBillCustomerLedger(user?.uid || '', billToDelete, null);
+      await syncBillCustomerLedger(activeUid || '', billToDelete, null);
 
       showSuccess('Bill and associated stock records deleted successfully');
       loadBills();
@@ -439,7 +439,7 @@ const Records: React.FC = () => {
 
   // Always fetch fresh settings before printing/downloading so Business Profile changes are reflected
   const getLatestSettings = async () => {
-    return await getAppSettings(user?.uid || '');
+    return await getAppSettings(activeUid || '');
   };
 
   const handleDownloadPDF = async (bill: Bill) => {
@@ -500,7 +500,7 @@ const Records: React.FC = () => {
     if (!isSearchMode) {
       showSuccess('Fetching all records for export...');
       try {
-        exportData = await getAllBills(user?.uid || '');
+        exportData = await getAllBills(activeUid || '');
       } catch (e) {
         showError('Failed to fetch full records for export');
         return;
@@ -563,7 +563,7 @@ const Records: React.FC = () => {
               const customerCode = (row.customerCode || row['customer code'] || row['customer ID'] || row.customerId || row.customerID || '').trim();
 
               const billData: any = {
-                userId: user?.uid || '',
+                userId: activeUid || '',
                 billNo: row.billNo,
                 date: row.date || '',
                 nepaliDate: row.nepaliDate || '',
@@ -579,14 +579,14 @@ const Records: React.FC = () => {
               };
 
               // Check if bill already exists to prevent duplicate imports
-              const exists = await getBillByNumber(user?.uid || '', row.billNo);
+              const exists = await getBillByNumber(activeUid || '', row.billNo);
               if (exists) {
                 console.info('Bill already exists, skipping:', row.billNo);
                 continue;
               }
 
               await createBill(billData);
-              await syncBillCustomerLedger(user?.uid || '', null, billData as Bill);
+              await syncBillCustomerLedger(activeUid || '', null, billData as Bill);
               importedCount++;
             }
           }
@@ -623,11 +623,11 @@ const Records: React.FC = () => {
 
   useEffect(() => {
     const loadResources = async () => {
-      if (!user?.uid) return;
+      if (!activeUid) return;
       try {
-        const s = await getAppSettings(user.uid);
+        const s = await getAppSettings(activeUid);
         setLocalSettings(s);
-        const parts = await getStockParticulars(user.uid);
+        const parts = await getStockParticulars(activeUid);
         setStockParticulars(parts);
       } catch (err) {
         console.warn('Failed loading edit resources', err);
@@ -635,7 +635,7 @@ const Records: React.FC = () => {
     };
 
     if (showEditModal) loadResources();
-  }, [showEditModal, user?.uid]);
+  }, [showEditModal, activeUid]);
 
   const handleEditField = (field: keyof Bill, value: string) => {
     if (!editBill) return;
@@ -728,7 +728,7 @@ const Records: React.FC = () => {
     try {
       // 1. Revert stock levels from original bill first
       if (originalBill && originalBill.billNo) {
-        await removeBillInventory(user?.uid || '', originalBill.billNo, originalBill.items || []);
+        await removeBillInventory(activeUid || '', originalBill.billNo, originalBill.items || []);
       }
 
       // 2. Save the edited bill to Firestore
@@ -748,17 +748,17 @@ const Records: React.FC = () => {
         paymentMethod:       editBill.paymentMethod || 'Cash',
         freeDue:             editBill.freeDue,
       };
-      await updateBill(user?.uid || '', editBill.id, updated);
+      await updateBill(activeUid || '', editBill.id, updated);
 
       // 3. Record new stock levels for updated bill
       await recordBillInventory(
-        user?.uid || '',
+        activeUid || '',
         editBill.billNo,
         editBill.nepaliDate || editBill.date,
         validItems
       );
       await syncBillCustomerLedger(
-        user?.uid || '',
+        activeUid || '',
         originalBill,
         { ...editBill, items: validItems, totalAmount, totalAmountInWords: numberToWords(totalAmount), totalQty } as Bill
       );

@@ -40,7 +40,7 @@ const getCustomerKey = (bill: Bill) =>
     .join('|');
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { activeUid } = useAuth();
   const { toasts, showError, removeToast } = useToast();
   const { settings, filterBillsByFY } = useFiscalYear();
 
@@ -52,8 +52,8 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     try {
       const [allBills, allStock] = await Promise.all([
-        getAllBills(user?.uid || ''),
-        getStockParticulars(user?.uid || ''),
+        getAllBills(activeUid || ''),
+        getStockParticulars(activeUid || ''),
       ]);
       setBills(allBills);
       setStockItems(allStock);
@@ -68,7 +68,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     loadDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [activeUid]);
 
   const stats = useMemo(() => {
     // ── Fiscal year filter ────────────────────────────────────────────────────

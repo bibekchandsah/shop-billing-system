@@ -48,7 +48,7 @@ const CreateBill: React.FC = () => {
   const customerNameRef = useRef<HTMLInputElement | null>(null);
   const customerCodeRef = useRef<HTMLInputElement | null>(null);
   const noteRef = useRef<HTMLInputElement | null>(null);
-  const { user } = useAuth();
+  const { activeUid } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
 
   useEffect(() => {
@@ -63,11 +63,11 @@ const CreateBill: React.FC = () => {
 
   const initializeBill = async () => {
     try {
-      const fetchedSettings = await getAppSettings(user?.uid || '');
+      const fetchedSettings = await getAppSettings(activeUid || '');
       setSettings(fetchedSettings);
       setItems(prev => prev.map(item => (item.unit ? item : { ...item, unit: getDefaultUnit(fetchedSettings) })));
 
-      const nextBillNo = await getNextBillNumber(user?.uid || '');
+      const nextBillNo = await getNextBillNumber(activeUid || '');
       setBillNo(nextBillNo);
       // Set today's Nepali date as default
       const todayBs = getCurrentNepaliDate();
@@ -77,10 +77,10 @@ const CreateBill: React.FC = () => {
       const adDate = toEnglishDate(`${y}-${m}-${d}`);
       setDate(adDate.toISOString().split('T')[0]);
 
-      if (user?.uid) {
-        const particulars = await getStockParticulars(user.uid);
+      if (activeUid) {
+        const particulars = await getStockParticulars(activeUid);
         setStockParticulars(particulars);
-        const fetchedCustomers = await getCustomers(user.uid);
+        const fetchedCustomers = await getCustomers(activeUid);
         setCustomers(fetchedCustomers);
         // After initial load, focus customer ID to speed up new billing
         setTimeout(() => flashAndScroll(customerCodeRef), 250);
@@ -94,7 +94,7 @@ const CreateBill: React.FC = () => {
   const getLatestPrintSettings = async () => {
     // Re-use already-loaded settings if available; only fetch from Firestore if missing
     if (settings) return settings;
-    const latestSettings = await getAppSettings(user?.uid || '');
+    const latestSettings = await getAppSettings(activeUid || '');
     setSettings(latestSettings);
     return latestSettings;
   };
@@ -161,7 +161,7 @@ const CreateBill: React.FC = () => {
       return true;
     }
 
-    const existing = await findCustomerByCode(user?.uid || '', code);
+    const existing = await findCustomerByCode(activeUid || '', code);
     if (!existing) {
       setCustomerCodeMessage('');
       return true;
@@ -460,7 +460,7 @@ const CreateBill: React.FC = () => {
 
     const bill: Bill = {
       id: '',
-      userId: user?.uid || '',
+      userId: activeUid || '',
       billNo,
       date: adDate,
       nepaliDate: bsDate,
@@ -505,7 +505,7 @@ const CreateBill: React.FC = () => {
         if (!customerCodeToUse) {
           customerCodeToUse = getNextCustomerCode(customers);
           const docId = buildCustomerDocId(existing.name, existing.address, existing.contactNumber, customerCodeToUse);
-          await upsertCustomerProfile(user?.uid || '', docId, {
+          await upsertCustomerProfile(activeUid || '', docId, {
             name: existing.name,
             address: existing.address,
             contactNumber: existing.contactNumber,
@@ -519,7 +519,7 @@ const CreateBill: React.FC = () => {
           customerCodeToUse = getNextCustomerCode(customers);
         }
         const docId = buildCustomerDocId(bill.customerName, bill.address, bill.contactNumber, customerCodeToUse);
-        await upsertCustomerProfile(user?.uid || '', docId, {
+        await upsertCustomerProfile(activeUid || '', docId, {
           name: bill.customerName,
           address: bill.address,
           contactNumber: bill.contactNumber,
@@ -535,8 +535,8 @@ const CreateBill: React.FC = () => {
       // Save the bill document first, then run stock + customer ledger updates in parallel
       await createBill(billForSave);
       await Promise.all([
-        recordBillInventory(user?.uid || '', bill.billNo, bsDate, validItems),
-        syncBillCustomerLedger(user?.uid || '', null, billForSave),
+        recordBillInventory(activeUid || '', bill.billNo, bsDate, validItems),
+        syncBillCustomerLedger(activeUid || '', null, billForSave),
       ]);
 
       showSuccess('Bill saved successfully!');

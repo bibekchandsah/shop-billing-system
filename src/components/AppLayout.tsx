@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import TopBar from './TopBar';
+
 import { useFiscalYear } from '../context/FiscalYearContext';
 import { useAuth } from '../context/AuthContext';
 import { exportFullBackup } from '../utils/backupExport';
@@ -157,7 +158,7 @@ interface AppLayoutProps {
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { activeUid } = useAuth();
   const { settings } = useFiscalYear();
   const [layoutToasts, setLayoutToasts] = useState<ToastMessage[]>([]);
 
@@ -184,7 +185,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   };
 
   const triggerGlobalBackup = async () => {
-    if (!user?.uid || !settings) return;
+    if (!activeUid || !settings) return;
     
     let dirHandle: FileSystemDirectoryHandle | null = null;
     try {
@@ -215,7 +216,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     setLayoutToasts(prev => [...prev, { id: progressToastId, type: 'info', duration: 0, message: 'Exporting Backup...' }]);
     
     try {
-      await exportFullBackup(user.uid, settings.businessName, {
+      await exportFullBackup(activeUid, settings.businessName, {
         fiscalYear: settings.activeFiscalYear,
         startMonth: settings.fiscalYearStart ?? 4,
         endMonth: settings.fiscalYearEnd ?? 3,
@@ -226,7 +227,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       // Mark as completed for this period
       if (settings.backupReminderFrequency && settings.backupReminderFrequency !== 'none') {
         const periodKey = getPeriodKey(settings.backupReminderFrequency);
-        localStorage.setItem(`last_backup_completed_${user.uid}`, periodKey);
+        localStorage.setItem(`last_backup_completed_${activeUid}`, periodKey);
       }
       
       // Remove any active reminder toasts
@@ -250,13 +251,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   useEffect(() => {
     console.log('[BackupReminder] Hook triggered', {
-      uid: user?.uid,
+      uid: activeUid,
       hasSettings: !!settings,
       frequency: settings?.backupReminderFrequency,
       time: settings?.backupReminderTime
     });
 
-    if (!user?.uid || !settings || !settings.backupReminderFrequency || settings.backupReminderFrequency === 'none') {
+    if (!activeUid || !settings || !settings.backupReminderFrequency || settings.backupReminderFrequency === 'none') {
       return;
     }
 
@@ -264,8 +265,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
     const checkReminder = () => {
       const periodKey = getPeriodKey(frequency);
-      const lastCompleted = localStorage.getItem(`last_backup_completed_${user.uid}`);
-      const dismissedTimeStr = localStorage.getItem(`backup_reminder_dismissed_time_${user.uid}`);
+      const lastCompleted = localStorage.getItem(`last_backup_completed_${activeUid}`);
+      const dismissedTimeStr = localStorage.getItem(`backup_reminder_dismissed_time_${activeUid}`);
       
       let shouldShow = lastCompleted !== periodKey;
 
@@ -325,7 +326,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                     style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)' }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      localStorage.setItem(`backup_reminder_dismissed_time_${user.uid}`, Date.now().toString());
+                      localStorage.setItem(`backup_reminder_dismissed_time_${activeUid}`, Date.now().toString());
                       setLayoutToasts((currentToasts) => currentToasts.filter((t) => t.id !== 'backup-reminder-toast'));
                     }}
                   >
@@ -346,7 +347,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     checkReminder();
     const interval = setInterval(checkReminder, 60000); // Check every 1 minute
     return () => clearInterval(interval);
-  }, [user?.uid, settings]);
+  }, [activeUid, settings]);
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -408,7 +409,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     <div className={`app-layout ${collapsed ? 'layout-collapsed' : ''}`}>
 
       {/* ── TOP STRIP: brand + collapse + page title (same background row) ── */}
-      <div className="app-top-strip">
+      <div className="app-top-strip" style={{ flexWrap: 'wrap' }}>
         {/* Brand section — same width as sidebar nav */}
         <div className={`strip-brand ${collapsed ? 'strip-brand-collapsed' : ''}`}>
           <Link to="/" className="sidebar-brand">
@@ -437,9 +438,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </button>
         </div>
 
-        {/* TopBar — fills the rest of the strip */}
         <TopBar onMobileMenuOpen={() => setMobileOpen(v => !v)} mobileOpen={mobileOpen} />
       </div>
+      
+      {/* Admin UI banner rendered here via Portal from AdminUsersBar */}
+      <div id="admin-banner-root"></div>
 
       {/* ── BODY: nav panel + content ──────────────────────────────────────── */}
       <div className="app-body">
@@ -518,8 +521,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <ToastContainer
         toasts={layoutToasts}
         onRemove={(id) => {
-          if (id === 'backup-reminder-toast' && user?.uid) {
-            localStorage.setItem(`backup_reminder_dismissed_time_${user.uid}`, Date.now().toString());
+          if (id === 'backup-reminder-toast' && activeUid) {
+            localStorage.setItem(`backup_reminder_dismissed_time_${activeUid}`, Date.now().toString());
           }
           setLayoutToasts((prev) => prev.filter((t) => t.id !== id));
         }}

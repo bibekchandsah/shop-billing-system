@@ -7,58 +7,74 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /users/{userId} {
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == 'bibekchandsah@gmail.com';
+      }
 
-      // User can read/write their own profile document (stores photoData etc.)
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // User can read/write their own profile document (stores photoData etc.), admin can read
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == userId;
 
-      // User can read/write their own bills subcollection
+      // User can read/write their own bills subcollection, admin can read
       match /bills/{billId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // User can read/write their own settings subcollection
+      // User can read/write their own settings subcollection, admin can read
       match /settings/{settingId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // User can read/write their own sessions subcollection (device session management)
+      // User can read/write their own sessions subcollection, admin can read
       match /sessions/{sessionId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // User can read/write their own customers subcollection and nested ledger entries
+      // Customers and ledger
       match /customers/{customerId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow write: if request.auth != null && request.auth.uid == userId;
 
         match /ledger/{ledgerId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
+          allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+          allow write: if request.auth != null && request.auth.uid == userId;
         }
       }
 
-      // User can read/write their own parties subcollection and nested ledger entries
+      // Parties and ledger
       match /parties/{partyId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow write: if request.auth != null && request.auth.uid == userId;
 
         match /ledger/{ledgerId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
+          allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+          allow write: if request.auth != null && request.auth.uid == userId;
         }
       }
 
-      // User can read/write their own suppliers subcollection and nested ledger entries
+      // Suppliers and ledger
       match /suppliers/{supplierId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow write: if request.auth != null && request.auth.uid == userId;
 
         match /ledger/{ledgerId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
+          allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+          allow write: if request.auth != null && request.auth.uid == userId;
         }
       }
 
-      // User can read/write their own stock particulars and ledger entries
+      // Stock and ledger
       match /stock/{particularId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow write: if request.auth != null && request.auth.uid == userId;
         
         match /ledger/{ledgerId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
+          allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+          allow write: if request.auth != null && request.auth.uid == userId;
         }
       }
     }

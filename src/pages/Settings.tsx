@@ -33,7 +33,7 @@ const getTimeAgo = (date: Date): string => {
 };
 
 const Settings: React.FC = () => {
-  const { user, changePassword } = useAuth();
+  const { changePassword, activeUid } = useAuth();
   const { toasts, showSuccess, showError, showToast, removeToast } = useToast();
   const { setActiveFiscalYear, refreshSettings } = useFiscalYear();
   
@@ -73,7 +73,7 @@ const Settings: React.FC = () => {
     loadSettings();
     loadSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [activeUid]);
 
   useEffect(() => {
     setDirPickerSupported(typeof window !== 'undefined' && 'showDirectoryPicker' in window);
@@ -163,7 +163,7 @@ const Settings: React.FC = () => {
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const fetched = await getAppSettings(user?.uid || '');
+      const fetched = await getAppSettings(activeUid || '');
       setSettings(fetched);
       setCurrentPin('');
       setNewPin('');
@@ -177,10 +177,10 @@ const Settings: React.FC = () => {
   };
 
   const loadSessions = async () => {
-    if (!user?.uid) return;
+    if (!activeUid) return;
     setSessionsLoading(true);
     try {
-      const fetchedSessions = await getUserSessions(user.uid);
+      const fetchedSessions = await getUserSessions(activeUid);
       setSessions(fetchedSessions);
     } catch (error) {
       console.error('Error loading sessions:', error);
@@ -191,12 +191,12 @@ const Settings: React.FC = () => {
   };
 
   const handleRevokeSession = async (sessionId: string) => {
-    if (!user?.uid) return;
+    if (!activeUid) return;
     if (!confirm('Are you sure you want to revoke this session? The device will be logged out.')) return;
     
     setRevokingSessionId(sessionId);
     try {
-      await revokeSession(user.uid, sessionId);
+      await revokeSession(activeUid, sessionId);
       showSuccess('Session revoked successfully.');
       await loadSessions();
     } catch (error) {
@@ -208,12 +208,12 @@ const Settings: React.FC = () => {
   };
 
   const handleRevokeOtherSessions = async () => {
-    if (!user?.uid) return;
+    if (!activeUid) return;
     if (!confirm('Are you sure you want to log out all other devices? Only this device will remain logged in.')) return;
     
     setSessionsLoading(true);
     try {
-      await revokeOtherSessions(user.uid, currentSessionId);
+      await revokeOtherSessions(activeUid, currentSessionId);
       showSuccess('All other sessions have been revoked.');
       await loadSessions();
     } catch (error) {
@@ -289,7 +289,7 @@ const Settings: React.FC = () => {
         return;
       }
       
-      await saveAppSettings(user?.uid || '', settings);
+      await saveAppSettings(activeUid || '', settings);
       await refreshSettings();
       // Sync the fiscal year context so TopBar updates immediately
       await setActiveFiscalYear(settings.activeFiscalYear);
@@ -384,7 +384,7 @@ const Settings: React.FC = () => {
         }
 
         const updated = { ...settings, actionPinHash: undefined };
-        await saveAppSettings(user?.uid || '', updated);
+        await saveAppSettings(activeUid || '', updated);
         setSettings(updated);
         setCurrentPin('');
         setNewPin('');
@@ -405,7 +405,7 @@ const Settings: React.FC = () => {
 
       const hashed = await hashActionPin(trimmedNewPin);
       const updated = { ...settings, actionPinHash: hashed };
-      await saveAppSettings(user?.uid || '', updated);
+      await saveAppSettings(activeUid || '', updated);
       setSettings(updated);
       setCurrentPin('');
       setNewPin('');
@@ -1557,7 +1557,7 @@ const Settings: React.FC = () => {
                   className="btn btn-primary btn-large"
                   disabled={backupLoading}
                   onClick={async () => {
-                    if (!user?.uid) return;
+                    if (!activeUid) return;
 
                     // Request permission synchronously inside user click gesture before starting async work
                     if (backupDirHandle) {
@@ -1580,7 +1580,7 @@ const Settings: React.FC = () => {
                     const progressToastId = showToast('info', 'Exporting Backup...', 0);
                     try {
                       const fy = backupFiscalYear === 'active' ? settings.activeFiscalYear : backupFiscalYear === 'all' ? undefined : backupFiscalYear;
-                      await exportFullBackup(user.uid, settings.businessName, {
+                      await exportFullBackup(activeUid, settings.businessName, {
                         fiscalYear: fy,
                         startMonth: settings.fiscalYearStart ?? 4,
                         endMonth: settings.fiscalYearEnd ?? 3,
@@ -1604,7 +1604,7 @@ const Settings: React.FC = () => {
                           const weekNum = Math.ceil((pastDays + firstDay.getDay() + 1) / 7);
                           periodKey = `${year}-W${weekNum}`;
                         }
-                        localStorage.setItem(`last_backup_completed_${user.uid}`, periodKey);
+                        localStorage.setItem(`last_backup_completed_${activeUid}`, periodKey);
                       }
                     } catch (err) {
                       console.error('Backup error:', err);

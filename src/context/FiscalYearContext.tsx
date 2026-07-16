@@ -37,30 +37,30 @@ const FiscalYearContext = createContext<FiscalYearContextType | undefined>(undef
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { activeUid } = useAuth();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const s = await getAppSettings(user?.uid || '');
+      const s = await getAppSettings(activeUid || '');
       setSettings(s);
     } catch (e) {
       console.error('FiscalYearContext: failed to load settings', e);
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [activeUid]);
 
   const refreshSettings = useCallback(async () => {
     try {
-      const s = await getAppSettings(user?.uid || '');
+      const s = await getAppSettings(activeUid || '');
       setSettings(s);
     } catch (e) {
       console.error('FiscalYearContext: failed to refresh settings', e);
     }
-  }, [user?.uid]);
+  }, [activeUid]);
 
   useEffect(() => {
     load();
@@ -74,7 +74,7 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const setActiveFiscalYear = useCallback(
     async (fy: string) => {
-      if (!user?.uid) return;
+      if (!activeUid) return;
 
       const updated = settings ? { ...settings, activeFiscalYear: fy } : null;
       if (updated) {
@@ -82,7 +82,7 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       try {
         await setDoc(
-          doc(db, 'users', user.uid, 'settings', 'preferences'),
+          doc(db, 'users', activeUid, 'settings', 'preferences'),
           {
             activeFiscalYear: fy,
             updatedAt: new Date(),
@@ -97,7 +97,7 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
     },
-    [settings, user?.uid]
+    [settings, activeUid]
   );
 
   const isInActiveFY = useCallback(

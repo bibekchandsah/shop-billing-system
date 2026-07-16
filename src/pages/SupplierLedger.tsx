@@ -25,7 +25,7 @@ import { doc, getDoc, collection, query as firestoreQuery, where as firestoreWhe
 import { db } from '../firebase/config';
 
 const SupplierLedger: React.FC = () => {
-  const { user } = useAuth();
+  const { activeUid } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, isInActiveFY } = useFiscalYear();
   const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings?.actionPinHash, showError });
@@ -183,7 +183,7 @@ const SupplierLedger: React.FC = () => {
     try {
       const exportRows: any[] = [];
       for (const party of suppliers) {
-        const entries = await getPartyLedgerEntries(user?.uid || '', party.id);
+        const entries = await getPartyLedgerEntries(activeUid || '', party.id);
         const firstEntry = entries.length > 0 ? entries[0] : null;
         exportRows.push({
           "party name": party.name || '',
@@ -225,7 +225,7 @@ const SupplierLedger: React.FC = () => {
     try {
       const exportRows: any[] = [];
       for (const party of suppliers) {
-        const entries = await getPartyLedgerEntries(user?.uid || '', party.id);
+        const entries = await getPartyLedgerEntries(activeUid || '', party.id);
         exportRows.push({
           "party ID": party.partyCode || '',
           "party name": party.name || '',
@@ -306,8 +306,8 @@ const SupplierLedger: React.FC = () => {
             }
 
             // Fetch existing entries and profile
-            const existingEntries = await getPartyLedgerEntries(user?.uid || '', partyId);
-            const profileExists = await checkPartyExists(user?.uid || '', partyId);
+            const existingEntries = await getPartyLedgerEntries(activeUid || '', partyId);
+            const profileExists = await checkPartyExists(activeUid || '', partyId);
 
             // Parse incoming entries
             let incomingEntries: any[] = [];
@@ -358,7 +358,7 @@ const SupplierLedger: React.FC = () => {
                 ? undefined 
                 : (uniqueEntries.length > 0 ? 0 : currentBalance);
 
-              await upsertPartyProfile(user?.uid || '', partyId, {
+              await upsertPartyProfile(activeUid || '', partyId, {
                 name: name,
                 address: address,
                 contactNumber: contactNumber,
@@ -373,7 +373,7 @@ const SupplierLedger: React.FC = () => {
             // Add unique entries sequentially
             for (const entry of uniqueEntries) {
               try {
-                await addPartyLedgerEntry(user?.uid || '', partyId, {
+                await addPartyLedgerEntry(activeUid || '', partyId, {
                   date: entry.date || getCurrentNepaliDate(),
                   particular: entry.particular || 'Imported Entry',
                   billNo: entry.billNo || '',
@@ -414,7 +414,7 @@ const SupplierLedger: React.FC = () => {
   const loadSuppliers = async () => {
     setLoadingSuppliers(true);
     try {
-      const data = await getParties(user?.uid || '');
+      const data = await getParties(activeUid || '');
       setSuppliers(data);
       setSelectedSupplier((current) => {
         if (!current) return data[0] || null;
@@ -431,7 +431,7 @@ const SupplierLedger: React.FC = () => {
   const loadLedger = async (supplierId: string) => {
     setLoadingLedger(true);
     try {
-      const data = await getPartyLedgerEntries(user?.uid || '', supplierId);
+      const data = await getPartyLedgerEntries(activeUid || '', supplierId);
       setLedger(data);
     } catch (error) {
       console.error('Error loading party ledger:', error);
@@ -444,7 +444,7 @@ const SupplierLedger: React.FC = () => {
   useEffect(() => {
     loadSuppliers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [activeUid]);
 
   useEffect(() => {
     if (selectedSupplier) {
@@ -528,16 +528,16 @@ const SupplierLedger: React.FC = () => {
   const checkPartyCodeDuplicate = async (code: string, currentPartyId?: string) => {
     const trimmed = (code || '').trim();
     if (!trimmed) return false;
-    if (!user?.uid) return false;
+    if (!activeUid) return false;
     try {
       // First check canonical code document id (code-...)
       const codeId = `code-${trimmed}`;
-      const ref = doc(db, 'users', user.uid, 'parties', codeId);
+      const ref = doc(db, 'users', activeUid, 'parties', codeId);
       const snap = await getDoc(ref);
       if (snap.exists() && snap.id !== currentPartyId) return true;
 
       // Also check legacy records where partyCode is stored as a field on arbitrary doc ids
-      const q = firestoreQuery(collection(db, 'users', user.uid, 'parties'), firestoreWhere('partyCode', '==', trimmed));
+      const q = firestoreQuery(collection(db, 'users', activeUid, 'parties'), firestoreWhere('partyCode', '==', trimmed));
       const docs = await getDocsFn(q);
       for (const d of docs.docs) {
         if (d.id !== currentPartyId) return true;
@@ -584,7 +584,7 @@ const SupplierLedger: React.FC = () => {
         partyCode: newSupplierCode.trim(),
       };
       const partyId = buildPartyId(payload);
-      await upsertPartyProfile(user?.uid || '', partyId, {
+      await upsertPartyProfile(activeUid || '', partyId, {
         ...payload,
         currentBalance: 0,
       });
@@ -651,7 +651,7 @@ const SupplierLedger: React.FC = () => {
 
     setEditSupplierLoading(true);
     try {
-      const newId = await upsertPartyProfile(user?.uid || '', selectedSupplier.id, {
+      const newId = await upsertPartyProfile(activeUid || '', selectedSupplier.id, {
         name: editSupplierName,
         address: editSupplierAddress,
         contactNumber: editSupplierContact,
@@ -703,7 +703,7 @@ const SupplierLedger: React.FC = () => {
 
     setAddTxLoading(true);
     try {
-      await addPartyLedgerEntry(user?.uid || '', selectedSupplier.id, {
+      await addPartyLedgerEntry(activeUid || '', selectedSupplier.id, {
         date: txDate || getCurrentNepaliDate(),
         particular: txParticular.trim(),
         billNo: '',
@@ -756,7 +756,7 @@ const SupplierLedger: React.FC = () => {
 
     setEditTxLoading(true);
     try {
-      await updatePartyLedgerEntry(user?.uid || '', selectedSupplier.id, editingTransaction.id, {
+      await updatePartyLedgerEntry(activeUid || '', selectedSupplier.id, editingTransaction.id, {
         date: editTxDate || getCurrentNepaliDate(),
         particular: editTxParticular.trim(),
         billNo: '',
@@ -781,7 +781,7 @@ const SupplierLedger: React.FC = () => {
     if (!selectedSupplier || !deletingTransaction) return;
     setDeleteTxLoading(true);
     try {
-      await deletePartyLedgerEntry(user?.uid || '', selectedSupplier.id, deletingTransaction.id);
+      await deletePartyLedgerEntry(activeUid || '', selectedSupplier.id, deletingTransaction.id);
       showSuccess('Transaction deleted successfully');
       setShowDeleteTransactionConfirm(false);
       setDeletingTransaction(null);
@@ -799,7 +799,7 @@ const SupplierLedger: React.FC = () => {
     if (!selectedSupplier) return;
     setDeleteSupplierLoading(true);
     try {
-      await deletePartyProfile(user?.uid || '', selectedSupplier.id);
+      await deletePartyProfile(activeUid || '', selectedSupplier.id);
       showSuccess('Party deleted successfully');
       setShowDeleteSupplierConfirm(false);
       setSelectedSupplier(null);

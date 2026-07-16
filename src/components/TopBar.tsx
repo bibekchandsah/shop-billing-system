@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFiscalYear } from '../context/FiscalYearContext';
 import type { Theme } from '../types';
 import ProfilePhotoModal from './ProfilePhotoModal';
+import AdminUsersBar from './AdminUsersBar';
 import './TopBar.css';
 
 const THEME_CYCLE: Theme[] = ['light', 'dark', 'system'];
@@ -138,6 +139,8 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuOpen, mobileOpen = false })
         </button>
         <h1 className="topbar-title">{pageTitle}</h1>
       </div>
+
+      <AdminUsersBar />
 
       {/* Right: theme toggle + fiscal year + profile dropdown */}
       <div className="topbar-right">

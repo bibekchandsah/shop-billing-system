@@ -37,6 +37,9 @@ interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updatePhoto: (file: File) => Promise<void>;
   removePhoto: () => Promise<void>;
+  isAdmin: boolean;
+  activeUid: string | null;
+  viewUser: (uid: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -124,6 +127,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [photoData, setPhotoData] = useState<string | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const [viewedUserUid, setViewedUserUid] = useState<string | null>(null);
+
+  const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL;
+  const activeUid = (isAdmin && viewedUserUid) ? viewedUserUid : (user?.uid ?? null);
+
+  const viewUser = (uid: string | null) => {
+    if (isAdmin) setViewedUserUid(uid);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -296,6 +307,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signInEmail, signUpEmail, signInGoogle,
       logout, resetPassword, changePassword,
       updatePhoto, removePhoto,
+      isAdmin, activeUid, viewUser,
     }}>
       {children}
     </AuthContext.Provider>

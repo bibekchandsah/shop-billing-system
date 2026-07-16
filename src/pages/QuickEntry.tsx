@@ -263,7 +263,7 @@ const formatParticularCode = (value: string) => {
 };
 
 const QuickEntry: React.FC = () => {
-  const { user } = useAuth();
+  const { activeUid } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings } = useFiscalYear();
 
@@ -345,13 +345,13 @@ const QuickEntry: React.FC = () => {
   const [partyTxNote, setPartyTxNote] = useState('');
 
   const loadAllData = async () => {
-    if (!user?.uid) return;
+    if (!activeUid) return;
     setLoadingData(true);
     try {
       const [fetchedParticulars, fetchedCustomers, fetchedParties] = await Promise.all([
-        getStockParticulars(user.uid),
-        getCustomers(user.uid),
-        getParties(user.uid),
+        getStockParticulars(activeUid),
+        getCustomers(activeUid),
+        getParties(activeUid),
       ]);
       setParticulars(fetchedParticulars);
       setCustomers(fetchedCustomers);
@@ -367,7 +367,7 @@ const QuickEntry: React.FC = () => {
   useEffect(() => {
     loadAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [activeUid]);
 
   // Adjust default action when section changes
   useEffect(() => {
@@ -452,9 +452,9 @@ const QuickEntry: React.FC = () => {
   // Duplicate Checks
   const checkCustomerCodeDuplicate = async (code: string) => {
     const trimmed = (code || '').trim();
-    if (!trimmed || !user?.uid) return false;
+    if (!trimmed || !activeUid) return false;
     try {
-      const existing = await findCustomerByCode(user.uid, trimmed);
+      const existing = await findCustomerByCode(activeUid, trimmed);
       return Boolean(existing);
     } catch (error) {
       console.warn('Error checking customer code duplicate:', error);
@@ -464,14 +464,14 @@ const QuickEntry: React.FC = () => {
 
   const checkPartyCodeDuplicate = async (code: string) => {
     const trimmed = (code || '').trim();
-    if (!trimmed || !user?.uid) return false;
+    if (!trimmed || !activeUid) return false;
     try {
       const codeId = `code-${trimmed}`;
-      const ref = doc(db, 'users', user.uid, 'parties', codeId);
+      const ref = doc(db, 'users', activeUid, 'parties', codeId);
       const snap = await getDoc(ref);
       if (snap.exists()) return true;
 
-      const q = query(collection(db, 'users', user.uid, 'parties'), where('partyCode', '==', trimmed));
+      const q = query(collection(db, 'users', activeUid, 'parties'), where('partyCode', '==', trimmed));
       const snap2 = await getDocs(q);
       return !snap2.empty;
     } catch (error) {
@@ -508,7 +508,7 @@ const QuickEntry: React.FC = () => {
     try {
       const dateVal = newPartDate || getCurrentNepaliDate();
       await createStockParticular(
-        user?.uid || '',
+        activeUid || '',
         newPartName.trim(),
         newPartInitialStock,
         dateVal,
@@ -568,7 +568,7 @@ const QuickEntry: React.FC = () => {
       const creditQty = isDebit ? 0 : txQty;
       const resolvedUnit = txUnit || p.defaultUnit || defaultUnit;
 
-      await addLedgerEntry(user?.uid || '', p.id, {
+      await addLedgerEntry(activeUid || '', p.id, {
         date: dateVal,
         billNo: txBillNo.trim() || undefined,
         debit: debitQty,
@@ -631,13 +631,13 @@ const QuickEntry: React.FC = () => {
         customerCode: payload.customerCode,
       });
 
-      await upsertCustomerProfile(user?.uid || '', customerId, {
+      await upsertCustomerProfile(activeUid || '', customerId, {
         ...payload,
         currentBalance: 0,
       });
 
       if (newCustomerOpeningAmount > 0) {
-        await addCustomerLedgerEntry(user?.uid || '', customerId, {
+        await addCustomerLedgerEntry(activeUid || '', customerId, {
           date: newCustomerOpeningDate.trim() || getCurrentNepaliDate(),
           particular: newCustomerOpeningParticular.trim() || 'Opening Balance',
           billNo: newCustomerOpeningBillNo.trim(),
@@ -694,7 +694,7 @@ const QuickEntry: React.FC = () => {
 
     setAddTxLoading(true);
     try {
-      await addCustomerLedgerEntry(user?.uid || '', c.id, {
+      await addCustomerLedgerEntry(activeUid || '', c.id, {
         date: custTxDate || getCurrentNepaliDate(),
         particular: custTxParticular.trim(),
         billNo: custTxBillNo.trim() || '',
@@ -752,7 +752,7 @@ const QuickEntry: React.FC = () => {
       };
       const partyId = buildPartyId(payload);
 
-      await upsertPartyProfile(user?.uid || '', partyId, {
+      await upsertPartyProfile(activeUid || '', partyId, {
         ...payload,
         currentBalance: 0,
       });
@@ -796,7 +796,7 @@ const QuickEntry: React.FC = () => {
 
     setAddTxLoading(true);
     try {
-      await addPartyLedgerEntry(user?.uid || '', p.id, {
+      await addPartyLedgerEntry(activeUid || '', p.id, {
         date: partyTxDate || getCurrentNepaliDate(),
         particular: partyTxParticular.trim(),
         billNo: '',

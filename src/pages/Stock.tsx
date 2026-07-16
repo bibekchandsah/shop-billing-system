@@ -24,7 +24,7 @@ import Papa from 'papaparse';
 import './Stock.css';
 
 const Stock: React.FC = () => {
-  const { user } = useAuth();
+  const { activeUid } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, isInActiveFY } = useFiscalYear();
   const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings?.actionPinHash, showError });
@@ -142,7 +142,7 @@ const Stock: React.FC = () => {
   useEffect(() => {
     loadParticulars();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [activeUid]);
 
   // Fetch ledger whenever selected particular changes
   useEffect(() => {
@@ -157,7 +157,7 @@ const Stock: React.FC = () => {
   const loadParticulars = async () => {
     setLoadingParticulars(true);
     try {
-      const data = await getStockParticulars(user?.uid || '');
+      const data = await getStockParticulars(activeUid || '');
       setParticulars(data);
     } catch (error) {
       console.error('Error fetching particulars:', error);
@@ -170,7 +170,7 @@ const Stock: React.FC = () => {
   const loadLedger = async (particularId: string) => {
     setLoadingLedger(true);
     try {
-      const data = await getLedgerEntries(user?.uid || '', particularId);
+      const data = await getLedgerEntries(activeUid || '', particularId);
       setLedger(data);
     } catch (error) {
       console.error('Error fetching ledger:', error);
@@ -208,7 +208,7 @@ const Stock: React.FC = () => {
     try {
       const dateVal = newPartDate || getCurrentNepaliDate();
       const particularId = await createStockParticular(
-        user?.uid || '',
+        activeUid || '',
         newPartName.trim(),
         newPartInitialStock,
         dateVal,
@@ -303,7 +303,7 @@ const Stock: React.FC = () => {
       const creditQty = isDebit ? 0 : txQty;
       const resolvedUnit = txUnit || getParticularDefaultUnit(selectedParticular);
 
-      await addLedgerEntry(user?.uid || '', selectedParticular.id, {
+      await addLedgerEntry(activeUid || '', selectedParticular.id, {
         date: dateVal,
         billNo: txBillNo.trim() || undefined,
         debit: debitQty,
@@ -333,7 +333,7 @@ const Stock: React.FC = () => {
       await loadLedger(selectedParticular.id);
       
       // Update locally selected particular currentStock so the badges refresh
-      const refreshedParticulars = await getStockParticulars(user?.uid || '');
+      const refreshedParticulars = await getStockParticulars(activeUid || '');
       setParticulars(refreshedParticulars);
       const updatedItem = refreshedParticulars.find(p => p.id === selectedParticular.id);
       if (updatedItem) {
@@ -369,7 +369,7 @@ const Stock: React.FC = () => {
     setEditPartLoading(true);
     try {
       await updateStockParticularName(
-        user?.uid || '',
+        activeUid || '',
         selectedParticular.id,
         selectedParticular.name,
         editPartName.trim(),
@@ -400,7 +400,7 @@ const Stock: React.FC = () => {
     if (!selectedParticular) return;
     setDeletePartLoading(true);
     try {
-      await deleteStockParticular(user?.uid || '', selectedParticular.id);
+      await deleteStockParticular(activeUid || '', selectedParticular.id);
       showSuccess('Particular and its entire ledger deleted successfully.');
       setShowDeleteParticularConfirm(false);
       setSelectedParticular(null);
@@ -455,7 +455,7 @@ const Stock: React.FC = () => {
       const debitQty = isDebit ? editTxQty : 0;
       const creditQty = isDebit ? 0 : editTxQty;
 
-      await updateLedgerEntry(user?.uid || '', selectedParticular.id, editingTransaction.id, {
+      await updateLedgerEntry(activeUid || '', selectedParticular.id, editingTransaction.id, {
         date: editTxDate || getCurrentNepaliDate(),
         billNo: editTxBillNo.trim() || undefined,
         debit: debitQty,
@@ -470,7 +470,7 @@ const Stock: React.FC = () => {
 
       // Reload particular details & ledger history
       await loadLedger(selectedParticular.id);
-      const refreshedParticulars = await getStockParticulars(user?.uid || '');
+      const refreshedParticulars = await getStockParticulars(activeUid || '');
       setParticulars(refreshedParticulars);
       const updatedItem = refreshedParticulars.find(p => p.id === selectedParticular.id);
       if (updatedItem) {
@@ -496,14 +496,14 @@ const Stock: React.FC = () => {
     }
     setDeleteTxLoading(true);
     try {
-      await deleteLedgerEntry(user?.uid || '', selectedParticular.id, deletingTransaction.id);
+      await deleteLedgerEntry(activeUid || '', selectedParticular.id, deletingTransaction.id);
       showSuccess('Transaction deleted from ledger.');
       setShowDeleteTransactionConfirm(false);
       setDeletingTransaction(null);
 
       // Reload particular details & ledger history
       await loadLedger(selectedParticular.id);
-      const refreshedParticulars = await getStockParticulars(user?.uid || '');
+      const refreshedParticulars = await getStockParticulars(activeUid || '');
       setParticulars(refreshedParticulars);
       const updatedItem = refreshedParticulars.find(p => p.id === selectedParticular.id);
       if (updatedItem) {
@@ -620,7 +620,7 @@ const Stock: React.FC = () => {
     try {
       const exportRows: any[] = [];
       for (const p of particulars) {
-        const entries = await getLedgerEntries(user?.uid || '', p.id);
+        const entries = await getLedgerEntries(activeUid || '', p.id);
         const firstEntry = entries.length > 0 ? entries[0] : null;
         exportRows.push({
           "particular name": p.name || '',
@@ -660,7 +660,7 @@ const Stock: React.FC = () => {
     try {
       const exportRows: any[] = [];
       for (const p of particulars) {
-        const entries = await getLedgerEntries(user?.uid || '', p.id);
+        const entries = await getLedgerEntries(activeUid || '', p.id);
         exportRows.push({
           "particular ID": p.particularCode || '',
           "particular name": p.name || '',
@@ -724,8 +724,8 @@ const Stock: React.FC = () => {
             const currentStockVal = currentStockValRaw !== '' && currentStockValRaw != null ? parseFloat(currentStockValRaw) || 0 : 0;
 
             // Fetch existing entries and profile
-            const existingEntries = await getLedgerEntries(user?.uid || '', particularId);
-            const particularExists = await checkStockParticularExists(user?.uid || '', particularId);
+            const existingEntries = await getLedgerEntries(activeUid || '', particularId);
+            const particularExists = await checkStockParticularExists(activeUid || '', particularId);
 
             // Parse incoming entries
             let incomingEntries: any[] = [];
@@ -774,7 +774,7 @@ const Stock: React.FC = () => {
                 // Otherwise, initialize to currentStockVal.
                 const initialStockToSet = uniqueEntries.length > 0 ? 0 : currentStockVal;
                 await createStockParticular(
-                  user?.uid || '',
+                  activeUid || '',
                   name,
                   initialStockToSet,
                   getCurrentNepaliDate(),
@@ -793,7 +793,7 @@ const Stock: React.FC = () => {
             // Add unique entries sequentially
             for (const entry of uniqueEntries) {
               try {
-                await addLedgerEntry(user?.uid || '', particularId, {
+                await addLedgerEntry(activeUid || '', particularId, {
                   date: entry.date || getCurrentNepaliDate(),
                   billNo: entry.billNo || undefined,
                   debit: parseFloat(entry.debit) || 0,

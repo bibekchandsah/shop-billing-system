@@ -24,7 +24,7 @@ import {
 import './CustomerLedger.css';
 
 const CustomerLedger: React.FC = () => {
-  const { user } = useAuth();
+  const { activeUid } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, isInActiveFY } = useFiscalYear();
   const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings?.actionPinHash, showError });
@@ -188,7 +188,7 @@ const CustomerLedger: React.FC = () => {
     try {
       const exportRows: any[] = [];
       for (const c of customers) {
-        const entries = await getCustomerLedgerEntries(user?.uid || '', c.id);
+        const entries = await getCustomerLedgerEntries(activeUid || '', c.id);
         const firstEntry = entries.length > 0 ? entries[0] : null;
         exportRows.push({
           "customer name": c.name || '',
@@ -230,7 +230,7 @@ const CustomerLedger: React.FC = () => {
     try {
       const exportRows: any[] = [];
       for (const c of customers) {
-        const entries = await getCustomerLedgerEntries(user?.uid || '', c.id);
+        const entries = await getCustomerLedgerEntries(activeUid || '', c.id);
         exportRows.push({
           "customer ID": c.customerCode || '',
           "customer name": c.name || '',
@@ -311,8 +311,8 @@ const CustomerLedger: React.FC = () => {
             }
 
             // Fetch existing entries and profile
-            const existingEntries = await getCustomerLedgerEntries(user?.uid || '', customerId);
-            const profileExists = await checkCustomerExists(user?.uid || '', customerId);
+            const existingEntries = await getCustomerLedgerEntries(activeUid || '', customerId);
+            const profileExists = await checkCustomerExists(activeUid || '', customerId);
 
             // Parse incoming entries
             let incomingEntries: any[] = [];
@@ -363,7 +363,7 @@ const CustomerLedger: React.FC = () => {
                 ? undefined 
                 : (uniqueEntries.length > 0 ? 0 : currentBalance);
 
-              await upsertCustomerProfile(user?.uid || '', customerId, {
+              await upsertCustomerProfile(activeUid || '', customerId, {
                 name: name,
                 address: address,
                 contactNumber: contactNumber,
@@ -378,7 +378,7 @@ const CustomerLedger: React.FC = () => {
             // Add unique entries sequentially
             for (const entry of uniqueEntries) {
               try {
-                await addCustomerLedgerEntry(user?.uid || '', customerId, {
+                await addCustomerLedgerEntry(activeUid || '', customerId, {
                   date: entry.date || getCurrentNepaliDate(),
                   particular: entry.particular || 'Imported Entry',
                   billNo: entry.billNo || '',
@@ -419,7 +419,7 @@ const CustomerLedger: React.FC = () => {
   const loadCustomers = async () => {
     setLoadingCustomers(true);
     try {
-      const data = await getCustomers(user?.uid || '');
+      const data = await getCustomers(activeUid || '');
       setCustomers(data);
       setSelectedCustomer((current) => {
         if (!current) {
@@ -438,7 +438,7 @@ const CustomerLedger: React.FC = () => {
   const loadLedger = async (customerId: string) => {
     setLoadingLedger(true);
     try {
-      const data = await getCustomerLedgerEntries(user?.uid || '', customerId);
+      const data = await getCustomerLedgerEntries(activeUid || '', customerId);
       setLedger(data);
     } catch (error) {
       console.error('Error loading customer ledger:', error);
@@ -451,7 +451,7 @@ const CustomerLedger: React.FC = () => {
   useEffect(() => {
     loadCustomers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [activeUid]);
 
   useEffect(() => {
     if (selectedCustomer) {
@@ -530,10 +530,10 @@ const CustomerLedger: React.FC = () => {
   const checkCustomerCodeDuplicate = async (code: string, currentCustomerId?: string) => {
     const trimmed = (code || '').trim();
     if (!trimmed) return false;
-    if (!user?.uid) return false;
+    if (!activeUid) return false;
 
     try {
-      const existing = await findCustomerByCode(user.uid, trimmed);
+      const existing = await findCustomerByCode(activeUid, trimmed);
       return Boolean(existing && existing.id !== currentCustomerId);
     } catch (error) {
       console.warn('Error checking customer code duplicate:', error);
@@ -591,13 +591,13 @@ const CustomerLedger: React.FC = () => {
         customerCode: payload.customerCode,
       });
 
-      await upsertCustomerProfile(user?.uid || '', customerId, {
+      await upsertCustomerProfile(activeUid || '', customerId, {
         ...payload,
         currentBalance: 0,
       });
 
       if (newCustomerOpeningAmount > 0) {
-        await addCustomerLedgerEntry(user?.uid || '', customerId, {
+        await addCustomerLedgerEntry(activeUid || '', customerId, {
           date: newCustomerOpeningDate.trim() || getCurrentNepaliDate(),
           particular: newCustomerOpeningParticular.trim() || 'Opening Balance',
           billNo: newCustomerOpeningBillNo.trim(),
@@ -654,7 +654,7 @@ const CustomerLedger: React.FC = () => {
     }
     setEditCustomerLoading(true);
     try {
-      const newId = await upsertCustomerProfile(user?.uid || '', selectedCustomer.id, {
+      const newId = await upsertCustomerProfile(activeUid || '', selectedCustomer.id, {
         name: editCustomerName,
         address: editCustomerAddress,
         contactNumber: editCustomerContact,
@@ -711,7 +711,7 @@ const CustomerLedger: React.FC = () => {
 
     setAddTxLoading(true);
     try {
-      await addCustomerLedgerEntry(user?.uid || '', selectedCustomer.id, {
+      await addCustomerLedgerEntry(activeUid || '', selectedCustomer.id, {
         date: txDate || getCurrentNepaliDate(),
         particular: txParticular.trim(),
         billNo: txBillNo.trim() || '',
@@ -770,7 +770,7 @@ const CustomerLedger: React.FC = () => {
 
     setEditTxLoading(true);
     try {
-      await updateCustomerLedgerEntry(user?.uid || '', selectedCustomer.id, editingTransaction.id, {
+      await updateCustomerLedgerEntry(activeUid || '', selectedCustomer.id, editingTransaction.id, {
         date: editTxDate || getCurrentNepaliDate(),
         particular: editTxParticular.trim(),
         billNo: editTxBillNo.trim() || '',
@@ -795,7 +795,7 @@ const CustomerLedger: React.FC = () => {
     if (!selectedCustomer || !deletingTransaction) return;
     setDeleteTxLoading(true);
     try {
-      await deleteCustomerLedgerEntry(user?.uid || '', selectedCustomer.id, deletingTransaction.id);
+      await deleteCustomerLedgerEntry(activeUid || '', selectedCustomer.id, deletingTransaction.id);
       showSuccess('Transaction deleted successfully');
       setShowDeleteTransactionConfirm(false);
       setDeletingTransaction(null);
@@ -813,7 +813,7 @@ const CustomerLedger: React.FC = () => {
     if (!selectedCustomer) return;
     setDeleteCustomerLoading(true);
     try {
-      await deleteCustomerProfile(user?.uid || '', selectedCustomer.id);
+      await deleteCustomerProfile(activeUid || '', selectedCustomer.id);
       showSuccess('Customer deleted successfully');
       setShowDeleteCustomerConfirm(false);
       setSelectedCustomer(null);
