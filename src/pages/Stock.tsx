@@ -518,9 +518,10 @@ const Stock: React.FC = () => {
   };
 
   // Filter particulars list based on search box input
-  const filteredParticulars = particulars.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredParticulars = particulars.filter(p => {
+    const term = searchTerm.toLowerCase();
+    return p.name.toLowerCase().includes(term) || (p.particularCode || '').toLowerCase().includes(term);
+  });
 
   // Styling helper for the Stock status level badge
   const getStockBadgeClass = (qty: number): string => {
