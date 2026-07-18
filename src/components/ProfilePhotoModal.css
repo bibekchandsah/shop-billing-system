@@ -124,7 +124,56 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 2px;
+  margin: 0;
+}
+
+.ppm-name-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2px;
+}
+
+.ppm-edit-name-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.ppm-edit-name-btn:hover {
+  opacity: 1;
+  background: var(--sidebar-item-hover);
+  color: var(--primary);
+}
+
+.ppm-name-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 8px;
+}
+
+.ppm-name-input {
+  max-width: 150px;
+  padding: 4px 8px;
+  font-size: 0.875rem;
+  height: 28px;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  height: 28px;
 }
 
 .ppm-email {

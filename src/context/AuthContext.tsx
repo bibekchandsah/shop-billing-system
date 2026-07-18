@@ -37,6 +37,7 @@ interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updatePhoto: (file: File) => Promise<void>;
   removePhoto: () => Promise<void>;
+  updateDisplayName: (displayName: string) => Promise<void>;
   isAdmin: boolean;
   activeUid: string | null;
   viewUser: (uid: string | null) => void;
@@ -309,17 +310,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removePhoto = async () => {
     if (!auth.currentUser) throw new Error('Not authenticated');
-    await updateDoc(userDocRef(auth.currentUser.uid), { photoData: null });
+    await updateDoc(userDocRef(auth.currentUser.uid), { photoData: null }).catch(() => {
+       console.warn("Failed to set photoData to null, may not exist yet.");
+    });
     setPhotoData(null);
+  };
+
+  const updateDisplayName = async (displayName: string) => {
+    if (!auth.currentUser) throw new Error('Not authenticated');
+    
+    // Update Firebase Auth profile
+    await updateProfile(auth.currentUser, { displayName });
+    
+    // Update local user state
+    setUser({ ...auth.currentUser, displayName } as User);
+    
+    // Update Firestore user document
+    await setDoc(userDocRef(auth.currentUser.uid), { displayName }, { merge: true });
   };
 
   return (
     <AuthContext.Provider value={{
-      user, photoData, loading,
-      signInEmail, signUpEmail, signInGoogle,
-      logout, resetPassword, changePassword,
-      updatePhoto, removePhoto,
-      isAdmin, activeUid, viewUser,
+      user,
+      photoData,
+      loading,
+      signInEmail,
+      signUpEmail,
+      signInGoogle,
+      logout,
+      resetPassword,
+      changePassword,
+      updatePhoto,
+      removePhoto,
+      updateDisplayName,
+      isAdmin,
+      activeUid,
+      viewUser
     }}>
       {children}
     </AuthContext.Provider>

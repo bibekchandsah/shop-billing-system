@@ -32,7 +32,7 @@ export const printPartyLedger = (
         <td>${entry.particular || '—'}</td>
         <td class="right text-danger">${entry.debit > 0 ? `-${formatCurrency(entry.debit)}` : '—'}</td>
         <td class="right text-success">${entry.credit > 0 ? `+${formatCurrency(entry.credit)}` : '—'}</td>
-        <td class="right"><strong>${formatCurrency(balance.amount)}</strong> <span class="balance-tag ${balance.label === 'CR' ? 'cr' : 'dr'}">${balance.label}</span></td>
+        <td class="right">${formatCurrency(balance.amount)} <span class="balance-tag ${balance.label === 'CR' ? 'cr' : 'dr'}">${balance.label}</span></td>
       </tr>`;
     }
   ).join('');
@@ -49,18 +49,32 @@ export const printPartyLedger = (
     .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
     .header .biz-name { font-size: 14px; font-weight: 600; margin-top: 4px; }
     .header .biz-addr { font-size: 12px; color: #555; margin-top: 2px; }
-    hr { border: none; border-top: 1.5px solid #333; margin: 10px 0; }
     .meta-grid { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 13px; gap: 12px; font-weight: 600; }
     .meta-left { display: flex; flex-direction: column; gap: 4px; }
     .meta-row { display: flex; gap: 6px; align-items: baseline; }
     .meta-label { font-weight: 700; white-space: nowrap; color: #222; }
     .meta-right { text-align: right; display: flex; flex-direction: column; gap: 4px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12.5px; }
-    thead th { background: transparent; color: #000; padding: 7px 10px; font-weight: 700; border: 1px solid #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead th {
+      background: transparent;
+      color: #000;
+      padding: 7px 10px;
+      font-weight: 700;
+      border: none;
+      border-bottom: 1px solid #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
     thead th.left { text-align: left; }
     thead th.center { text-align: center; }
     thead th.right { text-align: right; }
-    td { padding: 6px 10px; border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; vertical-align: middle; color: #000; font-weight: 600; }
+    td {
+      padding: 6px 10px;
+      border: none;
+      vertical-align: middle;
+      color: #000;
+      font-weight: 600;
+    }
     tbody tr:last-child td { border-bottom: 1px solid #000; }
     .center { text-align: center; }
     .right { text-align: right; }

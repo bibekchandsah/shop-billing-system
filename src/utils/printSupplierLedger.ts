@@ -32,7 +32,7 @@ export const printSupplierLedger = (
         <td>${entry.particular || '—'}</td>
         <td class="right text-danger">${entry.debit > 0 ? `-${formatCurrency(entry.debit)}` : '—'}</td>
         <td class="right text-success">${entry.credit > 0 ? `+${formatCurrency(entry.credit)}` : '—'}</td>
-        <td class="right"><strong>${formatCurrency(balance.amount)}</strong> <span class="balance-tag ${balance.label === 'CR' ? 'cr' : 'dr'}">${balance.label}</span></td>
+        <td class="right">${formatCurrency(balance.amount)} <span class="balance-tag ${balance.label === 'CR' ? 'cr' : 'dr'}">${balance.label}</span></td>
       </tr>`;
     }
   ).join('');
@@ -56,11 +56,26 @@ export const printSupplierLedger = (
     .meta-label { font-weight: 700; white-space: nowrap; color: #222; }
     .meta-right { text-align: right; display: flex; flex-direction: column; gap: 4px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12.5px; }
-    thead th { background: transparent; color: #000; padding: 7px 10px; font-weight: 700; border: 1px solid #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead th {
+      background: transparent;
+      color: #000;
+      padding: 7px 10px;
+      font-weight: 700;
+      border: none;
+      border-bottom: 1px solid #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
     thead th.left { text-align: left; }
     thead th.center { text-align: center; }
     thead th.right { text-align: right; }
-    td { padding: 6px 10px; border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; vertical-align: middle; color: #000; font-weight: 600; }
+    td {
+      padding: 6px 10px;
+      border: none;
+      vertical-align: middle;
+      color: #000;
+      font-weight: 600;
+    }
     tbody tr:last-child td { border-bottom: 1px solid #000; }
     .center { text-align: center; }
     .right { text-align: right; }

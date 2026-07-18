@@ -7,13 +7,15 @@ interface ProfilePhotoModalProps {
 }
 
 const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({ onClose }) => {
-  const { user, updatePhoto, removePhoto, photoData } = useAuth();
+  const { user, updatePhoto, removePhoto, updateDisplayName, photoData } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState(user?.displayName || user?.email?.split('@')[0] || '');
 
   const getInitials = () => {
     if (user?.displayName)
@@ -79,6 +81,24 @@ const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({ onClose }) => {
     }
   };
 
+  const handleSaveName = async () => {
+    if (!newName.trim()) {
+      setError('Display name cannot be empty.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await updateDisplayName(newName.trim());
+      setSuccess('Display name updated!');
+      setIsEditingName(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update name.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Use preview (newly selected) → custom photoData → Google photoURL → null
   const currentPhoto = preview || photoData || user?.photoURL || null;
 
@@ -120,7 +140,48 @@ const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({ onClose }) => {
 
         {/* User info */}
         <div className="ppm-user-info">
-          <p className="ppm-name">{user?.displayName || user?.email?.split('@')[0]}</p>
+          {isEditingName ? (
+            <div className="ppm-name-edit">
+              <input 
+                type="text" 
+                className="form-input ppm-name-input"
+                value={newName} 
+                onChange={e => setNewName(e.target.value)}
+                disabled={loading}
+                autoFocus
+              />
+              <button 
+                className="btn btn-primary btn-sm"
+                onClick={handleSaveName}
+                disabled={loading}
+              >
+                Save
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setIsEditingName(false);
+                  setNewName(user?.displayName || user?.email?.split('@')[0] || '');
+                }}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="ppm-name-display">
+              <p className="ppm-name">{user?.displayName || user?.email?.split('@')[0]}</p>
+              <button 
+                className="ppm-edit-name-btn"
+                onClick={() => setIsEditingName(true)}
+                title="Edit name"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                </svg>
+              </button>
+            </div>
+          )}
           <p className="ppm-email">{user?.email}</p>
         </div>
 

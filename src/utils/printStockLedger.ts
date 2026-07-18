@@ -25,9 +25,9 @@ export const printStockLedger = (
         <td>${entry.date}</td>
         <td>${entry.note || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
-        <td class="right text-success">${entry.debit > 0 ? `${entry.debit}` : '—'}</td>
-        <td class="right text-danger">${entry.credit > 0 ? `${entry.credit}` : '—'}</td>
-        <td class="right"><strong>${entry.currentStock}</strong></td>
+        <td class="right">${entry.debit > 0 ? `${entry.debit}` : '—'}</td>
+        <td class="right">${entry.credit > 0 ? `${entry.credit}` : '—'}</td>
+        <td class="right">${entry.currentStock}</td>
       </tr>`
   ).join('');
 
@@ -49,7 +49,7 @@ export const printStockLedger = (
     .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
     .header .biz-name { font-size: 14px; font-weight: 600; margin-top: 4px; }
     .header .biz-addr { font-size: 12px; color: #555; margin-top: 2px; }
-    hr { border: none; border-top: 1.5px solid #333; margin: 10px 0; }
+    hr { border: none; border-top: 0px solid #333; margin: 10px 0; }
     .meta-grid {
       display: flex;
       justify-content: space-between;
@@ -65,7 +65,9 @@ export const printStockLedger = (
       color: #000;
       padding: 7px 10px;
       font-weight: 700;
-      border: 1px solid #000;
+      border: none;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -74,15 +76,12 @@ export const printStockLedger = (
     thead th.right { text-align: right; }
     td {
       padding: 6px 10px;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-      border-top: none;
-      border-bottom: none;
+      border: none;
       vertical-align: middle;
       color: #000;
       font-weight: 600;
     }
-    tbody tr:last-child td { border-bottom: 1px solid #000; }
+    tbody tr:last-child td { border-bottom: 0px solid #000; }
     .center { text-align: center; }
     .right  { text-align: right; }
     .text-success { color: #10b981; }

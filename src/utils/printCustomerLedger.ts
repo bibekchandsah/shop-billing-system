@@ -30,9 +30,9 @@ export const printCustomerLedger = (
         <td>${entry.date}</td>
         <td>${entry.particular || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
-        <td class="right text-success">${entry.debit > 0 ? formatCurrency(entry.debit) : '—'}</td>
-        <td class="right text-danger">${entry.credit > 0 ? formatCurrency(entry.credit) : '—'}</td>
-        <td class="right"><strong>${formatCurrency(formatBalanceDisplay(entry.currentBalance).amount)}</strong> <span class="balance-tag ${formatBalanceDisplay(entry.currentBalance).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(entry.currentBalance).label}</span></td>
+        <td class="right">${entry.debit > 0 ? `Rs. ${entry.debit}` : '—'}</td>
+        <td class="right">${entry.credit > 0 ? `Rs. ${entry.credit}` : '—'}</td>
+        <td class="right">${formatCurrency(formatBalanceDisplay(entry.currentBalance).amount)} <span class="balance-tag ${formatBalanceDisplay(entry.currentBalance).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(entry.currentBalance).label}</span></td>
       </tr>`
   ).join('');
 
@@ -54,7 +54,7 @@ export const printCustomerLedger = (
     .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
     .header .biz-name { font-size: 14px; font-weight: 600; margin-top: 4px; }
     .header .biz-addr { font-size: 12px; color: #555; margin-top: 2px; }
-    hr { border: none; border-top: 1.5px solid #333; margin: 10px 0; }
+    hr { border: none; border-top: 0px solid #333; margin: 10px 0; }
     .meta-grid {
       display: flex;
       justify-content: space-between;
@@ -73,7 +73,9 @@ export const printCustomerLedger = (
       color: #000;
       padding: 7px 10px;
       font-weight: 700;
-      border: 1px solid #000;
+      border: none;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -82,15 +84,12 @@ export const printCustomerLedger = (
     thead th.right { text-align: right; }
     td {
       padding: 6px 10px;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-      border-top: none;
-      border-bottom: none;
+      border: none;
       vertical-align: middle;
       color: #000;
       font-weight: 600;
     }
-    tbody tr:last-child td { border-bottom: 1px solid #000; }
+    tbody tr:last-child td { border-bottom: 0px solid #000; }
     .center { text-align: center; }
     .right  { text-align: right; }
     .text-success { color: #10b981; }
@@ -105,8 +104,8 @@ export const printCustomerLedger = (
       border: 1px solid #cbd5e1;
       vertical-align: middle;
     }
-    .balance-tag.dr { color: #10b981; background: #ecfdf5; }
-    .balance-tag.cr { color: #ef4444; background: #fef2f2; }
+    .balance-tag.dr { color: #000000ff; background: #ffffffff; }
+    .balance-tag.cr { color: #000000ff; background: #ffffffff; }
     .toolbar {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -154,7 +153,7 @@ export const printCustomerLedger = (
     </div>
     <div class="meta-right">
       <div class="meta-row"><span class="meta-label">Date Range:</span><span>${dateRangeStr}</span></div>
-      <div class="meta-row"><span class="meta-label">Current Balance:</span><span><strong>${formatCurrency(formatBalanceDisplay(customer.currentBalance || 0).amount)}</strong> <span class="balance-tag ${formatBalanceDisplay(customer.currentBalance || 0).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(customer.currentBalance || 0).label}</span></span></div>
+      <div class="meta-row"><span class="meta-label">Current Balance:</span><span>${formatCurrency(formatBalanceDisplay(customer.currentBalance || 0).amount)} <span class="balance-tag ${formatBalanceDisplay(customer.currentBalance || 0).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(customer.currentBalance || 0).label}</span></span></div>
     </div>
   </div>
 
