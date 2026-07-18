@@ -168,7 +168,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         const photo = await loadPhotoData(firebaseUser.uid);
-        setPhotoData(photo);
+        if (photo) {
+          setPhotoData(photo);
+        } else if (firebaseUser.photoURL) {
+          setPhotoData(firebaseUser.photoURL);
+          // Self-heal Firestore so it's visible in Admin bar
+          setDoc(userDocRef(firebaseUser.uid), { photoData: firebaseUser.photoURL }, { merge: true }).catch(console.error);
+        } else {
+          setPhotoData(null);
+        }
         setUser(firebaseUser);
       } else {
         setUser(null);
@@ -234,13 +242,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setJustLoggedIn(true);
     const result = await signInWithPopup(auth, googleProvider);
     
+    const uRef = userDocRef(result.user.uid);
+    const snap = await getDoc(uRef);
+    const existingPhoto = snap.exists() ? snap.data().photoData : null;
+
     // Explicitly create/update user doc so they appear in Admin users list
     await setDoc(
-      userDocRef(result.user.uid), 
+      uRef, 
       { 
         displayName: result.user.displayName || 'Google User', 
         email: result.user.email,
-        photoData: null // We don't overwrite custom photos, merge: true handles it
+        photoData: existingPhoto || result.user.photoURL || null
       }, 
       { merge: true }
     );

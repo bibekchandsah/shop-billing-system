@@ -1246,6 +1246,56 @@ const CustomerLedger: React.FC = () => {
                             </td>
                           </tr>
                         ))}
+                        
+                        {/* Opening Balance Row */}
+                        {(() => {
+                          let openingBal = 0;
+                          if (filteredLedger.length > 0) {
+                            const firstTx = filteredLedger[0];
+                            const idx = ledger.findIndex(t => t.id === firstTx.id);
+                            if (idx > 0) {
+                              openingBal = ledger[idx - 1].currentBalance;
+                            }
+                          } else if (ledger.length > 0) {
+                            openingBal = ledger[ledger.length - 1].currentBalance;
+                          } else {
+                            openingBal = selectedCustomer?.currentBalance || 0;
+                          }
+
+                          if (openingBal !== 0) {
+                            const bal = formatBalanceDisplay(openingBal);
+                            return (
+                              <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                                <td>—</td>
+                                <td style={{ fontWeight: 600 }}>Opening Balance (B/F)</td>
+                                <td className="text-center">—</td>
+                                <td className="text-right">—</td>
+                                <td className="text-right">—</td>
+                                <td className="text-right">
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <strong>{bal.amount}</strong>
+                                    <span className={`badge ${bal.label === 'CR' ? 'text-danger' : 'text-success'}`} style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontSize: '0.72rem', fontWeight: 700 }}>
+                                      {bal.label}
+                                    </span>
+                                  </span>
+                                </td>
+                                <td className="text-center">—</td>
+                              </tr>
+                            );
+                          }
+                          
+                          // If filteredLedger is empty and opening balance is 0, show a fallback row
+                          if (filteredLedger.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)' }}>
+                                  No transactions found for the selected date range.
+                                </td>
+                              </tr>
+                            );
+                          }
+                          return null;
+                        })()}
                       </tbody>
                     </table>
                   )}
