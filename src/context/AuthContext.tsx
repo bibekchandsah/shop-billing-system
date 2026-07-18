@@ -232,6 +232,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInGoogle = async () => {
     setJustLoggedIn(true);
     const result = await signInWithPopup(auth, googleProvider);
+    
+    // Explicitly create/update user doc so they appear in Admin users list
+    await setDoc(
+      userDocRef(result.user.uid), 
+      { 
+        displayName: result.user.displayName || 'Google User', 
+        email: result.user.email,
+        photoData: null // We don't overwrite custom photos, merge: true handles it
+      }, 
+      { merge: true }
+    );
+    
     // Create a new session after successful Google sign-in
     await createSession(result.user.uid);
   };

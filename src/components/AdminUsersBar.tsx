@@ -127,7 +127,7 @@ const AdminUsersBar: React.FC = () => {
       )}
 
       {activeUid !== user?.uid && portalTarget && createPortal(
-        <div className="admin-viewing-banner">
+        <div className="admin-viewing-banner" style={{ display: 'none'}}>
           <div className="admin-viewing-text">
             You are viewing data for user: {users.find(u => u.uid === activeUid)?.email || activeUid}
           </div>

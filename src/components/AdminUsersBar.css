@@ -2,7 +2,7 @@
   display: flex;
   flex: 1;
   min-width: 0;
-  justify-content: center;
+  justify-content: flex-start; /* Fixes left-side clipping on overflow */
   gap: 12px;
   padding: 0 16px;
   overflow-x: auto;
