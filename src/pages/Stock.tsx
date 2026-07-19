@@ -562,7 +562,7 @@ const Stock: React.FC = () => {
           <tr>
             <td>${p.name || '—'}</td>
             <td>${p.particularCode || '—'}</td>
-            <td class="right"><strong>${p.currentStock}</strong> ${p.defaultUnit || 'Qty'}</td>
+            <td class="right">${p.currentStock} ${p.defaultUnit || 'Qty'}</td>
           </tr>`;
       })
       .join('');

@@ -127,7 +127,7 @@ const CustomerLedger: React.FC = () => {
             <td>${customer.address || '—'}</td>
             <td>${customer.contactNumber || '—'}</td>
             <td>${customer.customerCode || '—'}</td>
-            <td class="right"><strong>${balance.amount}</strong> ${balance.label}</td>
+            <td class="right">${balance.amount} ${balance.label}</td>
           </tr>`;
       })
       .join('');

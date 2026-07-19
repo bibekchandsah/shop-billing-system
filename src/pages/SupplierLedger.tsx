@@ -122,7 +122,7 @@ const SupplierLedger: React.FC = () => {
             <td>${party.address || '—'}</td>
             <td>${party.contactNumber || '—'}</td>
             <td>${party.partyCode || '—'}</td>
-            <td class="right"><strong>${balance.amount}</strong> ${balance.label}</td>
+            <td class="right">${balance.amount} ${balance.label}</td>
           </tr>`;
       })
       .join('');
