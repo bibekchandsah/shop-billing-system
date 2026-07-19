@@ -550,7 +550,13 @@ const Stock: React.FC = () => {
       return;
     }
 
-    const rows = list
+    const sortedList = [...list].sort((a, b) => {
+      const codeA = a.particularCode || '';
+      const codeB = b.particularCode || '';
+      return codeA.localeCompare(codeB, undefined, { numeric: true });
+    });
+
+    const rows = sortedList
       .map((p) => {
         return `
           <tr>

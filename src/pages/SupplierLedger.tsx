@@ -107,7 +107,13 @@ const SupplierLedger: React.FC = () => {
       return;
     }
 
-    const rows = list
+    const sortedList = [...list].sort((a, b) => {
+      const codeA = a.partyCode || '';
+      const codeB = b.partyCode || '';
+      return codeA.localeCompare(codeB, undefined, { numeric: true });
+    });
+
+    const rows = sortedList
       .map((party) => {
         const balance = formatBalanceDisplay(party.currentBalance || 0);
         return `

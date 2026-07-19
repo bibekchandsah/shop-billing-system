@@ -112,7 +112,13 @@ const CustomerLedger: React.FC = () => {
       return;
     }
 
-    const rows = list
+    const sortedList = [...list].sort((a, b) => {
+      const codeA = a.customerCode || '';
+      const codeB = b.customerCode || '';
+      return codeA.localeCompare(codeB, undefined, { numeric: true });
+    });
+
+    const rows = sortedList
       .map((customer) => {
         const balance = formatBalanceDisplay(customer.currentBalance || 0);
         return `
