@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { createPortal } from 'react-dom';
@@ -30,28 +30,25 @@ const AdminUsersBar: React.FC = () => {
   useEffect(() => {
     if (!isAdmin) return;
     
-    const fetchUsers = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        const fetchedUsers: UserProfile[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          fetchedUsers.push({
-            uid: doc.id,
-            email: data.email || 'No Email',
-            displayName: data.displayName || 'Unknown User',
-            photoData: data.photoData || null,
-          });
+    const unsubscribe = onSnapshot(collection(db, 'users'), (querySnapshot) => {
+      const fetchedUsers: UserProfile[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        fetchedUsers.push({
+          uid: doc.id,
+          email: data.email || 'No Email',
+          displayName: data.displayName || 'Unknown User',
+          photoData: data.photoData || null,
         });
-        setUsers(fetchedUsers);
-      } catch (error) {
-        console.error("Error fetching users for admin bar:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
+      setUsers(fetchedUsers);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching users for admin bar:", error);
+      setLoading(false);
+    });
 
-    fetchUsers();
+    return () => unsubscribe();
   }, [isAdmin]);
 
   if (!isAdmin) return null;
@@ -100,12 +97,22 @@ const AdminUsersBar: React.FC = () => {
               onMouseLeave={() => setHoveredUser(null)}
             >
               {u.photoData ? (
-                <img src={u.photoData} alt={u.displayName} />
-              ) : (
-                <span style={{ fontSize: '18px' }}>
-                  {u.displayName.substring(0, 2)}
-                </span>
-              )}
+                <img 
+                  src={u.photoData} 
+                  alt={u.displayName} 
+                  referrerPolicy="no-referrer"
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextElementSibling) {
+                      (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                    }
+                  }}
+                />
+              ) : null}
+              <span style={{ fontSize: '18px', display: u.photoData ? 'none' : 'block' }}>
+                {u.displayName.substring(0, 2).toUpperCase()}
+              </span>
             </div>
           );
         })}

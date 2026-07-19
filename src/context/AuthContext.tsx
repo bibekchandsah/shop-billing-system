@@ -167,16 +167,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setJustLoggedIn(false);
         }
         
-        const photo = await loadPhotoData(firebaseUser.uid);
-        if (photo) {
-          setPhotoData(photo);
-        } else if (firebaseUser.photoURL) {
-          setPhotoData(firebaseUser.photoURL);
-          // Self-heal Firestore so it's visible in Admin bar
-          setDoc(userDocRef(firebaseUser.uid), { photoData: firebaseUser.photoURL }, { merge: true }).catch(console.error);
-        } else {
-          setPhotoData(null);
+        const uRef = userDocRef(firebaseUser.uid);
+        const snap = await getDoc(uRef);
+        const data = snap.exists() ? snap.data() : null;
+        
+        let needsUpdate = false;
+        const updates: any = {};
+        
+        if (!data?.displayName && firebaseUser.displayName) {
+          updates.displayName = firebaseUser.displayName;
+          needsUpdate = true;
         }
+        
+        if (!data?.email && firebaseUser.email) {
+          updates.email = firebaseUser.email;
+          needsUpdate = true;
+        }
+        
+        if (!data?.photoData && firebaseUser.photoURL) {
+          updates.photoData = firebaseUser.photoURL;
+          needsUpdate = true;
+        }
+        
+        if (needsUpdate) {
+          setDoc(uRef, updates, { merge: true }).catch(console.error);
+        }
+        
+        setPhotoData(data?.photoData || firebaseUser.photoURL || null);
         setUser(firebaseUser);
       } else {
         setUser(null);
