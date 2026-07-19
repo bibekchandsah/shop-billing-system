@@ -112,15 +112,7 @@ const isAnimated = async (file: File): Promise<boolean> => {
 /** Path to the user profile doc */
 const userDocRef = (uid: string) => doc(db, 'users', uid);
 
-/** Load photoData from Firestore */
-const loadPhotoData = async (uid: string): Promise<string | null> => {
-  try {
-    const snap = await getDoc(userDocRef(uid));
-    return snap.exists() ? (snap.data().photoData ?? null) : null;
-  } catch {
-    return null;
-  }
-};
+
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
