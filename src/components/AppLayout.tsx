@@ -311,7 +311,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', cursor: 'pointer', border: 'none', background: 'var(--primary)', color: '#fff' }}
+                    style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', cursor: 'pointer', border: 'none', color: '#fff' }}
                     onClick={async (e) => {
                       e.stopPropagation();
                       setLayoutToasts((currentToasts) => currentToasts.filter((t) => t.id !== 'backup-reminder-toast'));

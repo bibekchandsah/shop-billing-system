@@ -1101,7 +1101,7 @@ const Settings: React.FC = () => {
                       return (
                         <div key={session.id} className={`session-item ${isCurrentSession ? 'current-session' : ''}`}>
                           <div className="session-icon">
-                            {session.os.includes('Windows') || session.os.includes('Mac') || session.os.includes('Linux') ? (
+                            {(session.os || '').includes('Windows') || (session.os || '').includes('Mac') || (session.os || '').includes('Linux') ? (
                               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <rect x="2" y="3" width="20" height="14" rx="2" />
                                 <line x1="8" y1="21" x2="16" y2="21" />
@@ -1116,11 +1116,11 @@ const Settings: React.FC = () => {
                           </div>
                           <div className="session-info">
                             <div className="session-device">
-                              {session.deviceName}
+                              {session.deviceName || 'Unknown Device'}
                               {isCurrentSession && <span className="current-badge">Current Device</span>}
                             </div>
                             <div className="session-meta">
-                              <span>{session.ipAddress}</span>
+                              <span>{session.ipAddress || 'Unknown IP'}</span>
                               <span>•</span>
                               <span>Last active {timeAgo}</span>
                             </div>

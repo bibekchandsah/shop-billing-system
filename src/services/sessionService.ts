@@ -131,6 +131,16 @@ export const getUserSessions = async (userId: string): Promise<DeviceSession[]> 
   
   return snapshot.docs.map(doc => {
     const data = doc.data();
+    
+    // Helper to safely parse dates that might be Timestamps, strings, or missing
+    const parseDate = (val: any): Date => {
+      if (!val) return new Date();
+      if (typeof val.toDate === 'function') return val.toDate();
+      if (val instanceof Date) return val;
+      if (val.seconds) return new Date(val.seconds * 1000);
+      return new Date(val);
+    };
+
     return {
       id: doc.id,
       userId: data.userId,
@@ -138,8 +148,8 @@ export const getUserSessions = async (userId: string): Promise<DeviceSession[]> 
       browser: data.browser,
       os: data.os,
       ipAddress: data.ipAddress,
-      lastActive: data.lastActive.toDate(),
-      createdAt: data.createdAt.toDate(),
+      lastActive: parseDate(data.lastActive),
+      createdAt: parseDate(data.createdAt),
       userAgent: data.userAgent,
     };
   });
