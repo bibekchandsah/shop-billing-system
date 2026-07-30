@@ -54,6 +54,8 @@ const Records: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
+  const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState<number>(-1);
 
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { user, activeUid } = useAuth();
@@ -647,23 +649,60 @@ const Records: React.FC = () => {
     setEditBill({ ...editBill, nepaliDate: bs, date: ad });
   };
 
+  const handleSelectSuggestion = (index: number, name: string) => {
+    handleEditItemChange(index, 'particulars', name);
+    setFocusedRowIndex(null);
+    setHighlightedSuggestionIndex(-1);
+  };
+
   const handleEditItemChange = (index: number, field: keyof BillItem, value: string | number) => {
     if (!editBill) return;
     const newItems = editBill.items.map((item, i) => {
       if (i !== index) return item;
-      const updated = { ...item, [field]: value };
+      
+      const toTitleCase = (val: string) => val.toLowerCase().replace(/(^|[\s\-./])([a-z])/g, (_, sep, letter) => `${sep}${letter.toUpperCase()}`);
+      const updatedValue = field === 'particulars' && typeof value === 'string' ? toTitleCase(value) : value;
+      const updated = { ...item, [field]: updatedValue };
+      
       if (field === 'qty' || field === 'rate') {
         updated.amount = Number(updated.qty) * Number(updated.rate);
       }
-      // When particulars change, try to set default unit from stock particulars
-      if (field === 'particulars') {
-        const partName = String(value || '').trim().toLowerCase();
-        if (partName) {
-          const stockItem = stockParticulars.find(p => p.name.toLowerCase() === partName);
-          if (stockItem && stockItem.defaultUnit) {
-            updated.unit = stockItem.defaultUnit;
-          } else if (!updated.unit) {
-            updated.unit = localSettings?.unitCategories?.[0] || DEFAULT_SETTINGS.unitCategories[0] || '';
+      
+      if (field === 'qty' || field === 'particulars') {
+        const part = updated.particulars.trim().toLowerCase();
+        if (part) {
+          const stockItem = stockParticulars.find(p => p.name.toLowerCase() === part);
+          
+          if (field === 'particulars') {
+            updated.unit = stockItem?.defaultUnit || updated.unit || localSettings?.unitCategories?.[0] || DEFAULT_SETTINGS.unitCategories[0] || '';
+          }
+          
+          if (field === 'qty' && !stockItem) {
+            updated.qty = 0;
+            updated.amount = 0;
+            showError(`Item "${updated.particulars}" does not exist in stock. Please select a valid item from the suggestions dropdown.`);
+          } else if (stockItem) {
+            const otherRowsQty = editBill.items.reduce((sum, otherItem, idx) => {
+              if (idx !== index && otherItem.particulars.trim().toLowerCase() === part) {
+                return sum + Number(otherItem.qty || 0);
+              }
+              return sum;
+            }, 0);
+            
+            const originalQty = originalBill?.items?.reduce((sum, originalItem) => {
+              if (originalItem.particulars.trim().toLowerCase() === part) {
+                return sum + Number(originalItem.qty || 0);
+              }
+              return sum;
+            }, 0) || 0;
+            
+            const availableStock = stockItem.currentStock + originalQty - otherRowsQty;
+            
+            if (Number(updated.qty) > availableStock) {
+              updated.qty = 0;
+              updated.amount = 0;
+              showError(`Entered quantity exceeds available stock (${availableStock}) for "${stockItem.name}".`);
+            }
           }
         }
       }
@@ -717,12 +756,43 @@ const Records: React.FC = () => {
 
     if (!editBill.customerName.trim()) { showError('Customer name is required'); return; }
     if (!editBill.address.trim())      { showError('Address is required'); return; }
-    if (!editBill.contactNumber.trim()){ showError('Contact number is required'); return; }
 
     const validItems = editBill.items.filter(
       i => i.particulars.trim() && i.qty > 0 && i.rate > 0
     );
     if (validItems.length === 0) { showError('Add at least one valid item'); return; }
+    
+    for (let i = 0; i < validItems.length; i++) {
+      const item = validItems[i];
+      const selectedParticular = item.particulars.trim().toLowerCase();
+      const stockItem = stockParticulars.find(p => p.name.toLowerCase() === selectedParticular);
+      
+      if (!stockItem) {
+        showError(`Item "${item.particulars}" at row ${i + 1} does not exist in stock. Please select a valid item from the suggestions dropdown.`);
+        return;
+      }
+      
+      const otherRowsQty = validItems.reduce((sum, otherItem, idx) => {
+        if (idx !== i && otherItem.particulars.trim().toLowerCase() === selectedParticular) {
+          return sum + Number(otherItem.qty || 0);
+        }
+        return sum;
+      }, 0);
+      
+      const originalQty = originalBill?.items?.reduce((sum, originalItem) => {
+        if (originalItem.particulars.trim().toLowerCase() === selectedParticular) {
+          return sum + Number(originalItem.qty || 0);
+        }
+        return sum;
+      }, 0) || 0;
+      
+      const availableStock = stockItem.currentStock + originalQty - otherRowsQty;
+      
+      if (item.qty > availableStock) {
+        showError(`Insufficient stock for "${stockItem.name}" at row ${i + 1}. Only ${availableStock} Qty available.`);
+        return;
+      }
+    }
 
     setEditLoading(true);
     try {
@@ -1271,8 +1341,8 @@ const Records: React.FC = () => {
                         placeholder="Address" />
                     </div>
                     <div className="form-group">
-                      <label className="label">Contact Number *</label>
-                      <input className="input" value={editBill.contactNumber}
+                      <label className="label">Contact Number</label>
+                      <input className="input" maxLength={10} value={editBill.contactNumber}
                         onChange={e => handleEditField('contactNumber', e.target.value)}
                         placeholder="Contact number" />
                     </div>
@@ -1284,7 +1354,7 @@ const Records: React.FC = () => {
                   <div className="edit-section-header">
                     <h3 className="edit-section-title" style={{ borderBottom: 'none', marginBottom: 0 }}>Items</h3>
                   </div>
-                  <div className="table-container">
+                  <div className="table-container" style={{ overflow: 'visible' }}>
                     <table className="table items-table">
                       <thead>
                         <tr>
@@ -1301,15 +1371,109 @@ const Records: React.FC = () => {
                         {editBill.items.map((item, idx) => (
                           <tr key={idx}>
                             <td className="text-center">{item.sn}</td>
-                            <td>
+                            <td style={{ position: 'relative', zIndex: focusedRowIndex === idx ? 10 : 1 }}>
                               <input className="input" value={item.particulars}
-                                onChange={e => handleEditItemChange(idx, 'particulars', e.target.value)}
-                                placeholder="Description" />
+                                onChange={e => {
+                                  handleEditItemChange(idx, 'particulars', e.target.value);
+                                  setHighlightedSuggestionIndex(-1);
+                                }}
+                                onFocus={() => {
+                                  setFocusedRowIndex(idx);
+                                  setHighlightedSuggestionIndex(-1);
+                                }}
+                                onBlur={() => setFocusedRowIndex(null)}
+                                onKeyDown={(e) => {
+                                  if (focusedRowIndex !== idx) return;
+                                  const matches = stockParticulars.filter(p =>
+                                    p.name.toLowerCase().includes(item.particulars.toLowerCase())
+                                  ).slice(0, 8);
+                                  if (matches.length === 0) return;
+
+                                  if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setHighlightedSuggestionIndex(prev =>
+                                      prev < matches.length - 1 ? prev + 1 : 0
+                                    );
+                                  } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setHighlightedSuggestionIndex(prev =>
+                                      prev > 0 ? prev - 1 : matches.length - 1
+                                    );
+                                  } else if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (highlightedSuggestionIndex >= 0 && highlightedSuggestionIndex < matches.length) {
+                                      handleSelectSuggestion(idx, matches[highlightedSuggestionIndex].name);
+                                    }
+                                  } else if (e.key === 'Escape') {
+                                    setFocusedRowIndex(null);
+                                    setHighlightedSuggestionIndex(-1);
+                                  }
+                                }}
+                                placeholder="Description"
+                                autoComplete="off" />
+                              {focusedRowIndex === idx && (() => {
+                                const matches = stockParticulars.filter(p =>
+                                  p.name.toLowerCase().includes(item.particulars.toLowerCase())
+                                );
+                                if (matches.length === 0) return null;
+                                return (
+                                  <div className="suggestions-dropdown">
+                                    {matches.slice(0, 8).map((p, sIdx) => {
+                                      const otherRowsQty = editBill.items.reduce((sum, otherItem, iterIdx) => {
+                                        if (iterIdx !== idx && otherItem.particulars.trim().toLowerCase() === p.name.toLowerCase()) {
+                                          return sum + Number(otherItem.qty || 0);
+                                        }
+                                        return sum;
+                                      }, 0);
+                                      const originalQty = originalBill?.items?.reduce((sum, originalItem) => {
+                                        if (originalItem.particulars.trim().toLowerCase() === p.name.toLowerCase()) {
+                                          return sum + Number(originalItem.qty || 0);
+                                        }
+                                        return sum;
+                                      }, 0) || 0;
+                                      const availableStock = p.currentStock + originalQty - otherRowsQty;
+                                      
+                                      return (
+                                        <div
+                                          key={p.id}
+                                          className={`suggestion-item suggestion-item-stock${sIdx === highlightedSuggestionIndex ? ' suggestion-highlighted' : ''}`}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            handleSelectSuggestion(idx, p.name);
+                                          }}
+                                          onMouseEnter={() => setHighlightedSuggestionIndex(sIdx)}
+                                        >
+                                          <span className="suggestion-name">{p.name}</span>
+                                          <span className="suggestion-stock">Stock: {availableStock} {p.defaultUnit || 'Qty'}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td>
                               <input type="number" className="input" value={item.qty || ''}
                                 onChange={e => handleEditItemChange(idx, 'qty', parseFloat(e.target.value) || 0)}
-                                min="0" step="0.01" />
+                                min="0" 
+                                max={(() => {
+                                  const stockItem = stockParticulars.find(p => p.name.toLowerCase() === item.particulars.trim().toLowerCase());
+                                  if (!stockItem) return undefined;
+                                  const otherRowsQty = editBill.items.reduce((sum, otherItem, iterIdx) => {
+                                    if (iterIdx !== idx && otherItem.particulars.trim().toLowerCase() === item.particulars.trim().toLowerCase()) {
+                                      return sum + Number(otherItem.qty || 0);
+                                    }
+                                    return sum;
+                                  }, 0);
+                                  const originalQty = originalBill?.items?.reduce((sum, originalItem) => {
+                                    if (originalItem.particulars.trim().toLowerCase() === item.particulars.trim().toLowerCase()) {
+                                      return sum + Number(originalItem.qty || 0);
+                                    }
+                                    return sum;
+                                  }, 0) || 0;
+                                  return stockItem.currentStock + originalQty - otherRowsQty;
+                                })()}
+                                step="0.01" />
                             </td>
                             <td>
                               <select className="select" value={item.unit || ''} onChange={e => handleEditItemChange(idx, 'unit', e.target.value)}>

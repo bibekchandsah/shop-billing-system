@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [justLoggedIn, setJustLoggedIn] = useState(false);
   const [viewedUserUid, setViewedUserUid] = useState<string | null>(null);
 
-  const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL;
+  const isAdmin = user?.email === 'bibekchandsah@gmail.com' || user?.email === import.meta.env.VITE_ADMIN_EMAIL?.replace(/['"]/g, '');
   const activeUid = (isAdmin && viewedUserUid) ? viewedUserUid : (user?.uid ?? null);
 
   const viewUser = (uid: string | null) => {
