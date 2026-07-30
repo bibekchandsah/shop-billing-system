@@ -186,7 +186,8 @@ export const isCurrentSessionValid = async (userId: string): Promise<boolean> =>
   try {
     const sessions = await getUserSessions(userId);
     return sessions.some(session => session.id === currentSessionId);
-  } catch {
-    return false;
+  } catch (error) {
+    console.warn('Error validating session, assuming valid to prevent false logouts:', error);
+    return true;
   }
 };
