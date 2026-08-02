@@ -63,7 +63,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -97,7 +97,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   // Auto-focus input and reset highlight when dropdown opens
   useEffect(() => {
     if (isOpen) {
-      setHighlightedIndex(-1);
+      setHighlightedIndex(0);
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -133,7 +133,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     onChange(id);
     setIsOpen(false);
     setSearchQuery('');
-    setHighlightedIndex(-1);
+    setHighlightedIndex(0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -170,7 +170,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         e.preventDefault();
         setIsOpen(false);
         setSearchQuery('');
-        setHighlightedIndex(-1);
+        setHighlightedIndex(0);
         break;
       default:
         break;
@@ -189,7 +189,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           value={isOpen ? searchQuery : (selectedOption ? selectedOption.name : '')}
           onChange={e => {
             setSearchQuery(e.target.value);
-            setHighlightedIndex(-1);
+            setHighlightedIndex(0);
             if (!isOpen) setIsOpen(true);
           }}
           onFocus={e => {
@@ -219,7 +219,6 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   key={opt.id}
                   className={`searchable-select-option ${selectedValue === opt.id ? 'selected' : ''} ${highlightedIndex === idx ? 'highlighted' : ''}`}
                   onMouseEnter={() => setHighlightedIndex(idx)}
-                  onMouseLeave={() => setHighlightedIndex(-1)}
                   onClick={() => handleSelect(opt.id)}
                 >
                   <div className="option-primary">
