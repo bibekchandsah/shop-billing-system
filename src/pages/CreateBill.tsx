@@ -793,6 +793,13 @@ const CreateBill: React.FC = () => {
                 }}
                 onBlur={() => setCustomerDropdownOpen(false)}
                 onKeyDown={(e) => {
+                  if (e.key === 'Tab' && !e.shiftKey) {
+                    e.preventDefault();
+                    setCustomerDropdownOpen(false);
+                    itemParticularRefs.current[0]?.focus();
+                    return;
+                  }
+
                   if (!customerDropdownOpen) return;
                   const matches = customers.filter(c => 
                     c.name.toLowerCase().includes(customerName.toLowerCase())
