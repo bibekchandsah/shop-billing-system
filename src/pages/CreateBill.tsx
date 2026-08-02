@@ -35,8 +35,9 @@ const CreateBill: React.FC = () => {
   const [stockParticulars, setStockParticulars] = useState<StockParticular[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
+  const [highlightedCustomerIndex, setHighlightedCustomerIndex] = useState<number>(0);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
-  const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState<number>(-1);
+  const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState<number>(0);
   const itemParticularRefs = useRef<Array<HTMLInputElement | null>>([]);
   const itemQtyRefs = useRef<Array<HTMLInputElement | null>>([]);
   const itemRateRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -122,6 +123,16 @@ const CreateBill: React.FC = () => {
 
   const handleCustomerNameChange = (value: string) => {
     setCustomerName(toTitleCase(value));
+    setHighlightedCustomerIndex(0);
+  };
+
+  const selectCustomerSuggestion = (c: Customer) => {
+    setCustomerName(toTitleCase(c.name));
+    if (c.address) setAddress(toTitleCase(c.address));
+    if (c.contactNumber) setContactNumber(c.contactNumber);
+    setCustomerCode(c.customerCode || '');
+    setCustomerDropdownOpen(false);
+    setHighlightedCustomerIndex(-1);
   };
 
   const flashAndScroll = (elRef: React.RefObject<HTMLElement | null>) => {
@@ -776,8 +787,38 @@ const CreateBill: React.FC = () => {
                 ref={customerNameRef}
                 value={customerName}
                 onChange={(e) => handleCustomerNameChange(e.target.value)}
-                onFocus={() => setCustomerDropdownOpen(true)}
+                onFocus={() => {
+                  setCustomerDropdownOpen(true);
+                  setHighlightedCustomerIndex(0);
+                }}
                 onBlur={() => setCustomerDropdownOpen(false)}
+                onKeyDown={(e) => {
+                  if (!customerDropdownOpen) return;
+                  const matches = customers.filter(c => 
+                    c.name.toLowerCase().includes(customerName.toLowerCase())
+                  ).slice(0, 8);
+                  if (matches.length === 0 || (matches.length === 1 && matches[0].name.toLowerCase() === customerName.trim().toLowerCase())) return;
+
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlightedCustomerIndex(prev =>
+                      prev < matches.length - 1 ? prev + 1 : 0
+                    );
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlightedCustomerIndex(prev =>
+                      prev > 0 ? prev - 1 : matches.length - 1
+                    );
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (highlightedCustomerIndex >= 0 && highlightedCustomerIndex < matches.length) {
+                      selectCustomerSuggestion(matches[highlightedCustomerIndex]);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setCustomerDropdownOpen(false);
+                    setHighlightedCustomerIndex(-1);
+                  }
+                }}
                 placeholder="Enter customer name"
                 autoComplete="off"
               />
@@ -788,18 +829,15 @@ const CreateBill: React.FC = () => {
               if (matches.length === 0 || (matches.length === 1 && matches[0].name.toLowerCase() === customerName.trim().toLowerCase())) return null;
               return (
                 <div className="suggestions-dropdown">
-                  {matches.slice(0, 8).map(c => (
+                  {matches.slice(0, 8).map((c, sIdx) => (
                     <div
                       key={c.id}
-                      className="suggestion-item"
+                      className={`suggestion-item${sIdx === highlightedCustomerIndex ? ' suggestion-highlighted' : ''}`}
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        setCustomerName(toTitleCase(c.name));
-                        if (c.address) setAddress(toTitleCase(c.address));
-                        if (c.contactNumber) setContactNumber(c.contactNumber);
-                        setCustomerCode(c.customerCode || '');
-                        setCustomerDropdownOpen(false);
+                        selectCustomerSuggestion(c);
                       }}
+                      onMouseEnter={() => setHighlightedCustomerIndex(sIdx)}
                     >
                       <div className="suggestion-inline-row">
                         <span className="suggestion-name">{c.name}</span>
@@ -889,11 +927,11 @@ const CreateBill: React.FC = () => {
                           value={item.particulars}
                           onChange={(e) => {
                             handleItemChange(index, 'particulars', e.target.value);
-                            setHighlightedSuggestionIndex(-1);
+                            setHighlightedSuggestionIndex(0);
                           }}
                           onFocus={() => {
                             setFocusedRowIndex(index);
-                            setHighlightedSuggestionIndex(-1);
+                            setHighlightedSuggestionIndex(0);
                           }}
                           onBlur={() => setFocusedRowIndex(null)}
                           onKeyDown={(e) => {

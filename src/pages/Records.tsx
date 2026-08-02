@@ -55,7 +55,7 @@ const Records: React.FC = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
-  const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState<number>(-1);
+  const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState<number>(0);
 
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { user, activeUid } = useAuth();
@@ -1375,11 +1375,11 @@ const Records: React.FC = () => {
                               <input className="input" value={item.particulars}
                                 onChange={e => {
                                   handleEditItemChange(idx, 'particulars', e.target.value);
-                                  setHighlightedSuggestionIndex(-1);
+                                  setHighlightedSuggestionIndex(0);
                                 }}
                                 onFocus={() => {
                                   setFocusedRowIndex(idx);
-                                  setHighlightedSuggestionIndex(-1);
+                                  setHighlightedSuggestionIndex(0);
                                 }}
                                 onBlur={() => setFocusedRowIndex(null)}
                                 onKeyDown={(e) => {
