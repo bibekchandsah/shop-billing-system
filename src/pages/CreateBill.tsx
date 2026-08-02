@@ -53,6 +53,7 @@ const CreateBill: React.FC = () => {
   const { toasts, showSuccess, showError, removeToast } = useToast();
 
   useEffect(() => {
+    setTimeout(() => customerCodeRef.current?.focus(), 10);
     initializeBill();
   }, []);
 
@@ -83,8 +84,6 @@ const CreateBill: React.FC = () => {
         setStockParticulars(particulars);
         const fetchedCustomers = await getCustomers(activeUid);
         setCustomers(fetchedCustomers);
-        // After initial load, focus customer ID to speed up new billing
-        setTimeout(() => flashAndScroll(customerCodeRef), 250);
       }
     } catch (error) {
       console.error('Error initializing bill:', error);
@@ -888,6 +887,7 @@ const CreateBill: React.FC = () => {
               <label className="label">Customer ID</label>
               <input
                 ref={customerCodeRef}
+                autoFocus
                 type="text"
                 className="input"
                 value={customerCode}
