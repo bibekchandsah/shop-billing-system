@@ -515,12 +515,17 @@ export const removeBillInventory = async (
 ): Promise<void> => {
   if (!userId || !billNo || !items || items.length === 0) return;
 
+  // Resolve true particular IDs from names to handle renamed items properly.
+  const allStock = await getStockParticulars(userId);
+  const nameToId = new Map(allStock.map(s => [s.name.toLowerCase().trim(), s.id]));
+
   // Deduplicate items by particularId so we only query each particular once
   const uniqueParticulars = new Map<string, string>(); // particularId -> originalName
   for (const item of items) {
     const name = item.particulars.trim();
-    const particularId = name.toLowerCase().trim();
-    if (!particularId) continue;
+    if (!name) continue;
+    const lookupName = name.toLowerCase();
+    const particularId = nameToId.get(lookupName) || lookupName;
     uniqueParticulars.set(particularId, name);
   }
 
