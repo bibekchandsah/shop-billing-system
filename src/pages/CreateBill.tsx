@@ -203,7 +203,7 @@ const CreateBill: React.FC = () => {
 
   const handleItemChange = (index: number, field: keyof BillItem, value: string | number) => {
     const newItems = [...items];
-    const updatedValue = field === 'particulars' && typeof value === 'string' ? toTitleCase(value) : value;
+    const updatedValue = value;
     newItems[index] = { ...newItems[index], [field]: updatedValue };
 
     // Calculate amount
@@ -916,7 +916,7 @@ const CreateBill: React.FC = () => {
                     <th style={{ width: '60px' }}>S.N.</th>
                     <th>Particulars</th>
                     <th style={{ width: '100px' }}>Qty.</th>
-                    <th style={{ width: '90px' }}>Unit</th>
+                    <th style={{ width: '115px' }}>Unit</th>
                     <th style={{ width: '120px' }}>Rate</th>
                     <th style={{ width: '140px' }}>Amount</th>
                     <th style={{ width: '80px' }}>Action</th>

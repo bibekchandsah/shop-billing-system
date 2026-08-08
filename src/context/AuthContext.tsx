@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -119,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user,      setUser]      = useState<User | null>(null);
   const [photoData, setPhotoData] = useState<string | null>(null);
   const [loading,   setLoading]   = useState(true);
-  const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const justLoggedInRef = useRef(false);
   const [viewedUserUid, setViewedUserUid] = useState<string | null>(null);
 
   const isAdmin = user?.email === 'bibekchandsah@gmail.com' || user?.email === import.meta.env.VITE_ADMIN_EMAIL?.replace(/['"]/g, '');
@@ -136,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const sessionId = getCurrentSessionId();
         
         // Only validate session if we have a session ID and we didn't just login
-        if (sessionId && !justLoggedIn) {
+        if (sessionId && !justLoggedInRef.current) {
           // Verify session exists in Firestore
           const isValid = await isCurrentSessionValid(firebaseUser.uid);
           
@@ -155,8 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         // Reset the justLoggedIn flag after first validation
-        if (justLoggedIn) {
-          setJustLoggedIn(false);
+        if (justLoggedInRef.current) {
+          justLoggedInRef.current = false;
         }
         
         const uRef = userDocRef(firebaseUser.uid);
@@ -194,7 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
     return unsubscribe;
-  }, [justLoggedIn]);
+  }, []);
 
   // Periodic session validation check
   useEffect(() => {
@@ -231,14 +231,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Auth methods ─────────────────────────────────────────────────────────
   const signInEmail = async (email: string, password: string) => {
-    setJustLoggedIn(true);
+    justLoggedInRef.current = true;
     const result = await signInWithEmailAndPassword(auth, email, password);
     // Create a new session after successful login
     await createSession(result.user.uid);
   };
 
   const signUpEmail = async (email: string, password: string, displayName: string) => {
-    setJustLoggedIn(true);
+    justLoggedInRef.current = true;
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(user, { displayName });
     // Create the user doc so the subcollection path exists
@@ -248,7 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInGoogle = async () => {
-    setJustLoggedIn(true);
+    justLoggedInRef.current = true;
     const result = await signInWithPopup(auth, googleProvider);
     
     const uRef = userDocRef(result.user.uid);
