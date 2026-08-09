@@ -25,11 +25,13 @@ const TopCustomersList: React.FC<TopCustomersListProps> = ({ bills }) => {
 
     for (const bill of bills) {
       const name = (bill.customerName || 'Unknown').trim();
-      const phone = (bill.contactNumber || '').trim();
+      let phone = (bill.contactNumber || '').trim();
+      if (phone === '0' || phone === '-') phone = '';
       const address = (bill.address || '').trim();
+      const code = (bill.customerCode || '').trim();
       
-      // Use name + phone as a unique identifier to avoid merging people with same name
-      const key = `${name.toLowerCase()}|${phone}`;
+      // Use customerCode if available, otherwise name + normalized phone
+      const key = code ? `code|${code.toLowerCase()}` : `fallback|${name.toLowerCase()}|${phone.toLowerCase()}`;
       
       const amount = Number(bill.totalAmount || 0);
       const qty = Number(bill.totalQty || bill.items.reduce((sum, item) => sum + Number(item.qty || 0), 0));

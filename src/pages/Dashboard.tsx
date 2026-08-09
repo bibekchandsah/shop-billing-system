@@ -34,10 +34,17 @@ const getBillDate = (bill: Bill) => {
   return Number.isNaN(adDate.getTime()) ? new Date(bill.createdAt) : adDate;
 };
 
-const getCustomerKey = (bill: Bill) =>
-  [bill.customerName, bill.contactNumber, bill.address]
-    .map((value) => String(value || '').trim().toLowerCase())
-    .join('|');
+const getCustomerKey = (bill: Bill) => {
+  const code = String(bill.customerCode || '').trim().toLowerCase();
+  if (code) return `code|${code}`;
+
+  const name = String(bill.customerName || '').trim().toLowerCase();
+  let phone = String(bill.contactNumber || '').trim().toLowerCase();
+  if (phone === '0' || phone === '-') phone = '';
+  const address = String(bill.address || '').trim().toLowerCase();
+  
+  return `${name}|${phone}|${address}`;
+};
 
 const Dashboard: React.FC = () => {
   const { activeUid } = useAuth();
