@@ -660,7 +660,7 @@ const Records: React.FC = () => {
     const newItems = editBill.items.map((item, i) => {
       if (i !== index) return item;
       
-      const toTitleCase = (val: string) => val.toLowerCase().replace(/(^|[\s\-./])([a-z])/g, (_, sep, letter) => `${sep}${letter.toUpperCase()}`);
+      const toTitleCase = (val: string) => val.replace(/(^|[\s\-./])([a-z])/g, (_, sep, letter) => `${sep}${letter.toUpperCase()}`);
       const updatedValue = field === 'particulars' && typeof value === 'string' ? toTitleCase(value) : value;
       const updated = { ...item, [field]: updatedValue };
       

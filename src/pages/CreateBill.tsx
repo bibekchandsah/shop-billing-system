@@ -63,6 +63,16 @@ const CreateBill: React.FC = () => {
     setPendingFocusItemIndex(null);
   }, [items.length, pendingFocusItemIndex]);
 
+  useEffect(() => {
+    if ((customerDropdownOpen && highlightedCustomerIndex >= 0) || 
+        (focusedRowIndex !== null && highlightedSuggestionIndex >= 0)) {
+      const highlightedEl = document.querySelector('.suggestions-dropdown .suggestion-highlighted');
+      if (highlightedEl) {
+        highlightedEl.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightedCustomerIndex, highlightedSuggestionIndex, customerDropdownOpen, focusedRowIndex]);
+
   const initializeBill = async () => {
     try {
       const fetchedSettings = await getAppSettings(activeUid || '');
@@ -117,12 +127,12 @@ const CreateBill: React.FC = () => {
 
   const toTitleCase = (value: string) =>
     value
-      .toLowerCase()
       .replace(/(^|[\s\-./])([a-z])/g, (_, sep: string, letter: string) => `${sep}${letter.toUpperCase()}`);
 
   const handleCustomerNameChange = (value: string) => {
     setCustomerName(toTitleCase(value));
     setHighlightedCustomerIndex(0);
+    setCustomerDropdownOpen(true);
   };
 
   const selectCustomerSuggestion = (c: Customer) => {
@@ -935,6 +945,7 @@ const CreateBill: React.FC = () => {
                           onChange={(e) => {
                             handleItemChange(index, 'particulars', e.target.value);
                             setHighlightedSuggestionIndex(0);
+                            setFocusedRowIndex(index);
                           }}
                           onFocus={() => {
                             setFocusedRowIndex(index);

@@ -558,7 +558,6 @@ const SupplierLedger: React.FC = () => {
 
   const titleCase = (value: string) => {
     return (value || '')
-      .toLowerCase()
       .replace(/(^|[\s\-./])([a-z])/g, (_, sep: string, letter: string) => `${sep}${letter.toUpperCase()}`);
   };
 

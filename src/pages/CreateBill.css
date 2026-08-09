@@ -376,7 +376,7 @@
   max-height: 220px;
   overflow-y: auto;
   margin-top: 0.35rem;
-  padding: 0.35rem 0;
+  padding: 0.35rem 0.3rem;
   text-align: left;
 }
 
@@ -397,8 +397,8 @@
 .suggestion-item:hover,
 .suggestion-item.suggestion-highlighted {
   background-color: var(--bg-secondary);
-  border-left: 3px solid var(--accent-primary);
   border: 1px solid var(--accent-primary);
+  border-left: 5px solid var(--accent-primary);
   border-radius: 8px;
 }
 
