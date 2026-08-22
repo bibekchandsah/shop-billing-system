@@ -1028,6 +1028,7 @@ const CreateBill: React.FC = () => {
                               value={item.qty || ''}
                               onChange={(e) => handleItemChange(index, 'qty', parseFloat(e.target.value) || 0)}
                               onKeyDown={(e) => handleQtyTab(e, index)}
+                              onWheel={(e) => (e.target as HTMLInputElement).blur()}
                               min="0"
                               max={stockItem ? stockItem.currentStock - items.reduce((sum, otherItem, idx) => {
                                 if (idx !== index && otherItem.particulars.trim().toLowerCase() === item.particulars.trim().toLowerCase()) {
@@ -1062,6 +1063,7 @@ const CreateBill: React.FC = () => {
                           value={item.rate || ''}
                           onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value) || 0)}
                           onKeyDown={(e) => handleRateTab(e, index)}
+                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
                           min="0"
                           step="1"
                         />

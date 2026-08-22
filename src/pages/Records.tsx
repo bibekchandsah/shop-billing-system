@@ -1455,6 +1455,7 @@ const Records: React.FC = () => {
                             <td>
                               <input type="number" className="input" value={item.qty || ''}
                                 onChange={e => handleEditItemChange(idx, 'qty', parseFloat(e.target.value) || 0)}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                 min="0" 
                                 max={(() => {
                                   const stockItem = stockParticulars.find(p => p.name.toLowerCase() === item.particulars.trim().toLowerCase());
@@ -1485,6 +1486,7 @@ const Records: React.FC = () => {
                             <td>
                               <input type="number" className="input" value={item.rate || ''}
                                 onChange={e => handleEditItemChange(idx, 'rate', parseFloat(e.target.value) || 0)}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                 min="0" step="0.01" />
                             </td>
                             <td className="text-right"><strong>{formatCurrency(item.amount)}</strong></td>

@@ -959,6 +959,7 @@ const QuickEntry: React.FC = () => {
                       className="input"
                       value={newPartInitialStock || ''}
                       onChange={e => setNewPartInitialStock(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
                       placeholder="e.g. 50 (leave 0 if none)"
                       min="0"
                     />
@@ -1065,6 +1066,7 @@ const QuickEntry: React.FC = () => {
                         className="input"
                         value={txQty || ''}
                         onChange={e => setTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
+                        onWheel={(e) => (e.target as HTMLInputElement).blur()}
                         placeholder="Qty"
                         required
                         min="0.01"
@@ -1195,6 +1197,7 @@ const QuickEntry: React.FC = () => {
                       min="0"
                       value={newCustomerOpeningAmount || ''}
                       onChange={e => setNewCustomerOpeningAmount(Number(e.target.value) || 0)}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
                       placeholder="Enter opening balance"
                     />
                   </div>
@@ -1323,6 +1326,7 @@ const QuickEntry: React.FC = () => {
                       step="any"
                       value={custTxAmount || ''}
                       onChange={e => setCustTxAmount(Number(e.target.value) || 0)}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
                       placeholder="Enter amount"
                       required
                     />
@@ -1494,6 +1498,7 @@ const QuickEntry: React.FC = () => {
                       step="any"
                       value={partyTxAmount || ''}
                       onChange={e => setPartyTxAmount(Number(e.target.value) || 0)}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
                       placeholder="Enter amount"
                       required
                     />

@@ -1362,6 +1362,7 @@ const Stock: React.FC = () => {
                     className="input"
                     value={newPartInitialStock || ''}
                     onChange={e => setNewPartInitialStock(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     placeholder="e.g. 50 (leave 0 if none)"
                     min="0"
                   />
@@ -1485,6 +1486,7 @@ const Stock: React.FC = () => {
                       className="input"
                       value={txQty || ''}
                       onChange={e => setTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
                       placeholder="Enter quantity"
                       required
                       min="0.01"
@@ -1729,6 +1731,7 @@ const Stock: React.FC = () => {
                       className="input"
                       value={editTxQty || ''}
                       onChange={e => setEditTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
                       placeholder="Enter quantity"
                       required
                       min="0.01"

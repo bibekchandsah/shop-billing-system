@@ -1458,7 +1458,7 @@ const SupplierLedger: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label className="label">Amount *</label>
-                  <input className="input" type="number" min="0" value={txAmount || ''} onChange={(event) => setTxAmount(Number(event.target.value) || 0)} />
+                  <input className="input" type="number" min="0" value={txAmount || ''} onChange={(event) => setTxAmount(Number(event.target.value) || 0)} onWheel={(e) => (e.target as HTMLInputElement).blur()} />
                 </div>
                 <div className="form-group">
                   <label className="label">Note</label>
@@ -1507,7 +1507,7 @@ const SupplierLedger: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label className="label">Amount *</label>
-                  <input className="input" type="number" min="0" value={editTxAmount || ''} onChange={(event) => setEditTxAmount(Number(event.target.value) || 0)} />
+                  <input className="input" type="number" min="0" value={editTxAmount || ''} onChange={(event) => setEditTxAmount(Number(event.target.value) || 0)} onWheel={(e) => (e.target as HTMLInputElement).blur()} />
                 </div>
                 <div className="form-group">
                   <label className="label">Note</label>

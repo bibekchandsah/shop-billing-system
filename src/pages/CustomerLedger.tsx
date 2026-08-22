@@ -1414,6 +1414,7 @@ const CustomerLedger: React.FC = () => {
                     min="0"
                     value={newCustomerOpeningAmount || ''}
                     onChange={(event) => setNewCustomerOpeningAmount(Number(event.target.value) || 0)}
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     placeholder="Enter opening DR amount"
                   />
                 </div>
@@ -1507,7 +1508,7 @@ const CustomerLedger: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label className="label">Amount *</label>
-                  <input className="input" type="number" min="0" value={txAmount || ''} onChange={(event) => setTxAmount(Number(event.target.value) || 0)} />
+                  <input className="input" type="number" min="0" value={txAmount || ''} onChange={(event) => setTxAmount(Number(event.target.value) || 0)} onWheel={(e) => (e.target as HTMLInputElement).blur()} />
                 </div>
                 <div className="form-group">
                   <label className="label">Note</label>
@@ -1560,7 +1561,7 @@ const CustomerLedger: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label className="label">Amount *</label>
-                  <input className="input" type="number" min="0" value={editTxAmount || ''} onChange={(event) => setEditTxAmount(Number(event.target.value) || 0)} />
+                  <input className="input" type="number" min="0" value={editTxAmount || ''} onChange={(event) => setEditTxAmount(Number(event.target.value) || 0)} onWheel={(e) => (e.target as HTMLInputElement).blur()} />
                 </div>
                 <div className="form-group">
                   <label className="label">Note</label>
