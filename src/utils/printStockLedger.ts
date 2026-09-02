@@ -20,6 +20,10 @@ export const printStockLedger = (
     ? `${filterStartDate || 'Beginning'} to ${filterEndDate || 'Present'}`
     : 'All Time';
 
+  const totalStockIn = ledger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
+  const totalStockOut = ledger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
+  const currentStock = particular.currentStock || 0;
+
   const rows = [...ledger]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map(
@@ -89,6 +93,34 @@ export const printStockLedger = (
     .right  { text-align: right; }
     .text-success { color: #10b981; }
     .text-danger { color: #ef4444; }
+    .summary-box {
+      margin-top: 18px;
+      margin-left: auto;
+      width: fit-content;
+      min-width: 250px;
+      page-break-inside: avoid;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      padding: 5px 0;
+      border-bottom: 1px solid #000;
+      font-size: 13.5px;
+    }
+    .summary-row:last-child {
+      border-bottom: 1.5px solid #000;
+    }
+    .summary-label {
+      font-weight: 700;
+      color: #000;
+    }
+    .summary-value {
+      font-weight: 600;
+      color: #000;
+      text-align: right;
+    }
     .toolbar {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -152,6 +184,21 @@ export const printStockLedger = (
     </thead>
     <tbody>${rows}</tbody>
   </table>
+
+  <div class="summary-box">
+    <div class="summary-row">
+      <span class="summary-label">Total Stock In:</span>
+      <span class="summary-value">${formatCurrency(totalStockIn)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Total Stock Out:</span>
+      <span class="summary-value">${formatCurrency(totalStockOut)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Current Stock:</span>
+      <span class="summary-value">${formatCurrency(currentStock)}</span>
+    </div>
+  </div>
 
   <script>
     window.onload = function () { window.print(); };

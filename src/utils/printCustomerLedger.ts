@@ -24,6 +24,10 @@ export const printCustomerLedger = (
     ? `${filterStartDate || 'Beginning'} to ${filterEndDate || 'Present'}`
     : 'All Time';
 
+  const totalDebit = ledger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
+  const totalCredit = ledger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
+  const currentBal = formatBalanceDisplay(customer.currentBalance || 0);
+
   const rows = [...ledger]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map(
@@ -108,6 +112,34 @@ export const printCustomerLedger = (
     }
     .balance-tag.dr { color: #000000ff; background: #ffffffff; }
     .balance-tag.cr { color: #000000ff; background: #ffffffff; }
+    .summary-box {
+      margin-top: 18px;
+      margin-left: auto;
+      width: fit-content;
+      min-width: 250px;
+      page-break-inside: avoid;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      padding: 5px 0;
+      border-bottom: 1px solid #000;
+      font-size: 13.5px;
+    }
+    .summary-row:last-child {
+      border-bottom: 1.5px solid #000;
+    }
+    .summary-label {
+      font-weight: 700;
+      color: #000;
+    }
+    .summary-value {
+      font-weight: 600;
+      color: #000;
+      text-align: right;
+    }
     .toolbar {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -155,7 +187,7 @@ export const printCustomerLedger = (
     </div>
     <div class="meta-right">
       <div class="meta-row"><span class="meta-label">Date Range:</span><span>${dateRangeStr}</span></div>
-      <div class="meta-row"><span class="meta-label">Current Balance:</span><span>${formatCurrency(formatBalanceDisplay(customer.currentBalance || 0).amount)} <span class="balance-tag ${formatBalanceDisplay(customer.currentBalance || 0).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(customer.currentBalance || 0).label}</span></span></div>
+      <div class="meta-row"><span class="meta-label">Current Balance:</span><span>${formatCurrency(currentBal.amount)} <span class="balance-tag ${currentBal.label === 'CR' ? 'cr' : 'dr'}">${currentBal.label}</span></span></div>
     </div>
   </div>
 
@@ -172,6 +204,21 @@ export const printCustomerLedger = (
     </thead>
     <tbody>${rows}</tbody>
   </table>
+
+  <div class="summary-box">
+    <div class="summary-row">
+      <span class="summary-label">Total Debit:</span>
+      <span class="summary-value">${formatCurrency(totalDebit)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Total Credit:</span>
+      <span class="summary-value">${formatCurrency(totalCredit)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Current Balance:</span>
+      <span class="summary-value">${formatCurrency(currentBal.amount)} <span class="balance-tag ${currentBal.label === 'CR' ? 'cr' : 'dr'}">${currentBal.label}</span></span>
+    </div>
+  </div>
 
   <script>
     window.onload = function () { window.print(); };
