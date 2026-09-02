@@ -20,6 +20,7 @@ import { DEFAULT_SETTINGS } from '../services/settingsService';
 import type { StockParticular, StockLedgerEntry } from '../types';
 import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
 import { getCurrentNepaliDate, toNepaliDate } from '../utils/nepaliDate';
+import { formatCurrency, formatNumberInputValue } from '../utils/numberToWords';
 import Papa from 'papaparse';
 import './Stock.css';
 
@@ -562,7 +563,7 @@ const Stock: React.FC = () => {
           <tr>
             <td>${p.name || '—'}</td>
             <td>${p.particularCode || '—'}</td>
-            <td class="right">${p.currentStock} ${p.defaultUnit || 'Qty'}</td>
+            <td class="right">${formatCurrency(p.currentStock)} ${p.defaultUnit || 'Qty'}</td>
           </tr>`;
       })
       .join('');
@@ -1058,7 +1059,7 @@ const Stock: React.FC = () => {
                     </div>
                     <div className="item-badges">
                       <span className={`badge ${getStockBadgeClass(p.currentStock)}`}>
-                        {p.currentStock} {p.defaultUnit || 'Qty'}
+                        {formatCurrency(p.currentStock)} {p.defaultUnit || 'Qty'}
                       </span>
                     </div>
                   </div>
@@ -1195,16 +1196,16 @@ const Stock: React.FC = () => {
                 <div className="ledger-metrics-grid">
                   <div className="metric-box bg-box">
                     <span className="mb-label">Total Stock In (Debit)</span>
-                    <strong className="mb-value text-success">+{totalDebit}</strong>
+                    <strong className="mb-value text-success">+{formatCurrency(totalDebit)}</strong>
                   </div>
                   <div className="metric-box bg-box">
                     <span className="mb-label">Total Billed Out (Credit)</span>
-                    <strong className="mb-value text-danger">{totalCredit}</strong>
+                    <strong className="mb-value text-danger">{formatCurrency(totalCredit)}</strong>
                   </div>
                   <div className="metric-box bg-box-highlight">
                     <span className="mb-label">Current Stock Balance</span>
                     <strong className={`mb-value ${selectedParticular.currentStock > 10 ? 'text-success' : selectedParticular.currentStock > 0 ? 'text-warning' : 'text-danger'}`}>
-                      {selectedParticular.currentStock}
+                      {formatCurrency(selectedParticular.currentStock)}
                     </strong>
                   </div>
                 </div>
@@ -1252,13 +1253,13 @@ const Stock: React.FC = () => {
                                 {entry.unit ? entry.unit : '—'}
                               </td>
                               <td className="text-right text-success text-bold">
-                                {entry.debit > 0 ? `${entry.debit}` : '—'}
+                                {entry.debit > 0 ? formatCurrency(entry.debit) : '—'}
                               </td>
                               <td className="text-right text-danger text-bold">
-                                {entry.credit > 0 ? `${entry.credit}` : '—'}
+                                {entry.credit > 0 ? formatCurrency(entry.credit) : '—'}
                               </td>
                               <td className="text-right text-bold" style={{ color: 'var(--text-primary)' }}>
-                                {entry.currentStock}
+                                {formatCurrency(entry.currentStock)}
                               </td>
                               <td className="text-center">
                                 <div className="ledger-row-actions">
@@ -1358,13 +1359,17 @@ const Stock: React.FC = () => {
                 <div className="form-group">
                   <label className="label">Initial Stock Quantity</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     className="input"
-                    value={newPartInitialStock || ''}
-                    onChange={e => setNewPartInitialStock(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                    value={newPartInitialStock ? formatNumberInputValue(newPartInitialStock, settings?.numberSystem) : ''}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/,/g, '');
+                      if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                        setNewPartInitialStock(raw === '' ? 0 : parseFloat(raw) || 0);
+                      }
+                    }}
                     placeholder="e.g. 50 (leave 0 if none)"
-                    min="0"
                   />
                 </div>
                 <div className="form-group">
@@ -1482,15 +1487,18 @@ const Stock: React.FC = () => {
                   <div className="qty-unit-row">
                     <input
                       ref={txQtyInputRef}
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className="input"
-                      value={txQty || ''}
-                      onChange={e => setTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
-                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                      value={txQty ? formatNumberInputValue(txQty, settings?.numberSystem) : ''}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/,/g, '');
+                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                          setTxQty(raw === '' ? 0 : parseFloat(raw) || 0);
+                        }
+                      }}
                       placeholder="Enter quantity"
                       required
-                      min="0.01"
-                      step="any"
                       autoFocus
                     />
                     <select
@@ -1727,15 +1735,18 @@ const Stock: React.FC = () => {
                   <label className="label">Quantity *</label>
                   <div className="qty-unit-row">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className="input"
-                      value={editTxQty || ''}
-                      onChange={e => setEditTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
-                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                      value={editTxQty ? formatNumberInputValue(editTxQty, settings?.numberSystem) : ''}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/,/g, '');
+                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                          setEditTxQty(raw === '' ? 0 : parseFloat(raw) || 0);
+                        }
+                      }}
                       placeholder="Enter quantity"
                       required
-                      min="0.01"
-                      step="any"
                       autoFocus
                     />
                     <select
@@ -1841,7 +1852,7 @@ const Stock: React.FC = () => {
                   <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <td style={{ padding: '6px 0', color: 'var(--text-secondary)' }}>Change:</td>
                     <td style={{ padding: '6px 0', fontWeight: 'bold' }} className={deletingTransaction.debit > 0 ? 'text-success' : 'text-danger'}>
-                      {deletingTransaction.debit > 0 ? `${deletingTransaction.debit} (Debit)` : `${deletingTransaction.credit} (Credit)`}
+                      {deletingTransaction.debit > 0 ? `${formatCurrency(deletingTransaction.debit)} (Debit)` : `${formatCurrency(deletingTransaction.credit)} (Credit)`}
                     </td>
                   </tr>
                 </tbody>

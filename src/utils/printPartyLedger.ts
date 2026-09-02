@@ -30,8 +30,8 @@ export const printPartyLedger = (
       return `<tr>
         <td>${entry.date}</td>
         <td>${entry.particular || '—'}</td>
-        <td class="right">${entry.debit > 0 ? `${entry.debit}` : '—'}</td>
-        <td class="right">${entry.credit > 0 ? `${entry.credit}` : '—'}</td>
+        <td class="right">${entry.debit > 0 ? `${formatCurrency(entry.debit)}` : '—'}</td>
+        <td class="right">${entry.credit > 0 ? `${formatCurrency(entry.credit)}` : '—'}</td>
         <td class="right">${formatCurrency(balance.amount)} <span class="balance-tag ${balance.label === 'CR' ? 'cr' : 'dr'}">${balance.label}</span></td>
       </tr>`;
     }

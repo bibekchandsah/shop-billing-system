@@ -51,6 +51,7 @@ export interface Bill {
 }
 
 export type Theme = 'light' | 'dark' | 'system';
+export type NumberSystem = 'devanagari' | 'international';
 
 export interface AppSettings {
   theme: Theme;
@@ -63,6 +64,8 @@ export interface AppSettings {
   maxBillNumber: number;
   billNumberFormat: 'numeric' | 'prefix';
   billNumberPrefix: string;
+  /** Number formatting system: Devanagari (20,45,789) or International (2,045,789) */
+  numberSystem?: NumberSystem;
   /** Unit dropdown options for billing items */
   unitCategories: string[];
   /** Primary action button for billing screen */

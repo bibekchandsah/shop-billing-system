@@ -7,6 +7,7 @@ import { getAppSettings, saveAppSettings, DEFAULT_SETTINGS, getFiscalYearOptions
 import { getUserSessions, revokeSession, revokeOtherSessions, getCurrentSessionId, type DeviceSession } from '../services/sessionService';
 import { exportFullBackup } from '../utils/backupExport';
 import { getDirectoryHandle, saveDirectoryHandle, deleteDirectoryHandle } from '../utils/directoryDB';
+import { formatCurrency, setGlobalNumberSystem } from '../utils/numberToWords';
 import type { AppSettings } from '../types';
 import './Settings.css';
 
@@ -267,6 +268,9 @@ const Settings: React.FC = () => {
   };
 
   const handleFieldChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    if (key === 'numberSystem' && typeof value === 'string') {
+      setGlobalNumberSystem(value as any);
+    }
     setSettings(prev => ({
       ...prev,
       [key]: value
@@ -645,6 +649,87 @@ const Settings: React.FC = () => {
                 <small className="help-text">
                   After this number is reached, billing restarts from <strong>0001</strong>.
                 </small>
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Number System & Currency Formatting */}
+          <div className="settings-card card">
+            <div className="card-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" y1="9" x2="20" y2="9" />
+                <line x1="4" y1="15" x2="20" y2="15" />
+                <line x1="10" y1="3" x2="8" y2="21" />
+                <line x1="16" y1="3" x2="14" y2="21" />
+              </svg>
+              <h2>Number System & Currency Formatting</h2>
+            </div>
+            <p className="card-desc">
+              Choose how numeric amounts and currencies are formatted and grouped across all screens, tables, ledgers, print previews, and downloaded PDFs.
+            </p>
+
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label className="label">Numbering Format</label>
+                <div className="radio-group-cards">
+                  <label className={`radio-card ${(settings.numberSystem ?? 'devanagari') === 'devanagari' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="numberSystem"
+                      value="devanagari"
+                      checked={(settings.numberSystem ?? 'devanagari') === 'devanagari'}
+                      onChange={() => handleFieldChange('numberSystem', 'devanagari')}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>Devanagari System (South Asian)</strong>
+                    </div>
+                    <p className="radio-card-desc">
+                      Grouped by hundreds, then lakhs &amp; crores: <code>20,45,789</code>. Standard in Nepal and India.
+                    </p>
+                  </label>
+
+                  <label className={`radio-card ${(settings.numberSystem ?? 'devanagari') === 'international' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="numberSystem"
+                      value="international"
+                      checked={(settings.numberSystem ?? 'devanagari') === 'international'}
+                      onChange={() => handleFieldChange('numberSystem', 'international')}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="radio-card-header">
+                      <span className="radio-dot" />
+                      <strong>International Number System</strong>
+                    </div>
+                    <p className="radio-card-desc">
+                      Grouped by thousands, millions &amp; billions: <code>2,045,789</code>. Standard international format.
+                    </p>
+                  </label>
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="form-group full-width">
+                <label className="label">Live Number Formatting Preview</label>
+                <div className="settings-preview-box fy-preview-box">
+                  <div className="fy-preview-item">
+                    <span className="preview-label">Large Amount (20 Lakhs+)</span>
+                    <strong className="preview-value">{formatCurrency(2045789, settings.numberSystem ?? 'devanagari')}</strong>
+                  </div>
+                  <div className="fy-preview-divider" />
+                  <div className="fy-preview-item">
+                    <span className="preview-label">With Paisa / Decimals</span>
+                    <strong className="preview-value">{formatCurrency(1542300.5, settings.numberSystem ?? 'devanagari')}</strong>
+                  </div>
+                  <div className="fy-preview-divider" />
+                  <div className="fy-preview-item">
+                    <span className="preview-label">Standard Invoice Total</span>
+                    <strong className="preview-value">Rs. {formatCurrency(78540, settings.numberSystem ?? 'devanagari')}</strong>
+                  </div>
+                </div>
+                <small className="help-text">All pages, financial statements, and printable bills will automatically display in the selected format.</small>
               </div>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { getCurrentNepaliDate } from '../utils/nepaliDate';
 import Papa from 'papaparse';
 import type { Party, PartyLedgerEntry, SupplierLedgerEntry } from '../types';
 import { printPartyLedger } from '../utils/printPartyLedger';
+import { formatCurrency, formatNumberInputValue } from '../utils/numberToWords';
 import {
   addPartyLedgerEntry,
   checkPartyExists,
@@ -122,7 +123,7 @@ const SupplierLedger: React.FC = () => {
             <td>${party.address || '—'}</td>
             <td>${party.contactNumber || '—'}</td>
             <td>${party.partyCode || '—'}</td>
-            <td class="right">${balance.amount} ${balance.label}</td>
+            <td class="right">${formatCurrency(balance.amount)} ${balance.label}</td>
           </tr>`;
       })
       .join('');
@@ -1015,7 +1016,7 @@ const SupplierLedger: React.FC = () => {
                         const balance = formatBalanceDisplay(supplier.currentBalance || 0);
                         return (
                           <span className="badge" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span>{balance.amount}</span>
+                            <span>{formatCurrency(balance.amount)}</span>
                             <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>{balance.label}</span>
                           </span>
                         );
@@ -1148,11 +1149,11 @@ const SupplierLedger: React.FC = () => {
                 <div className="customer-metrics-grid" style={{ marginTop: '0.5rem', marginBottom: '1.25rem' }}>
                   <div className="metric-card">
                     <span className="mb-label">Total DR</span>
-                    <strong className="mb-value text-success">{totalDebit}</strong>
+                    <strong className="mb-value text-success">{formatCurrency(totalDebit)}</strong>
                   </div>
                   <div className="metric-card">
                     <span className="mb-label">Total CR</span>
-                    <strong className="mb-value text-danger">{totalCredit}</strong>
+                    <strong className="mb-value text-danger">{formatCurrency(totalCredit)}</strong>
                   </div>
                   <div className="metric-card highlight">
                     <span className="mb-label">Current Balance</span>
@@ -1160,7 +1161,7 @@ const SupplierLedger: React.FC = () => {
                       const balance = formatBalanceDisplay(selectedBalance);
                       return (
                         <strong className="mb-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span>{balance.amount}</span>
+                          <span>{formatCurrency(balance.amount)}</span>
                           <span className={`badge ${balance.label === 'CR' ? 'text-danger' : 'text-success'}`} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontSize: '0.72rem', fontWeight: 700 }}>
                             {balance.label}
                           </span>
@@ -1199,11 +1200,11 @@ const SupplierLedger: React.FC = () => {
                             <tr key={entry.id}>
                               <td>{entry.date}</td>
                               <td>{entry.particular}</td>
-                              <td className="text-right text-success">{entry.debit > 0 ? `${entry.debit}` : '—'}</td>
-                              <td className="text-right text-danger">{entry.credit > 0 ? `${entry.credit}` : '—'}</td>
+                              <td className="text-right text-success">{entry.debit > 0 ? `${formatCurrency(entry.debit)}` : '—'}</td>
+                              <td className="text-right text-danger">{entry.credit > 0 ? `${formatCurrency(entry.credit)}` : '—'}</td>
                               <td className="text-right">
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <strong>{balance.amount}</strong>
+                                  <strong>{formatCurrency(balance.amount)}</strong>
                                   <span className={`badge ${balance.label === 'CR' ? 'text-danger' : 'text-success'}`} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontSize: '0.72rem', fontWeight: 700 }}>
                                     {balance.label}
                                   </span>
@@ -1269,7 +1270,7 @@ const SupplierLedger: React.FC = () => {
                                 <td className="text-right">—</td>
                                 <td className="text-right">
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <strong>{bal.amount}</strong>
+                                    <strong>{formatCurrency(bal.amount)}</strong>
                                     <span className={`badge ${bal.label === 'CR' ? 'text-danger' : 'text-success'}`} style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontSize: '0.72rem', fontWeight: 700 }}>
                                       {bal.label}
                                     </span>
@@ -1458,7 +1459,7 @@ const SupplierLedger: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label className="label">Amount *</label>
-                  <input className="input" type="number" min="0" value={txAmount || ''} onChange={(event) => setTxAmount(Number(event.target.value) || 0)} onWheel={(e) => (e.target as HTMLInputElement).blur()} />
+                  <input className="input" type="text" inputMode="decimal" value={txAmount ? formatNumberInputValue(txAmount, settings?.numberSystem) : ''} onChange={(event) => { const raw = event.target.value.replace(/,/g, ''); if (raw === '' || /^\d*\.?\d*$/.test(raw)) { setTxAmount(raw === '' ? 0 : parseFloat(raw) || 0); } }} />
                 </div>
                 <div className="form-group">
                   <label className="label">Note</label>
@@ -1507,7 +1508,7 @@ const SupplierLedger: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label className="label">Amount *</label>
-                  <input className="input" type="number" min="0" value={editTxAmount || ''} onChange={(event) => setEditTxAmount(Number(event.target.value) || 0)} onWheel={(e) => (e.target as HTMLInputElement).blur()} />
+                  <input className="input" type="text" inputMode="decimal" value={editTxAmount ? formatNumberInputValue(editTxAmount, settings?.numberSystem) : ''} onChange={(event) => { const raw = event.target.value.replace(/,/g, ''); if (raw === '' || /^\d*\.?\d*$/.test(raw)) { setEditTxAmount(raw === '' ? 0 : parseFloat(raw) || 0); } }} />
                 </div>
                 <div className="form-group">
                   <label className="label">Note</label>

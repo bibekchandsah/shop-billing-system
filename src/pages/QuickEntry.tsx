@@ -5,6 +5,7 @@ import { useFiscalYear } from '../context/FiscalYearContext';
 import ToastContainer from '../components/ToastContainer';
 import NepaliDatePickerComponent from '../components/NepaliDatePicker';
 import { getCurrentNepaliDate } from '../utils/nepaliDate';
+import { formatCurrency, formatNumberInputValue } from '../utils/numberToWords';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -955,13 +956,17 @@ const QuickEntry: React.FC = () => {
                   <div className="form-group">
                     <label className="label">Initial Stock Quantity</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className="input"
-                      value={newPartInitialStock || ''}
-                      onChange={e => setNewPartInitialStock(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                      value={newPartInitialStock ? formatNumberInputValue(newPartInitialStock, settings?.numberSystem) : ''}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/,/g, '');
+                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                          setNewPartInitialStock(raw === '' ? 0 : parseFloat(raw) || 0);
+                        }
+                      }}
                       placeholder="e.g. 50 (leave 0 if none)"
-                      min="0"
                     />
                   </div>
                   <div className="form-group">
@@ -1029,7 +1034,7 @@ const QuickEntry: React.FC = () => {
                       id: p.id,
                       name: p.name,
                       code: p.particularCode,
-                      extraInfo: `Stock: ${p.currentStock} ${p.defaultUnit || ''}`,
+                      extraInfo: `Stock: ${formatCurrency(p.currentStock)} ${p.defaultUnit || ''}`,
                     }))}
                     selectedValue={selectedParticularId}
                     onChange={value => {
@@ -1062,15 +1067,18 @@ const QuickEntry: React.FC = () => {
                     <label className="label">Quantity *</label>
                     <div className="qty-unit-row">
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="input"
-                        value={txQty || ''}
-                        onChange={e => setTxQty(Math.max(0, parseFloat(e.target.value) || 0))}
-                        onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                        value={txQty ? formatNumberInputValue(txQty, settings?.numberSystem) : ''}
+                        onChange={e => {
+                          const raw = e.target.value.replace(/,/g, '');
+                          if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                            setTxQty(raw === '' ? 0 : parseFloat(raw) || 0);
+                          }
+                        }}
                         placeholder="Qty"
                         required
-                        min="0.01"
-                        step="any"
                       />
                       <select
                         className="input unit-select"
@@ -1192,12 +1200,16 @@ const QuickEntry: React.FC = () => {
                   <div className="form-group">
                     <label className="label">Opening Balance (Dr)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className="input"
-                      min="0"
-                      value={newCustomerOpeningAmount || ''}
-                      onChange={e => setNewCustomerOpeningAmount(Number(e.target.value) || 0)}
-                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                      value={newCustomerOpeningAmount ? formatNumberInputValue(newCustomerOpeningAmount, settings?.numberSystem) : ''}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/,/g, '');
+                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                          setNewCustomerOpeningAmount(raw === '' ? 0 : parseFloat(raw) || 0);
+                        }
+                      }}
                       placeholder="Enter opening balance"
                     />
                   </div>
@@ -1309,13 +1321,16 @@ const QuickEntry: React.FC = () => {
                   <div className="form-group">
                     <label className="label">Amount *</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className="input"
-                      min="0.01"
-                      step="any"
-                      value={custTxAmount || ''}
-                      onChange={e => setCustTxAmount(Number(e.target.value) || 0)}
-                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                      value={custTxAmount ? formatNumberInputValue(custTxAmount, settings?.numberSystem) : ''}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/,/g, '');
+                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                          setCustTxAmount(raw === '' ? 0 : parseFloat(raw) || 0);
+                        }
+                      }}
                       placeholder="Enter amount"
                       required
                     />
@@ -1446,7 +1461,7 @@ const QuickEntry: React.FC = () => {
                       code: p.partyCode || p.supplierCode,
                       address: p.address,
                       contactNumber: p.contactNumber,
-                      extraInfo: p.currentBalance !== undefined ? `Bal: ${Math.abs(p.currentBalance)} ${p.currentBalance < 0 ? 'CR' : 'DR'}` : undefined,
+                      extraInfo: p.currentBalance !== undefined ? `Bal: ${formatCurrency(Math.abs(p.currentBalance))} ${p.currentBalance < 0 ? 'CR' : 'DR'}` : undefined,
                     }))}
                     selectedValue={selectedPartyId}
                     onChange={setSelectedPartyId}
@@ -1492,13 +1507,16 @@ const QuickEntry: React.FC = () => {
                   <div className="form-group">
                     <label className="label">Amount *</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className="input"
-                      min="0.01"
-                      step="any"
-                      value={partyTxAmount || ''}
-                      onChange={e => setPartyTxAmount(Number(e.target.value) || 0)}
-                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                      value={partyTxAmount ? formatNumberInputValue(partyTxAmount, settings?.numberSystem) : ''}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/,/g, '');
+                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                          setPartyTxAmount(raw === '' ? 0 : parseFloat(raw) || 0);
+                        }
+                      }}
                       placeholder="Enter amount"
                       required
                     />

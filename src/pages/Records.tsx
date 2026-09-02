@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS, isBillInFiscalYear, getAppSettings } from '../service
 import { getStockParticulars } from '../services/stockService';
 import { recordBillInventory, removeBillInventory } from '../services/stockService';
 import { syncBillCustomerLedger } from '../services/customerService';
-import { formatCurrency, numberToWords } from '../utils/numberToWords';
+import { formatCurrency, numberToWords, formatNumberInputValue } from '../utils/numberToWords';
 import { generateBillPDF } from '../utils/pdfGenerator';
 import { printBill } from '../utils/printBill';
 import Papa from 'papaparse';
@@ -1002,7 +1002,7 @@ const Records: React.FC = () => {
                     </td>
                     <td className="address-cell">{bill.address}</td>
                     <td>{bill.contactNumber}</td>
-                    <td>{bill.items?.reduce((sum, item) => sum + item.qty, 0) || 0}</td>
+                    <td>{formatCurrency(bill.items?.reduce((sum, item) => sum + item.qty, 0) || 0)}</td>
                     <td><strong>{formatCurrency(bill.totalAmount)}</strong></td>
                     <td>
                       <div className="action-buttons">
@@ -1204,7 +1204,7 @@ const Records: React.FC = () => {
                           <tr key={item.sn}>
                             <td>{item.sn}</td>
                               <td>{item.particulars}</td>
-                              <td>{item.qty}</td>
+                              <td>{formatCurrency(item.qty)}</td>
                               <td>{item.unit || '—'}</td>
                               <td>{formatCurrency(item.rate)}</td>
                               <td><strong>{formatCurrency(item.amount)}</strong></td>
@@ -1215,7 +1215,7 @@ const Records: React.FC = () => {
                         <tr>
                           <td colSpan={6} className="detail-total-row">
                             <span style={{ marginRight: '30px' }}>
-                              Total Qty: {selectedBill.items.reduce((sum, item) => sum + item.qty, 0)}
+                              Total Qty: {formatCurrency(selectedBill.items.reduce((sum, item) => sum + item.qty, 0))}
                             </span>
                             <span>
                               Total Amount: {formatCurrency(selectedBill.totalAmount)}
@@ -1469,28 +1469,14 @@ const Records: React.FC = () => {
                               })()}
                             </td>
                             <td>
-                              <input type="number" className="input" value={item.qty || ''}
-                                onChange={e => handleEditItemChange(idx, 'qty', parseFloat(e.target.value) || 0)}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                min="0" 
-                                max={(() => {
-                                  const stockItem = stockParticulars.find(p => p.name.toLowerCase() === item.particulars.trim().toLowerCase());
-                                  if (!stockItem) return undefined;
-                                  const otherRowsQty = editBill.items.reduce((sum, otherItem, iterIdx) => {
-                                    if (iterIdx !== idx && otherItem.particulars.trim().toLowerCase() === item.particulars.trim().toLowerCase()) {
-                                      return sum + Number(otherItem.qty || 0);
-                                    }
-                                    return sum;
-                                  }, 0);
-                                  const originalQty = originalBill?.items?.reduce((sum, originalItem) => {
-                                    if (originalItem.particulars.trim().toLowerCase() === item.particulars.trim().toLowerCase()) {
-                                      return sum + Number(originalItem.qty || 0);
-                                    }
-                                    return sum;
-                                  }, 0) || 0;
-                                  return stockItem.currentStock + originalQty - otherRowsQty;
-                                })()}
-                                step="0.01" />
+                              <input type="text" inputMode="decimal" className="input" value={item.qty ? formatNumberInputValue(item.qty, settings?.numberSystem) : ''}
+                                onChange={e => {
+                                  const raw = e.target.value.replace(/,/g, '');
+                                  if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                                    handleEditItemChange(idx, 'qty', raw === '' ? 0 : parseFloat(raw) || 0);
+                                  }
+                                }}
+                                placeholder="0" />
                             </td>
                             <td>
                               <select className="select" value={item.unit || ''} onChange={e => handleEditItemChange(idx, 'unit', e.target.value)}>
@@ -1500,10 +1486,14 @@ const Records: React.FC = () => {
                               </select>
                             </td>
                             <td>
-                              <input type="number" className="input" value={item.rate || ''}
-                                onChange={e => handleEditItemChange(idx, 'rate', parseFloat(e.target.value) || 0)}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                min="0" step="0.01" />
+                              <input type="text" inputMode="decimal" className="input" value={item.rate ? formatNumberInputValue(item.rate, settings?.numberSystem) : ''}
+                                onChange={e => {
+                                  const raw = e.target.value.replace(/,/g, '');
+                                  if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                                    handleEditItemChange(idx, 'rate', raw === '' ? 0 : parseFloat(raw) || 0);
+                                  }
+                                }}
+                                placeholder="0.00" />
                             </td>
                             <td className="text-right"><strong>{formatCurrency(item.amount)}</strong></td>
                             <td className="text-center">
@@ -1535,7 +1525,7 @@ const Records: React.FC = () => {
                   <div className="total-row" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                     <span className="total-label">Total Quantity:</span>
                     <span className="total-amount" style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-                      {editBill.items.reduce((sum, item) => sum + (item.qty || 0), 0)}
+                      {formatCurrency(editBill.items.reduce((sum, item) => sum + (item.qty || 0), 0))}
                     </span>
                   </div>
                   <div className="total-row">

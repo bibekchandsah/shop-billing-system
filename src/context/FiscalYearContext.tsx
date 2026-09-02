@@ -8,6 +8,7 @@ import {
   getDefaultActiveFiscalYear,
   isBillInFiscalYear,
 } from '../services/settingsService';
+import { setGlobalNumberSystem } from '../utils/numberToWords';
 import type { AppSettings, Bill } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -46,6 +47,9 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const s = await getAppSettings(activeUid || '');
       setSettings(s);
+      if (s?.numberSystem) {
+        setGlobalNumberSystem(s.numberSystem);
+      }
     } catch (e) {
       console.error('FiscalYearContext: failed to load settings', e);
     } finally {
@@ -57,6 +61,9 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const s = await getAppSettings(activeUid || '');
       setSettings(s);
+      if (s?.numberSystem) {
+        setGlobalNumberSystem(s.numberSystem);
+      }
     } catch (e) {
       console.error('FiscalYearContext: failed to refresh settings', e);
     }
@@ -65,6 +72,12 @@ export const FiscalYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (settings?.numberSystem) {
+      setGlobalNumberSystem(settings.numberSystem);
+    }
+  }, [settings?.numberSystem]);
 
   const activeFiscalYear =
     settings?.activeFiscalYear || getDefaultActiveFiscalYear(settings?.fiscalYearStart ?? 4);

@@ -30,8 +30,8 @@ export const printCustomerLedger = (
         <td>${entry.date}</td>
         <td>${entry.particular || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
-        <td class="right">${entry.debit > 0 ? `Rs. ${entry.debit}` : '—'}</td>
-        <td class="right">${entry.credit > 0 ? `Rs. ${entry.credit}` : '—'}</td>
+        <td class="right">${entry.debit > 0 ? `Rs. ${formatCurrency(entry.debit)}` : '—'}</td>
+        <td class="right">${entry.credit > 0 ? `Rs. ${formatCurrency(entry.credit)}` : '—'}</td>
         <td class="right">${formatCurrency(formatBalanceDisplay(entry.currentBalance).amount)} <span class="balance-tag ${formatBalanceDisplay(entry.currentBalance).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(entry.currentBalance).label}</span></td>
       </tr>`
   ).join('');

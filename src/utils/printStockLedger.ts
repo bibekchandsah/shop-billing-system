@@ -1,4 +1,5 @@
 import type { StockLedgerEntry, StockParticular } from '../types';
+import { formatCurrency } from './numberToWords';
 
 export const printStockLedger = (
   particular: StockParticular,
@@ -25,9 +26,9 @@ export const printStockLedger = (
         <td>${entry.date}</td>
         <td>${entry.note || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
-        <td class="right">${entry.debit > 0 ? `${entry.debit}` : '—'}</td>
-        <td class="right">${entry.credit > 0 ? `${entry.credit}` : '—'}</td>
-        <td class="right">${entry.currentStock}</td>
+        <td class="right">${entry.debit > 0 ? `${formatCurrency(entry.debit)}` : '—'}</td>
+        <td class="right">${entry.credit > 0 ? `${formatCurrency(entry.credit)}` : '—'}</td>
+        <td class="right">${formatCurrency(entry.currentStock)}</td>
       </tr>`
   ).join('');
 

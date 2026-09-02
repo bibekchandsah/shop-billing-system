@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Bill, BillItem, AppSettings, StockParticular, Customer } from '../types';
-import { numberToWords, formatCurrency } from '../utils/numberToWords';
+import { numberToWords, formatCurrency, formatNumberInputValue } from '../utils/numberToWords';
 import { getCurrentNepaliDate, toEnglishDate } from '../utils/nepaliDate';
 import { generateBillPDF } from '../utils/pdfGenerator';
 import { printBill } from '../utils/printBill';
@@ -1050,30 +1050,21 @@ const CreateBill: React.FC = () => {
                         })()}
                       </td>
                       <td>
-                        {(() => {
-                          const stockItem = stockParticulars.find(
-                            p => p.name.toLowerCase() === item.particulars.trim().toLowerCase()
-                          );
-                          return (
-                            <input
-                              ref={(el) => { itemQtyRefs.current[index] = el; }}
-                              type="number"
-                              className="input"
-                              value={item.qty || ''}
-                              onChange={(e) => handleItemChange(index, 'qty', parseFloat(e.target.value) || 0)}
-                              onKeyDown={(e) => handleQtyTab(e, index)}
-                              onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                              min="0"
-                              max={stockItem ? stockItem.currentStock - items.reduce((sum, otherItem, idx) => {
-                                if (idx !== index && otherItem.particulars.trim().toLowerCase() === item.particulars.trim().toLowerCase()) {
-                                  return sum + Number(otherItem.qty || 0);
-                                }
-                                return sum;
-                              }, 0) : undefined}
-                              step="1"
-                            />
-                          );
-                        })()}
+                        <input
+                          ref={(el) => { itemQtyRefs.current[index] = el; }}
+                          type="text"
+                          inputMode="decimal"
+                          className="input"
+                          value={item.qty ? formatNumberInputValue(item.qty, settings?.numberSystem) : ''}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/,/g, '');
+                            if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                              handleItemChange(index, 'qty', raw === '' ? 0 : parseFloat(raw) || 0);
+                            }
+                          }}
+                          onKeyDown={(e) => handleQtyTab(e, index)}
+                          placeholder="0"
+                        />
                       </td>
                       <td>
                         <select
@@ -1092,14 +1083,18 @@ const CreateBill: React.FC = () => {
                       <td>
                         <input
                           ref={(el) => { itemRateRefs.current[index] = el; }}
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           className="input"
-                          value={item.rate || ''}
-                          onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value) || 0)}
+                          value={item.rate ? formatNumberInputValue(item.rate, settings?.numberSystem) : ''}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/,/g, '');
+                            if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                              handleItemChange(index, 'rate', raw === '' ? 0 : parseFloat(raw) || 0);
+                            }
+                          }}
                           onKeyDown={(e) => handleRateTab(e, index)}
-                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                          min="0"
-                          step="1"
+                          placeholder="0.00"
                         />
                       </td>
                       <td className="text-right">
@@ -1143,7 +1138,7 @@ const CreateBill: React.FC = () => {
             <div className="total-row" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1rem' }}>
               <span className="total-label">Total Quantity:</span>
               <span className="total-amount" style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-                {items.reduce((sum, item) => sum + (item.qty || 0), 0)}
+                {formatCurrency(items.reduce((sum, item) => sum + (item.qty || 0), 0))}
               </span>
             </div>
             <div className="total-row">

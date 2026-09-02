@@ -82,17 +82,57 @@ export const numberToWords = (num: number, language: 'en' | 'ne' = 'en'): string
   return result.trim();
 };
 
-// Format number with commas (Indian numbering system)
-export const formatCurrency = (num: number): string => {
+import type { NumberSystem } from '../types';
+
+let activeNumberSystem: NumberSystem = 'devanagari';
+
+export const setGlobalNumberSystem = (system: NumberSystem) => {
+  if (system === 'international' || system === 'devanagari') {
+    activeNumberSystem = system;
+  }
+};
+
+export const getGlobalNumberSystem = (): NumberSystem => {
+  if (typeof window !== 'undefined') {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('shop_billing_settings')) {
+          const item = localStorage.getItem(key);
+          if (item) {
+            const parsed = JSON.parse(item);
+            if (parsed.numberSystem === 'international' || parsed.numberSystem === 'devanagari') {
+              return parsed.numberSystem;
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return activeNumberSystem || 'devanagari';
+};
+
+// Format number with commas (Devanagari 20,45,789 or International 2,045,789)
+export const formatCurrency = (num: number, numberSystem?: NumberSystem): string => {
   const { rupees, paisa } = parseAmountToRupeesAndPaisa(num);
+  const system = numberSystem || getGlobalNumberSystem();
   
   const numStr = rupees.toString();
-  const lastThree = numStr.substring(numStr.length - 3);
-  const otherNumbers = numStr.substring(0, numStr.length - 3);
-  
-  let formattedRupees = lastThree;
-  if (otherNumbers !== '') {
-    formattedRupees = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+  let formattedRupees = '';
+
+  if (system === 'international') {
+    // International format: groups of 3 digits (e.g. 2,045,789)
+    formattedRupees = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  } else {
+    // Devanagari / South Asian format: last 3 digits, then groups of 2 digits (e.g. 20,45,789)
+    const lastThree = numStr.substring(numStr.length - 3);
+    const otherNumbers = numStr.substring(0, numStr.length - 3);
+    formattedRupees = lastThree;
+    if (otherNumbers !== '') {
+      formattedRupees = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+    }
   }
   
   if (paisa > 0 || num.toString().includes('.')) {
@@ -101,4 +141,60 @@ export const formatCurrency = (num: number): string => {
   }
   
   return formattedRupees;
+};
+
+/**
+ * Formats a number or numeric string with commas according to active number system.
+ * Perfect for input fields (preserves trailing dot/decimals while typing, ignores already formatted commas).
+ */
+export const formatNumberInputValue = (
+  value: string | number | undefined | null,
+  numberSystem?: NumberSystem
+): string => {
+  if (value === undefined || value === null) return '';
+  const str = String(value).trim().replace(/,/g, '');
+  if (str === '') return '';
+  if (str === '-' || str === '.') return str;
+  if (isNaN(Number(str)) && !str.endsWith('.')) return String(value);
+
+  const parts = str.split('.');
+  const intPart = parts[0] || '0';
+  const decPart = parts.length > 1 ? parts[1] : null;
+
+  const system = numberSystem || getGlobalNumberSystem();
+  let formattedInt = '';
+
+  const isNegative = intPart.startsWith('-');
+  const absInt = isNegative ? intPart.slice(1) : intPart;
+
+  if (system === 'international') {
+    formattedInt = absInt.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  } else {
+    const lastThree = absInt.substring(absInt.length - 3);
+    const otherNumbers = absInt.substring(0, absInt.length - 3);
+    formattedInt = lastThree;
+    if (otherNumbers !== '') {
+      formattedInt = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+    }
+  }
+
+  if (isNegative) {
+    formattedInt = '-' + formattedInt;
+  }
+
+  if (decPart !== null) {
+    return `${formattedInt}.${decPart}`;
+  }
+  return formattedInt;
+};
+
+/**
+ * Strips formatting commas and parses as float.
+ */
+export const parseFormattedNumber = (value: string | number | undefined | null): number => {
+  if (value === undefined || value === null) return 0;
+  if (typeof value === 'number') return value;
+  const cleaned = String(value).replace(/,/g, '').trim();
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
 };
