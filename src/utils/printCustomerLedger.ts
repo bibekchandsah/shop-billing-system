@@ -24,7 +24,9 @@ export const printCustomerLedger = (
     ? `${filterStartDate || 'Beginning'} to ${filterEndDate || 'Present'}`
     : 'All Time';
 
-  const rows = [...ledger].map(
+  const rows = [...ledger]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(
     (entry) =>
       `<tr>
         <td>${entry.date}</td>

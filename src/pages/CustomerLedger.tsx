@@ -484,15 +484,17 @@ const CustomerLedger: React.FC = () => {
   }, [customers, searchTerm]);
 
   const filteredLedger = useMemo(() => {
-    return ledger.filter(entry => {
-      // Apply fiscal year filter when no manual date range is set
-      if (!filterStartDate && !filterEndDate) {
-        if (!isInActiveFY(entry.date)) return false;
-      }
-      if (filterStartDate && entry.date < filterStartDate) return false;
-      if (filterEndDate && entry.date > filterEndDate) return false;
-      return true;
-    });
+    return ledger
+      .filter(entry => {
+        // Apply fiscal year filter when no manual date range is set
+        if (!filterStartDate && !filterEndDate) {
+          if (!isInActiveFY(entry.date)) return false;
+        }
+        if (filterStartDate && entry.date < filterStartDate) return false;
+        if (filterEndDate && entry.date > filterEndDate) return false;
+        return true;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date)); // oldest → newest (UI reverses for newest-first display)
   }, [ledger, filterStartDate, filterEndDate, isInActiveFY]);
 
   const selectedBalance = ledger.length > 0 ? ledger[ledger.length - 1].currentBalance : (selectedCustomer?.currentBalance || 0);

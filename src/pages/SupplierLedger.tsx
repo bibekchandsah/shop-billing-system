@@ -477,14 +477,16 @@ const SupplierLedger: React.FC = () => {
   }, [searchTerm, suppliers]);
 
   const filteredLedger = useMemo(() => {
-    return ledger.filter((entry) => {
-      if (!filterStartDate && !filterEndDate) {
-        if (!isInActiveFY(entry.date)) return false;
-      }
-      if (filterStartDate && entry.date < filterStartDate) return false;
-      if (filterEndDate && entry.date > filterEndDate) return false;
-      return true;
-    });
+    return ledger
+      .filter((entry) => {
+        if (!filterStartDate && !filterEndDate) {
+          if (!isInActiveFY(entry.date)) return false;
+        }
+        if (filterStartDate && entry.date < filterStartDate) return false;
+        if (filterEndDate && entry.date > filterEndDate) return false;
+        return true;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date)); // oldest → newest (UI reverses for newest-first display)
   }, [ledger, filterStartDate, filterEndDate, isInActiveFY]);
 
   const selectedBalance = ledger.length > 0 ? ledger[ledger.length - 1].currentBalance : (selectedSupplier?.currentBalance || 0);

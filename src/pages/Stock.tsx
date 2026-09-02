@@ -841,15 +841,17 @@ const Stock: React.FC = () => {
   };
 
   // Filter ledger based on date range and active fiscal year
-  const filteredLedger = ledger.filter(entry => {
-    // Apply fiscal year filter if no manual date range is set
-    if (!filterStartDate && !filterEndDate) {
-      if (!isInActiveFY(entry.date)) return false;
-    }
-    if (filterStartDate && entry.date < filterStartDate) return false;
-    if (filterEndDate && entry.date > filterEndDate) return false;
-    return true;
-  });
+  const filteredLedger = ledger
+    .filter(entry => {
+      // Apply fiscal year filter if no manual date range is set
+      if (!filterStartDate && !filterEndDate) {
+        if (!isInActiveFY(entry.date)) return false;
+      }
+      if (filterStartDate && entry.date < filterStartDate) return false;
+      if (filterEndDate && entry.date > filterEndDate) return false;
+      return true;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date)); // oldest → newest (UI reverses for newest-first display)
 
   // Calculate quick metrics for ledger panel summary card
   const totalDebit = filteredLedger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
