@@ -747,6 +747,48 @@ const CreateBill: React.FC = () => {
   const unitOptions = settings?.unitCategories ?? DEFAULT_SETTINGS.unitCategories;
   const isLoading = loadingAction !== null;
 
+  const getFilteredCustomers = (queryText: string) => {
+    const query = queryText.trim().toLowerCase();
+    if (!query) return customers;
+    const terms = query.split(/\s+/).filter(Boolean);
+    return customers
+      .filter(c => {
+        const name = c.name.toLowerCase();
+        const code = (c.customerCode || '').toLowerCase();
+        const contact = (c.contactNumber || '').toLowerCase();
+        return terms.every(term => name.includes(term) || code.includes(term) || contact.includes(term));
+      })
+      .sort((a, b) => {
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        const startsA = nameA.startsWith(query);
+        const startsB = nameB.startsWith(query);
+        if (startsA && !startsB) return -1;
+        if (!startsA && startsB) return 1;
+        return nameA.localeCompare(nameB);
+      });
+  };
+
+  const getFilteredParticulars = (queryText: string) => {
+    const query = queryText.trim().toLowerCase();
+    if (!query) return stockParticulars;
+    const terms = query.split(/\s+/).filter(Boolean);
+    return stockParticulars
+      .filter(p => {
+        const name = p.name.toLowerCase();
+        return terms.every(term => name.includes(term));
+      })
+      .sort((a, b) => {
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        const startsA = nameA.startsWith(query);
+        const startsB = nameB.startsWith(query);
+        if (startsA && !startsB) return -1;
+        if (!startsA && startsB) return 1;
+        return nameA.localeCompare(nameB);
+      });
+  };
+
   const hasValidItem = items.some(item => 
     item.particulars.trim() !== '' && Number(item.qty) > 0 && Number(item.rate) > 0
   );
@@ -810,9 +852,7 @@ const CreateBill: React.FC = () => {
                   }
 
                   if (!customerDropdownOpen) return;
-                  const matches = customers.filter(c => 
-                    c.name.toLowerCase().includes(customerName.toLowerCase())
-                  ).slice(0, 8);
+                  const matches = getFilteredCustomers(customerName);
                   if (matches.length === 0 || (matches.length === 1 && matches[0].name.toLowerCase() === customerName.trim().toLowerCase())) return;
 
                   if (e.key === 'ArrowDown') {
@@ -839,13 +879,11 @@ const CreateBill: React.FC = () => {
                 autoComplete="off"
               />
             {customerDropdownOpen && (() => {
-              const matches = customers.filter(c => 
-                c.name.toLowerCase().includes(customerName.toLowerCase())
-              );
+              const matches = getFilteredCustomers(customerName);
               if (matches.length === 0 || (matches.length === 1 && matches[0].name.toLowerCase() === customerName.trim().toLowerCase())) return null;
               return (
                 <div className="suggestions-dropdown">
-                  {matches.slice(0, 8).map((c, sIdx) => (
+                  {matches.map((c, sIdx) => (
                     <div
                       key={c.id}
                       className={`suggestion-item${sIdx === highlightedCustomerIndex ? ' suggestion-highlighted' : ''}`}
@@ -954,9 +992,7 @@ const CreateBill: React.FC = () => {
                           onBlur={() => setFocusedRowIndex(null)}
                           onKeyDown={(e) => {
                             if (focusedRowIndex !== index) return;
-                            const matches = stockParticulars.filter(p =>
-                              p.name.toLowerCase().includes(item.particulars.toLowerCase())
-                            ).slice(0, 8);
+                            const matches = getFilteredParticulars(item.particulars);
                             if (matches.length === 0) return;
 
                             if (e.key === 'ArrowDown') {
@@ -983,13 +1019,11 @@ const CreateBill: React.FC = () => {
                           autoComplete="off"
                         />
                         {focusedRowIndex === index && (() => {
-                          const matches = stockParticulars.filter(p =>
-                            p.name.toLowerCase().includes(item.particulars.toLowerCase())
-                          );
+                          const matches = getFilteredParticulars(item.particulars);
                           if (matches.length === 0) return null;
                           return (
                             <div className="suggestions-dropdown">
-                              {matches.slice(0, 8).map((p, sIdx) => (
+                              {matches.map((p, sIdx) => (
                                 <div
                                   key={p.id}
                                   className={`suggestion-item suggestion-item-stock${sIdx === highlightedSuggestionIndex ? ' suggestion-highlighted' : ''}`}

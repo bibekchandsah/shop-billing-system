@@ -1307,17 +1307,6 @@ const QuickEntry: React.FC = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="label">Bill Number *</label>
-                    <input
-                      type="text"
-                      className="input"
-                      value={custTxBillNo}
-                      onChange={e => setCustTxBillNo(e.target.value)}
-                      placeholder="e.g. 0001"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
                     <label className="label">Amount *</label>
                     <input
                       type="number"
@@ -1328,6 +1317,17 @@ const QuickEntry: React.FC = () => {
                       onChange={e => setCustTxAmount(Number(e.target.value) || 0)}
                       onWheel={(e) => (e.target as HTMLInputElement).blur()}
                       placeholder="Enter amount"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="label">Bill Number *</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={custTxBillNo}
+                      onChange={e => setCustTxBillNo(e.target.value)}
+                      placeholder="e.g. 0001"
                       required
                     />
                   </div>

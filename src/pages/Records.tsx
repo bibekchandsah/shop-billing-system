@@ -649,6 +649,26 @@ const Records: React.FC = () => {
     setEditBill({ ...editBill, nepaliDate: bs, date: ad });
   };
 
+  const getFilteredParticulars = (queryText: string) => {
+    const query = queryText.trim().toLowerCase();
+    if (!query) return stockParticulars;
+    const terms = query.split(/\s+/).filter(Boolean);
+    return stockParticulars
+      .filter(p => {
+        const name = p.name.toLowerCase();
+        return terms.every(term => name.includes(term));
+      })
+      .sort((a, b) => {
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        const startsA = nameA.startsWith(query);
+        const startsB = nameB.startsWith(query);
+        if (startsA && !startsB) return -1;
+        if (!startsA && startsB) return 1;
+        return nameA.localeCompare(nameB);
+      });
+  };
+
   const handleSelectSuggestion = (index: number, name: string) => {
     handleEditItemChange(index, 'particulars', name);
     setFocusedRowIndex(null);
@@ -1384,9 +1404,7 @@ const Records: React.FC = () => {
                                 onBlur={() => setFocusedRowIndex(null)}
                                 onKeyDown={(e) => {
                                   if (focusedRowIndex !== idx) return;
-                                  const matches = stockParticulars.filter(p =>
-                                    p.name.toLowerCase().includes(item.particulars.toLowerCase())
-                                  ).slice(0, 8);
+                                  const matches = getFilteredParticulars(item.particulars);
                                   if (matches.length === 0) return;
 
                                   if (e.key === 'ArrowDown') {
@@ -1412,13 +1430,11 @@ const Records: React.FC = () => {
                                 placeholder="Description"
                                 autoComplete="off" />
                               {focusedRowIndex === idx && (() => {
-                                const matches = stockParticulars.filter(p =>
-                                  p.name.toLowerCase().includes(item.particulars.toLowerCase())
-                                );
+                                const matches = getFilteredParticulars(item.particulars);
                                 if (matches.length === 0) return null;
                                 return (
                                   <div className="suggestions-dropdown">
-                                    {matches.slice(0, 8).map((p, sIdx) => {
+                                    {matches.map((p, sIdx) => {
                                       const otherRowsQty = editBill.items.reduce((sum, otherItem, iterIdx) => {
                                         if (iterIdx !== idx && otherItem.particulars.trim().toLowerCase() === p.name.toLowerCase()) {
                                           return sum + Number(otherItem.qty || 0);
