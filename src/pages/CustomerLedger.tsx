@@ -119,6 +119,17 @@ const CustomerLedger: React.FC = () => {
       return codeA.localeCompare(codeB, undefined, { numeric: true });
     });
 
+    const totalDebit = sortedList.reduce((sum, c) => {
+      const bal = c.currentBalance || 0;
+      return sum + (bal > 0 ? bal : 0);
+    }, 0);
+    const totalCredit = sortedList.reduce((sum, c) => {
+      const bal = c.currentBalance || 0;
+      return sum + (bal < 0 ? Math.abs(bal) : 0);
+    }, 0);
+    const dueBalanceValue = totalDebit - totalCredit;
+    const dueBalance = formatBalanceDisplay(dueBalanceValue);
+
     const rows = sortedList
       .map((customer) => {
         const balance = formatBalanceDisplay(customer.currentBalance || 0);
@@ -149,6 +160,46 @@ const CustomerLedger: React.FC = () => {
     td { border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; color: #000; font-weight: 600; }
     tbody tr:last-child td { border-bottom: 1px solid #000; }
     .right { text-align: right; }
+    .balance-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      border: 1px solid #cbd5e1;
+      vertical-align: middle;
+    }
+    .balance-tag.dr { color: #000; background: #fff; }
+    .balance-tag.cr { color: #000; background: #fff; }
+    .summary-box {
+      margin-top: 18px;
+      margin-left: auto;
+      width: fit-content;
+      min-width: 250px;
+      page-break-inside: avoid;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      padding: 5px 0;
+      border-bottom: 1px solid #000;
+      font-size: 13.5px;
+    }
+    .summary-row:last-child {
+      border-bottom: 1.5px solid #000;
+    }
+    .summary-label {
+      font-weight: 700;
+      color: #000;
+    }
+    .summary-value {
+      font-weight: 600;
+      color: #000;
+      text-align: right;
+    }
     .toolbar { margin-bottom: 12px; display: flex; justify-content: flex-end; gap: 10px; }
     .btn { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
     .btn-print { background: #10b981; color: #fff; }
@@ -175,6 +226,22 @@ const CustomerLedger: React.FC = () => {
     </thead>
     <tbody>${rows}</tbody>
   </table>
+
+  <div class="summary-box">
+    <div class="summary-row">
+      <span class="summary-label">Total Debit:</span>
+      <span class="summary-value">${formatCurrency(totalDebit)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Total Credit:</span>
+      <span class="summary-value">${formatCurrency(totalCredit)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Current Balance:</span>
+      <span class="summary-value">${formatCurrency(dueBalance.amount)} <span class="balance-tag ${dueBalance.label === 'CR' ? 'cr' : 'dr'}">${dueBalance.label}</span></span>
+    </div>
+  </div>
+
   <script>
     window.onload = function () { window.print(); };
   </script>
