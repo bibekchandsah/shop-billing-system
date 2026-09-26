@@ -286,3 +286,72 @@ export const deleteSupplierProfile = async (userId: string, supplierId: string):
 
   await batch.commit();
 };
+
+export const cleanupSupplierDuplicateOpeningBalances = async (
+  userId: string,
+  supplierId: string
+): Promise<number> => {
+  if (!userId || !supplierId) return 0;
+
+  const supplierRef = supplierDoc(userId, supplierId);
+  const q = query(supplierLedgerCol(userId, supplierId), orderBy('createdAt', 'asc'));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return 0;
+
+  let foundOpening = false;
+  let deletedCount = 0;
+
+  await runTransaction(db, async (transaction) => {
+    let runningBalance = 0;
+
+    snap.docs.forEach((entry) => {
+      const data = entry.data();
+      const particular = (data.particular || '').trim().toLowerCase();
+      const isOpening = particular === 'opening balance' || particular.startsWith('opening');
+
+      if (isOpening) {
+        if (foundOpening) {
+          transaction.delete(entry.ref);
+          deletedCount++;
+          return;
+        }
+        foundOpening = true;
+      }
+
+      const debit = Number(data.debit || 0);
+      const credit = Number(data.credit || 0);
+      runningBalance += debit - credit;
+
+      transaction.update(entry.ref, {
+        currentBalance: runningBalance,
+      });
+    });
+
+    transaction.update(supplierRef, {
+      currentBalance: runningBalance,
+      updatedAt: Timestamp.now(),
+    });
+  });
+
+  return deletedCount;
+};
+
+export const cleanupAllSupplierDuplicateOpeningBalances = async (
+  userId: string
+): Promise<{ fixedSuppliersCount: number; deletedEntriesCount: number }> => {
+  if (!userId) return { fixedSuppliersCount: 0, deletedEntriesCount: 0 };
+  const suppliers = await getSuppliers(userId);
+  let fixedSuppliersCount = 0;
+  let deletedEntriesCount = 0;
+
+  for (const s of suppliers) {
+    const deleted = await cleanupSupplierDuplicateOpeningBalances(userId, s.id);
+    if (deleted > 0) {
+      fixedSuppliersCount++;
+      deletedEntriesCount += deleted;
+    }
+  }
+
+  return { fixedSuppliersCount, deletedEntriesCount };
+};

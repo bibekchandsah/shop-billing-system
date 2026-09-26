@@ -522,3 +522,73 @@ export const checkCustomerExists = async (userId: string, customerId: string): P
   const snap = await getDoc(customerDoc(userId, customerId));
   return snap.exists();
 };
+
+export const cleanupDuplicateOpeningBalances = async (
+  userId: string,
+  customerId: string
+): Promise<number> => {
+  if (!userId || !customerId) return 0;
+
+  const customerRef = customerDoc(userId, customerId);
+  const q = query(customerLedgerCol(userId, customerId), orderBy('createdAt', 'asc'));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return 0;
+
+  let foundOpening = false;
+  let deletedCount = 0;
+
+  await runTransaction(db, async (transaction) => {
+    let runningBalance = 0;
+
+    snap.docs.forEach((entry) => {
+      const data = entry.data();
+      const particular = (data.particular || '').trim().toLowerCase();
+      const isOpening = particular === 'opening balance' || particular.startsWith('opening');
+
+      if (isOpening) {
+        if (foundOpening) {
+          transaction.delete(entry.ref);
+          deletedCount++;
+          return;
+        }
+        foundOpening = true;
+      }
+
+      const debit = Number(data.debit || 0);
+      const credit = Number(data.credit || 0);
+      runningBalance += debit - credit;
+
+      transaction.update(entry.ref, {
+        currentBalance: runningBalance,
+      });
+    });
+
+    transaction.update(customerRef, {
+      currentBalance: runningBalance,
+      updatedAt: Timestamp.now(),
+    });
+  });
+
+  return deletedCount;
+};
+
+export const cleanupAllCustomerDuplicateOpeningBalances = async (
+  userId: string
+): Promise<{ fixedCustomersCount: number; deletedEntriesCount: number }> => {
+  if (!userId) return { fixedCustomersCount: 0, deletedEntriesCount: 0 };
+  const customers = await getCustomers(userId);
+  let fixedCustomersCount = 0;
+  let deletedEntriesCount = 0;
+
+  for (const c of customers) {
+    const deleted = await cleanupDuplicateOpeningBalances(userId, c.id);
+    if (deleted > 0) {
+      fixedCustomersCount++;
+      deletedEntriesCount += deleted;
+    }
+  }
+
+  return { fixedCustomersCount, deletedEntriesCount };
+};
+

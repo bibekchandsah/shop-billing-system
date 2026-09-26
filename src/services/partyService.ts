@@ -346,3 +346,72 @@ export const checkPartyExists = async (userId: string, partyId: string): Promise
   const snap = await getDoc(partyDoc(userId, partyId));
   return snap.exists();
 };
+
+export const cleanupPartyDuplicateOpeningBalances = async (
+  userId: string,
+  partyId: string
+): Promise<number> => {
+  if (!userId || !partyId) return 0;
+
+  const partyRef = partyDoc(userId, partyId);
+  const q = query(partyLedgerCol(userId, partyId), orderBy('createdAt', 'asc'));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return 0;
+
+  let foundOpening = false;
+  let deletedCount = 0;
+
+  await runTransaction(db, async (transaction) => {
+    let runningBalance = 0;
+
+    snap.docs.forEach((entry) => {
+      const data = entry.data();
+      const particular = (data.particular || '').trim().toLowerCase();
+      const isOpening = particular === 'opening balance' || particular.startsWith('opening');
+
+      if (isOpening) {
+        if (foundOpening) {
+          transaction.delete(entry.ref);
+          deletedCount++;
+          return;
+        }
+        foundOpening = true;
+      }
+
+      const debit = Number(data.debit || 0);
+      const credit = Number(data.credit || 0);
+      runningBalance += debit - credit;
+
+      transaction.update(entry.ref, {
+        currentBalance: runningBalance,
+      });
+    });
+
+    transaction.update(partyRef, {
+      currentBalance: runningBalance,
+      updatedAt: Timestamp.now(),
+    });
+  });
+
+  return deletedCount;
+};
+
+export const cleanupAllPartyDuplicateOpeningBalances = async (
+  userId: string
+): Promise<{ fixedPartiesCount: number; deletedEntriesCount: number }> => {
+  if (!userId) return { fixedPartiesCount: 0, deletedEntriesCount: 0 };
+  const parties = await getParties(userId);
+  let fixedPartiesCount = 0;
+  let deletedEntriesCount = 0;
+
+  for (const p of parties) {
+    const deleted = await cleanupPartyDuplicateOpeningBalances(userId, p.id);
+    if (deleted > 0) {
+      fixedPartiesCount++;
+      deletedEntriesCount += deleted;
+    }
+  }
+
+  return { fixedPartiesCount, deletedEntriesCount };
+};

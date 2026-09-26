@@ -13,6 +13,8 @@ import { formatCurrency, formatNumberInputValue } from '../utils/numberToWords';
 import {
   addPartyLedgerEntry,
   checkPartyExists,
+  cleanupAllPartyDuplicateOpeningBalances,
+  cleanupPartyDuplicateOpeningBalances,
   deletePartyLedgerEntry,
   deletePartyProfile,
   buildPartyId,
@@ -366,22 +368,20 @@ const SupplierLedger: React.FC = () => {
             const rawBalance = row['current balance'] ?? row.currentBalance;
             const currentBalance = rawBalance !== '' && rawBalance != null ? parseFloat(rawBalance) || 0 : 0;
 
-            let partyCode: string | undefined = undefined;
-            let partyId = '';
-
-            if (rawCode) {
-              partyCode = rawCode;
-              partyId = `code-${rawCode}`;
-            } else if (contactNumber) {
-              const digits = contactNumber.replace(/\D/g, '');
-              partyId = digits ? `contact-${digits}` : name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, '') || 'party';
-            } else {
-              partyId = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, '') || 'party';
-            }
+            let partyCode: string | undefined = rawCode || undefined;
+            const partyId = buildPartyId({
+              name,
+              address,
+              contactNumber,
+              partyCode: rawCode,
+            });
 
             // Fetch existing entries and profile
             const existingEntries = await getPartyLedgerEntries(activeUid || '', partyId);
             const profileExists = await checkPartyExists(activeUid || '', partyId);
+            const hasExistingOpening = existingEntries.some(
+              (e) => (e.particular || '').trim().toLowerCase().startsWith('opening')
+            );
 
             // Parse incoming entries
             let incomingEntries: any[] = [];
@@ -397,7 +397,7 @@ const SupplierLedger: React.FC = () => {
               const openingAmountRaw = row['opening amount'];
               const hasOpeningAmount = openingAmountRaw !== '' && openingAmountRaw != null;
               const openingAmount = hasOpeningAmount ? parseFloat(openingAmountRaw) || 0 : null;
-              if (openingAmount !== null && openingAmount !== 0) {
+              if (openingAmount !== null && openingAmount !== 0 && !hasExistingOpening) {
                 const openingDate = (row['date'] || '').trim() || getCurrentNepaliDate();
                 const openingParticular = (row['particular'] || '').trim() || 'Opening Balance';
                 const openingBillNo = (row['bill number'] || '').trim();
@@ -414,13 +414,23 @@ const SupplierLedger: React.FC = () => {
 
             // Filter out duplicate entries
             const uniqueEntries = incomingEntries.filter(incoming => {
-              const isDuplicate = existingEntries.some(existing => 
-                existing.date === incoming.date &&
-                existing.particular === incoming.particular &&
-                (existing.billNo || '') === (incoming.billNo || '') &&
-                existing.debit === (parseFloat(incoming.debit) || 0) &&
-                existing.credit === (parseFloat(incoming.credit) || 0)
-              );
+              const incomingPart = (incoming.particular || '').trim().toLowerCase();
+              const isIncomingOpening = incomingPart.startsWith('opening');
+              if (isIncomingOpening && hasExistingOpening) {
+                return false;
+              }
+              const isDuplicate = existingEntries.some(existing => {
+                const existingPart = (existing.particular || '').trim().toLowerCase();
+                if (isIncomingOpening && existingPart.startsWith('opening')) {
+                  return true;
+                }
+                const dateMatch = (existing.date || '').trim() === (incoming.date || '').trim();
+                const partMatch = existingPart === incomingPart;
+                const billMatch = (existing.billNo || '').trim() === (incoming.billNo || '').trim();
+                const debitMatch = Math.abs((Number(existing.debit) || 0) - (Number(incoming.debit) || 0)) < 0.001;
+                const creditMatch = Math.abs((Number(existing.credit) || 0) - (Number(incoming.credit) || 0)) < 0.001;
+                return dateMatch && partMatch && billMatch && debitMatch && creditMatch;
+              });
               return !isDuplicate;
             });
 
@@ -559,6 +569,56 @@ const SupplierLedger: React.FC = () => {
   const selectedBalance = ledger.length > 0 ? ledger[ledger.length - 1].currentBalance : (selectedSupplier?.currentBalance || 0);
   const totalDebit = filteredLedger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
   const totalCredit = filteredLedger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
+
+  const [cleaningUpDuplicates, setCleaningUpDuplicates] = useState(false);
+
+  const duplicateOpeningEntries = useMemo(() => {
+    return ledger.filter((e) => (e.particular || '').trim().toLowerCase().startsWith('opening'));
+  }, [ledger]);
+
+  const hasDuplicateOpening = duplicateOpeningEntries.length > 1;
+
+  const handleFixSupplierDuplicateOpening = async () => {
+    if (!selectedSupplier || !activeUid) return;
+    setCleaningUpDuplicates(true);
+    try {
+      const count = await cleanupPartyDuplicateOpeningBalances(activeUid, selectedSupplier.id);
+      if (count > 0) {
+        showSuccess(`Fixed! Removed ${count} duplicate opening balance entry.`);
+        await loadSuppliers();
+        await loadLedger(selectedSupplier.id);
+      } else {
+        showSuccess('No duplicate opening balances found.');
+      }
+    } catch (err: any) {
+      console.error('Error cleaning up duplicates:', err);
+      showError(err.message || 'Failed to fix duplicates.');
+    } finally {
+      setCleaningUpDuplicates(false);
+    }
+  };
+
+  const handleFixAllDuplicateOpenings = async () => {
+    if (!activeUid) return;
+    setCleaningUpDuplicates(true);
+    try {
+      const res = await cleanupAllPartyDuplicateOpeningBalances(activeUid);
+      if (res.fixedPartiesCount > 0) {
+        showSuccess(`Fixed ${res.deletedEntriesCount} duplicate opening balance(s) across ${res.fixedPartiesCount} party/parties.`);
+        await loadSuppliers();
+        if (selectedSupplier) {
+          await loadLedger(selectedSupplier.id);
+        }
+      } else {
+        showSuccess('All party opening balances are clean.');
+      }
+    } catch (err: any) {
+      console.error('Error cleaning up all duplicates:', err);
+      showError(err.message || 'Failed to clean up duplicates.');
+    } finally {
+      setCleaningUpDuplicates(false);
+    }
+  };
 
   const openSupplierEdit = () => {
     if (!selectedSupplier) return;
@@ -919,6 +979,14 @@ const SupplierLedger: React.FC = () => {
               Export CSV
             </button>
             <button
+              className="btn btn-secondary"
+              onClick={() => void requestAction({ label: 'fix all duplicate opening balances', onConfirm: handleFixAllDuplicateOpenings })}
+              title="Clean up duplicate opening balances across all parties"
+              disabled={cleaningUpDuplicates}
+            >
+              {cleaningUpDuplicates ? 'Cleaning...' : 'Fix Duplicates'}
+            </button>
+            <button
               className="btn btn-success"
               onClick={openAddSupplier}
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -1239,6 +1307,34 @@ const SupplierLedger: React.FC = () => {
                     })()}
                   </div>
                 </div>
+
+                {hasDuplicateOpening && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 1rem',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid var(--danger-color, #ef4444)',
+                      borderRadius: '8px',
+                      marginBottom: '1rem',
+                      gap: '1rem',
+                    }}
+                  >
+                    <span style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 600 }}>
+                      ⚠️ Duplicate Opening Balance detected ({duplicateOpeningEntries.length} entries). Click to remove extra entry and fix balance automatically.
+                    </span>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                      disabled={cleaningUpDuplicates}
+                      onClick={() => void requestAction({ label: 'fix duplicate opening balances', onConfirm: handleFixSupplierDuplicateOpening })}
+                    >
+                      {cleaningUpDuplicates ? 'Fixing...' : 'Fix Duplicate Opening'}
+                    </button>
+                  </div>
+                )}
 
                 <div className="table-container">
                   {loadingLedger ? (
