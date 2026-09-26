@@ -26,10 +26,11 @@ const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ bills, settings }
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
   const [activeMetric, setActiveMetric] = useState<'amount' | 'qty'>('amount');
 
-  const { monthlyData, yearLabel, maxAmount, maxQty, currentMonthIndex } = useMemo(() => {
+  const { monthlyData, yearLabel, maxAmount, maxQty, currentBsYear, currentBsMonth0 } = useMemo(() => {
     // Get current BS date
     const todayNd = new NepaliDate(new Date());
-    const currentMonthIndex = todayNd.getMonth(); // 0-indexed
+    const currentBsYear = todayNd.getYear();
+    const currentBsMonth0 = todayNd.getMonth(); // 0-indexed (0=Baisakh, 1=Jestha, ..., 5=Aswin)
 
     // Determine fiscal year range from settings
     const activeFY = settings?.activeFiscalYear;
@@ -116,7 +117,7 @@ const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ bills, settings }
     const maxAmount = Math.max(...monthlyData.map(d => d.amount), 1);
     const maxQty = Math.max(...monthlyData.map(d => d.qty), 1);
 
-    return { monthlyData, yearLabel, maxAmount, maxQty, currentMonthIndex };
+    return { monthlyData, yearLabel, maxAmount, maxQty, currentBsYear, currentBsMonth0 };
   }, [bills, settings]);
 
   // Chart dimensions
@@ -288,7 +289,7 @@ const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ bills, settings }
             const x = chartPadding.left + i * barGap + (barGap - barWidth) / 2;
             const y = chartPadding.top + plotHeight - h;
             const isHovered = hoveredMonth === d.monthIndex;
-            const isCurrentMonth = d.monthIndex === currentMonthIndex;
+            const isCurrentMonth = d.year === currentBsYear && d.month0 === currentBsMonth0;
 
             return (
               <g
