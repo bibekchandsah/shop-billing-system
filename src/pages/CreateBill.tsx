@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import ToastContainer from '../components/ToastContainer';
 import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
 import { useToast } from '../hooks/useToast';
+import { useActionPinGuard } from '../hooks/useActionPinGuard';
 import './CreateBill.css';
 
 const CreateBill: React.FC = () => {
@@ -48,9 +49,26 @@ const CreateBill: React.FC = () => {
   const datePickerRef = useRef<NepaliDatePickerHandle>(null);
   const customerNameRef = useRef<HTMLInputElement | null>(null);
   const customerCodeRef = useRef<HTMLInputElement | null>(null);
+  const billNoInputRef = useRef<HTMLInputElement | null>(null);
   const noteRef = useRef<HTMLInputElement | null>(null);
   const { activeUid } = useAuth();
   const { toasts, showSuccess, showError, removeToast } = useToast();
+  const { requestAction, pinPrompt } = useActionPinGuard({ pinHash: settings?.actionPinHash, showError });
+  const [isBillNoEditable, setIsBillNoEditable] = useState(false);
+
+  const handleUnlockBillNo = () => {
+    if (isBillNoEditable) return;
+    void requestAction({
+      label: 'edit Bill No',
+      onConfirm: () => {
+        setIsBillNoEditable(true);
+        setTimeout(() => {
+          billNoInputRef.current?.focus();
+          billNoInputRef.current?.select();
+        }, 50);
+      },
+    });
+  };
 
   useEffect(() => {
     setTimeout(() => customerCodeRef.current?.focus(), 10);
@@ -420,6 +438,12 @@ const CreateBill: React.FC = () => {
   type BillPayload = { bill: Bill; validItems: BillItem[]; bsDate: string };
 
   const buildBillPayload = async (): Promise<BillPayload | null> => {
+    if (!billNo.trim()) {
+      showError('Please enter Bill No (Bill number is required)');
+      flashAndScroll(billNoInputRef);
+      return null;
+    }
+
     if (!customerName.trim()) {
       showError('Please enter customer name');
       return null;
@@ -735,6 +759,7 @@ const CreateBill: React.FC = () => {
     // Reset dates — passing empty string clears the picker
     setNepaliDate('');
     setDate('');
+    setIsBillNoEditable(false);
     setCleared(true);
     setTimeout(() => setCleared(false), 2000);
     await initializeBill();
@@ -811,13 +836,77 @@ const CreateBill: React.FC = () => {
           {/* ── Row 1: Bill No | Date ── */}
           <div className="bill-meta-row">
             <div className="form-group">
-              <label className="label">Bill No</label>
-              <input
-                type="text"
-                className="input"
-                value={billNo}
-                onChange={(e) => setBillNo(e.target.value)}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                <label className="label" style={{ marginBottom: 0 }}>Bill No *</label>
+                {!isBillNoEditable ? (
+                  <button
+                    type="button"
+                    className="btn-link"
+                    onClick={handleUnlockBillNo}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary-color, #3b82f6)',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '0 4px',
+                      fontWeight: 600,
+                    }}
+                    title="Unlock to edit Bill Number"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Edit
+                  </button>
+                ) : (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--success-color, #10b981)', fontWeight: 600 }}>
+                    ✓ Editable
+                  </span>
+                )}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <input
+                  ref={billNoInputRef}
+                  type="text"
+                  className="input"
+                  value={billNo}
+                  readOnly={!isBillNoEditable}
+                  onClick={!isBillNoEditable ? handleUnlockBillNo : undefined}
+                  onChange={(e) => setBillNo(e.target.value)}
+                  placeholder="Enter Bill No"
+                  style={{
+                    cursor: !isBillNoEditable ? 'pointer' : 'text',
+                    backgroundColor: !isBillNoEditable ? 'var(--bg-secondary)' : 'var(--bg-primary)',
+                    paddingRight: !isBillNoEditable ? '2.2rem' : undefined,
+                  }}
+                />
+                {!isBillNoEditable && (
+                  <div
+                    onClick={handleUnlockBillNo}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    title="Click to unlock Bill No"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="form-group">
               <NepaliDatePickerComponent
@@ -1369,6 +1458,7 @@ const CreateBill: React.FC = () => {
         )}
       </div>
 
+      {pinPrompt}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
