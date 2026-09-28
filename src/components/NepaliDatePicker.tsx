@@ -77,6 +77,7 @@ interface NepaliDatePickerProps {
   /** If provided, shows this text as the input placeholder instead of a label above */
   placeholder?: string;
   required?: boolean;
+  mode?: 'bilingual' | 'nepali' | 'english';
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -89,7 +90,7 @@ const toStrings = (result: NDPDateResult) => ({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDatePickerProps>(
-  ({ onChange, value, label, placeholder, required = false }, ref) => {
+  ({ onChange, value, label, placeholder, required = false, mode = 'english' }, ref) => {
     const uid         = useId().replace(/:/g, '');
     const containerId = `ndp-${uid}`;
     const instanceRef = useRef<NDPInstance | null>(null);
@@ -115,7 +116,7 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
         if (cancelled || !window.NepaliDatePicker) return;
 
         instanceRef.current = window.NepaliDatePicker.init(`#${containerId}`, {
-          mode: 'english', // 'bilingual', 'nepali', or 'english'
+          mode, // 'bilingual', 'nepali', or 'english'
           theme: 'default',
           dark: isDark,
           closeOnSelect: true,
