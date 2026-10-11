@@ -2,41 +2,57 @@ import { useEffect, useRef, useId, useImperativeHandle, forwardRef } from 'react
 import { useTheme } from '../context/ThemeContext';
 import './NepaliDatePicker.css';
 
-// ── Actual library API (from the docs) ────────────────────────────────────────
-// getDate() returns: { bs: { year, month, day }, ad: { year, month, day }, formatted: '...' }
-// onChange receives the same shape, or null on clear
+// ── Actual library API (from https://nepalidate.omkumarpandey.com.np/datepicker.html) ──
+// getDate() returns: { bs: { year, month, day }, ad: { year, month, day }, formatted: 'YYYY-MM-DD' }
+// onSelect/onChange receives: { value, year, month, day, bs: { year, month, day }, ad: { year, month, day } }
 
-interface NDPDatePart {
+export interface NDPDatePart {
   year: number;
   month: number;
   day: number;
 }
 
-interface NDPDateResult {
+export interface NDPDateResult {
   bs: NDPDatePart;
   ad: NDPDatePart;
   formatted?: string;
+  value?: string;
+  year?: number;
+  month?: number;
+  day?: number;
 }
 
-interface NDPOptions {
-  mode?: 'bilingual' | 'nepali' | 'english';
+export interface NDPOptions {
+  mode?: 'light' | 'dark' | 'bilingual' | 'nepali' | 'english';
+  language?: 'nepali' | 'english';
+  miniEnglishDates?: boolean;
   theme?: 'default' | 'ocean' | 'forest' | 'sunset' | 'rose';
   dark?: boolean;
-  closeOnSelect?: boolean;
-  showToday?: boolean;
-  showClear?: boolean;
-  showClose?: boolean;
-  showDisplay?: boolean;
+  dateFormat?: string;
+  range?: boolean;
+  multiple?: boolean;
+  inline?: boolean;
+  animation?: 'fade' | 'slide';
+  unicodeDate?: boolean;
+  minDate?: NDPDatePart | string;
+  maxDate?: NDPDatePart | string;
+  disableDates?: string[];
+  disableDaysBefore?: number;
+  disableDaysAfter?: number;
+  disableToday?: boolean;
   placeholder?: string;
   placeholderEn?: string;
+  value?: string | null;
+  onSelect?: (date: NDPDateResult | null) => void;
   onChange?: (date: NDPDateResult | null) => void;
-  onOpen?: () => void;
-  onClose?: () => void;
+  onClose?: (selectedDates?: any) => void;
 }
 
-interface NDPInstance {
+export interface NDPInstance {
+  inputElement?: HTMLInputElement;
+  options: NDPOptions;
   getDate: () => NDPDateResult | null;
-  setDate: (year: number, month: number, day: number) => void;
+  setDate: (y: number | NDPDatePart, m?: number, d?: number) => void;
   open: () => void;
   close: () => void;
   clear: () => void;
@@ -48,13 +64,15 @@ interface NDPInstance {
 
 declare global {
   interface Window {
+    NepaliFunctions?: any;
     NepaliDatePicker: {
-      init: (selector: string, options?: NDPOptions) => NDPInstance;
+      init: (selector: string | HTMLElement, options?: NDPOptions) => NDPInstance;
       utils: {
-        bsToAd: (y: number, m: number, d: number) => { year: number; month: number; day: number; dow?: number };
-        adToBs: (y: number, m: number, d: number) => { year: number; month: number; day: number };
-        toNepali: (n: number) => string;
+        bsToAd: (y: number | NDPDatePart, m?: number, d?: number) => { year: number; month: number; day: number; dow?: number };
+        adToBs: (y: number | NDPDatePart, m?: number, d?: number) => { year: number; month: number; day: number };
+        toNepali: (n: number | string) => string;
         getToday: () => { year: number; month: number; day: number };
+        getDaysInMonth: (y: number, m: number) => number;
       };
     };
   }
@@ -64,10 +82,22 @@ declare global {
 export interface NepaliDatePickerHandle {
   /** Returns current BS and AD as "YYYY-MM-DD" strings, or null if nothing selected */
   getSelectedDate: () => { bs: string; ad: string } | null;
+  /** Programmatically set the date (y, m, d) */
+  setDate?: (y: number, m: number, d: number) => void;
+  /** Clear the selected date */
+  clear?: () => void;
+  /** Open the calendar popup */
+  open?: () => void;
+  /** Close the calendar popup */
+  close?: () => void;
+  /** Toggle the calendar popup */
+  toggle?: () => void;
+  /** Access the input element */
+  getInputElement?: () => HTMLInputElement | null;
 }
 
 // ── Component props ───────────────────────────────────────────────────────────
-interface NepaliDatePickerProps {
+export interface NepaliDatePickerProps {
   /** Fires with (bsString "YYYY-MM-DD", adString "YYYY-MM-DD").
    *  Both are empty strings when the user clears the picker. */
   onChange: (bs: string, ad: string) => void;
@@ -76,21 +106,52 @@ interface NepaliDatePickerProps {
   label?: string;
   /** If provided, shows this text as the input placeholder instead of a label above */
   placeholder?: string;
+  placeholderEn?: string;
   required?: boolean;
+  /** Language mode: 'english' | 'nepali' | 'bilingual' (for backward-compatibility) */
   mode?: 'bilingual' | 'nepali' | 'english';
+  /** Language setting: 'english' | 'nepali' */
+  language?: 'nepali' | 'english';
+  /** Show small AD day numbers inside calendar cells */
+  miniEnglishDates?: boolean;
+  /** Calendar color theme */
+  theme?: 'default' | 'ocean' | 'forest' | 'sunset' | 'rose';
+  /** Popup animation */
+  animation?: 'fade' | 'slide';
+  /** Date format: 'YYYY-MM-DD', 'DD-MM-YYYY', etc. */
+  dateFormat?: string;
+  /** Convert date numbers to Devanagari numerals */
+  unicodeDate?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const pad = (n: number) => String(n).padStart(2, '0');
 
 const toStrings = (result: NDPDateResult) => ({
-  bs: `${result.bs.year}-${pad(result.bs.month)}-${pad(result.bs.day)}`,
-  ad: `${result.ad.year}-${pad(result.ad.month)}-${pad(result.ad.day)}`,
+  bs: result.bs ? `${result.bs.year}-${pad(result.bs.month)}-${pad(result.bs.day)}` : (result.value || ''),
+  ad: result.ad ? `${result.ad.year}-${pad(result.ad.month)}-${pad(result.ad.day)}` : '',
 });
 
 // ── Component ─────────────────────────────────────────────────────────────────
 const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDatePickerProps>(
-  ({ onChange, value, label, placeholder, required = false, mode = 'english' }, ref) => {
+  (
+    {
+      onChange,
+      value,
+      label,
+      placeholder,
+      placeholderEn,
+      required = false,
+      mode = 'english',
+      language,
+      miniEnglishDates,
+      theme = 'default',
+      animation = 'fade',
+      dateFormat = 'YYYY-MM-DD',
+      unicodeDate = false,
+    },
+    ref
+  ) => {
     const uid         = useId().replace(/:/g, '');
     const containerId = `ndp-${uid}`;
     const instanceRef = useRef<NDPInstance | null>(null);
@@ -98,45 +159,106 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
     const { effectiveTheme } = useTheme();
     const isDark = effectiveTheme === 'dark';
 
-    // Expose getSelectedDate() to parent via ref
+    // Resolve language:
+    // If language prop is provided, use it.
+    // Otherwise derive from mode: 'nepali' -> 'nepali', 'english'|'bilingual' -> 'english'
+    const resolvedLanguage: 'nepali' | 'english' =
+      language ?? (mode === 'nepali' ? 'nepali' : 'english');
+
+    // Resolve mini English dates (bilingual AD day numbers):
+    const resolvedMiniEnglishDates: boolean =
+      miniEnglishDates ?? (mode === 'bilingual');
+
+    // English & Nepali placeholders
+    const resolvedEnglishPlaceholder = placeholderEn || placeholder || 'Select Date (BS)';
+    const resolvedNepaliPlaceholder  = placeholder || 'मिति छान्नुहोस्';
+    const activePlaceholder =
+      resolvedLanguage === 'english' ? resolvedEnglishPlaceholder : resolvedNepaliPlaceholder;
+
+    // Expose handle methods to parent via ref
     useImperativeHandle(ref, () => ({
       getSelectedDate: () => {
         if (!instanceRef.current) return null;
         const result = instanceRef.current.getDate();
-        if (!result) return null;
-        return toStrings(result);
+        if (result && result.bs) return toStrings(result);
+        // Fallback: parse current input value if available
+        const val = instanceRef.current.inputElement?.value?.trim();
+        if (val) {
+          const parts = val.split('-').map(Number);
+          if (parts.length === 3 && parts.every((p) => p > 0)) {
+            const ad = window.NepaliDatePicker?.utils?.bsToAd?.(parts[0], parts[1], parts[2]);
+            if (ad) {
+              return {
+                bs: `${parts[0]}-${pad(parts[1])}-${pad(parts[2])}`,
+                ad: `${ad.year}-${pad(ad.month)}-${pad(ad.day)}`,
+              };
+            }
+          }
+        }
+        return null;
       },
+      setDate: (y: number, m: number, d: number) => {
+        instanceRef.current?.setDate(y, m, d);
+      },
+      clear: () => {
+        instanceRef.current?.clear();
+        onChange('', '');
+      },
+      open: () => instanceRef.current?.open(),
+      close: () => instanceRef.current?.close(),
+      toggle: () => instanceRef.current?.toggle(),
+      getInputElement: () => instanceRef.current?.inputElement || null,
     }));
 
     // ── Init ────────────────────────────────────────────────────────────────
     useEffect(() => {
       let cancelled = false;
 
+      const handleDateSelect = (date: NDPDateResult | null) => {
+        if (!date || !date.bs) {
+          onChange('', '');
+          return;
+        }
+        const { bs, ad } = toStrings(date);
+        onChange(bs, ad);
+      };
+
       const init = () => {
         if (cancelled || !window.NepaliDatePicker) return;
 
         instanceRef.current = window.NepaliDatePicker.init(`#${containerId}`, {
-          mode, // 'bilingual', 'nepali', or 'english'
-          theme: 'default',
+          language: resolvedLanguage,
+          miniEnglishDates: resolvedMiniEnglishDates,
+          mode: isDark ? 'dark' : 'light',
           dark: isDark,
-          closeOnSelect: true,
-          showToday: true,
-          showClear: true,
-          showClose: true,
-          showDisplay: false,
-          placeholderEn: placeholder || 'Select Date (BS)',
-          placeholder: 'मिति छान्नुहोस्',
-          onChange: (date: NDPDateResult | null) => {
-            if (!date) {
-              onChange('', '');
-              return;
-            }
-            const { bs, ad } = toStrings(date);
-            onChange(bs, ad);
-          },
+          theme,
+          animation,
+          dateFormat,
+          unicodeDate,
+          placeholder: resolvedNepaliPlaceholder,
+          placeholderEn: resolvedEnglishPlaceholder,
+          onSelect: handleDateSelect,
+          onChange: handleDateSelect,
         });
 
         isReadyRef.current = true;
+
+        // Ensure the input element's placeholder is accurately set
+        if (instanceRef.current?.inputElement) {
+          const inputEl = instanceRef.current.inputElement;
+          inputEl.placeholder = activePlaceholder;
+          if (required) {
+            inputEl.required = required;
+          }
+
+          // Handle manual clearing in the input field
+          const handleInput = () => {
+            if (!inputEl.value.trim()) {
+              onChange('', '');
+            }
+          };
+          inputEl.addEventListener('input', handleInput);
+        }
 
         // Set initial value without triggering onChange
         if (value) {
@@ -171,7 +293,14 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
         isReadyRef.current  = false;
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [containerId]);
+    }, [containerId, resolvedLanguage, resolvedMiniEnglishDates, theme, animation, dateFormat, unicodeDate]);
+
+    // ── Placeholder sync ─────────────────────────────────────────────────────
+    useEffect(() => {
+      if (instanceRef.current?.inputElement) {
+        instanceRef.current.inputElement.placeholder = activePlaceholder;
+      }
+    }, [activePlaceholder]);
 
     // ── Dark mode sync ───────────────────────────────────────────────────────
     useEffect(() => {
@@ -203,7 +332,7 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
         {label && placeholder && required && (
           <label className="label" style={{ visibility: 'hidden', height: 0, margin: 0 }} />
         )}
-        <div id={containerId} className="ndp-container" />
+        <div id={containerId} className="ndp-input-host" />
       </div>
     );
   }
