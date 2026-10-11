@@ -207,10 +207,16 @@ export const upsertCustomerProfile = async (
     const newContact = payload.contactNumber;
     const newCode = payload.customerCode;
 
+    const isCashAccount =
+      oldName.toLowerCase() === 'cash' ||
+      newName.toLowerCase() === 'cash' ||
+      oldCode === '0001' ||
+      newCode === '0001';
+
     const nameChanged = oldName && oldName.toLowerCase() !== newName.toLowerCase();
     const codeChanged = oldCode !== newCode;
 
-    if (nameChanged || codeChanged) {
+    if (!isCashAccount && (nameChanged || codeChanged)) {
       const billsSnap = await getDocs(collection(db, 'users', userId, 'bills'));
       let batch = writeBatch(db);
       let batchCount = 0;
@@ -220,7 +226,7 @@ export const upsertCustomerProfile = async (
         const billCustomerName = (data.customerName || '').trim();
         const billCustomerCode = (data.customerCode || '').trim();
 
-        // Match by old name or old code
+        // Match by old name or old code (never match empty codes)
         const matches =
           (oldName && billCustomerName.toLowerCase() === oldName.toLowerCase()) ||
           (oldCode && billCustomerCode === oldCode);
@@ -249,6 +255,67 @@ export const upsertCustomerProfile = async (
   }
 
   return newCustomerId;
+};
+
+// ── Heal / Restore Cash bills based on Customer Ledger entries ────────────────
+export const restoreCashBillsFromLedger = async (
+  userId: string
+): Promise<{ restoredCount: number; restoredBills: string[] }> => {
+  if (!userId) return { restoredCount: 0, restoredBills: [] };
+
+  // 1. Get all billNos in Cash ledger (code-0001)
+  const cashEntries = await getCustomerLedgerEntries(userId, 'code-0001');
+  const cashBillNos = new Set(
+    cashEntries
+      .map((e) => (e.billNo || '').trim())
+      .filter(Boolean)
+  );
+
+  // 2. Get all billNos in Shiwani ledger (code-5001) to protect genuine Shiwani bills
+  const shiwaniEntries = await getCustomerLedgerEntries(userId, 'code-5001');
+  const shiwaniBillNos = new Set(
+    shiwaniEntries
+      .map((e) => (e.billNo || '').trim())
+      .filter(Boolean)
+  );
+
+  // 3. Scan all bills and restore bills belonging to Cash
+  const billsSnap = await getDocs(collection(db, 'users', userId, 'bills'));
+  let batch = writeBatch(db);
+  let batchCount = 0;
+  const restoredBills: string[] = [];
+
+  for (const bDoc of billsSnap.docs) {
+    const data = bDoc.data();
+    const billNo = (data.billNo || '').trim();
+    if (!billNo) continue;
+
+    // Must be in Cash ledger, and NOT in Shiwani's ledger
+    if (cashBillNos.has(billNo) && !shiwaniBillNos.has(billNo)) {
+      if ((data.customerName || '').trim().toLowerCase() !== 'cash') {
+        batch.update(bDoc.ref, {
+          customerName: 'Cash',
+          address: 'Garuda',
+          contactNumber: '',
+          customerCode: '0001',
+          updatedAt: Timestamp.now(),
+        });
+        restoredBills.push(billNo);
+        batchCount++;
+        if (batchCount >= 450) {
+          await batch.commit();
+          batch = writeBatch(db);
+          batchCount = 0;
+        }
+      }
+    }
+  }
+
+  if (batchCount > 0) {
+    await batch.commit();
+  }
+
+  return { restoredCount: restoredBills.length, restoredBills };
 };
 
 export const recordBillCustomerLedger = async (

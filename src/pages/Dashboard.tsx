@@ -12,6 +12,7 @@ import TopStockList from '../components/TopStockList';
 import StockLevelChart from '../components/StockLevelChart';
 import { getAllBills } from '../services/billService';
 import { getStockParticulars } from '../services/stockService';
+import { restoreCashBillsFromLedger } from '../services/customerService';
 import { formatCurrency } from '../utils/numberToWords';
 import type { Bill, StockParticular } from '../types';
 import './Dashboard.css';
@@ -48,7 +49,7 @@ const getCustomerKey = (bill: Bill) => {
 
 const Dashboard: React.FC = () => {
   const { activeUid } = useAuth();
-  const { toasts, showError, removeToast } = useToast();
+  const { toasts, showSuccess, showError, removeToast } = useToast();
   const { settings, filterBillsByFY } = useFiscalYear();
 
   const [loading, setLoading] = useState(true);
@@ -58,6 +59,13 @@ const Dashboard: React.FC = () => {
   const loadDashboard = async () => {
     setLoading(true);
     try {
+      if (activeUid) {
+        const healRes = await restoreCashBillsFromLedger(activeUid);
+        if (healRes.restoredCount > 0) {
+          showSuccess(`Restored ${healRes.restoredCount} Cash bill(s) from Customer Ledger.`);
+        }
+      }
+
       const [allBills, allStock] = await Promise.all([
         getAllBills(activeUid || ''),
         getStockParticulars(activeUid || ''),

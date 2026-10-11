@@ -116,8 +116,14 @@ export const updateBill = async (
   bill: Partial<Bill>
 ): Promise<void> => {
   const { userId: _uid, id: _id, ...rest } = bill as any;
+  const cleanData: any = {};
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined) {
+      cleanData[key] = value;
+    }
+  }
   await updateDoc(billDoc(userId, billId), {
-    ...rest,
+    ...cleanData,
     updatedAt: Timestamp.now(),
   });
 };

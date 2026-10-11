@@ -57,6 +57,18 @@ const Records: React.FC = () => {
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
   const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState<number>(0);
 
+  // Bulk-rename prompt: shown after saving a bill when other bills share the old customer
+  const [bulkRenamePrompt, setBulkRenamePrompt] = useState<{
+    oldName: string;
+    oldCode: string;
+    newName: string;
+    newCode: string;
+    newAddress: string;
+    newContact: string;
+    matchingBills: Bill[];
+  } | null>(null);
+  const [bulkRenameLoading, setBulkRenameLoading] = useState(false);
+
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const { user, activeUid } = useAuth();
   const { settings, activeFiscalYear, fiscalYearStart, fiscalYearEnd } = useFiscalYear();
@@ -824,13 +836,17 @@ const Records: React.FC = () => {
       // 2. Save the edited bill to Firestore
       const totalAmount = calcEditTotal();
       const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
+      const isNewCash = (editBill.customerName || '').trim().toLowerCase() === 'cash';
+      const cleanCustomerCode = isNewCash ? '' : (editBill.customerCode || '').trim();
+
       const updated: Partial<Bill> = {
         billNo:              editBill.billNo,
         date:                editBill.date,
         nepaliDate:          editBill.nepaliDate,
-        customerName:        editBill.customerName,
-        address:             editBill.address,
-        contactNumber:       editBill.contactNumber,
+        customerName:        isNewCash ? 'Cash' : editBill.customerName,
+        address:             isNewCash ? '' : editBill.address,
+        contactNumber:       isNewCash ? '' : editBill.contactNumber,
+        customerCode:        cleanCustomerCode,
         items:               validItems,
         totalAmount,
         totalAmountInWords:  numberToWords(totalAmount),
@@ -853,6 +869,38 @@ const Records: React.FC = () => {
         { ...editBill, items: validItems, totalAmount, totalAmountInWords: numberToWords(totalAmount), totalQty } as Bill
       );
 
+      // 4. Check if customer identity changed — offer to bulk-rename other bills
+      const origName = (originalBill?.customerName || '').trim().toLowerCase();
+      const origCode = (originalBill?.customerCode || '').trim().toLowerCase();
+      const newName  = (editBill.customerName || '').trim().toLowerCase();
+      const newCode  = (editBill.customerCode || '').trim().toLowerCase();
+      const customerChanged = origName !== newName || origCode !== newCode;
+
+      if (customerChanged) {
+        // Load all bills and find those that still carry the old customer identity
+        const allBillsData = await getAllBills(activeUid || '');
+        const matching = allBillsData.filter(b => {
+          if (b.id === editBill.id) return false; // skip the bill we just saved
+          const bName = (b.customerName || '').trim().toLowerCase();
+          const bCode = (b.customerCode || '').trim().toLowerCase();
+          // Match by code (if old code existed) OR by name when code was absent
+          if (origCode) return bCode === origCode;
+          return bName === origName;
+        });
+
+        if (matching.length > 0) {
+          setBulkRenamePrompt({
+            oldName: originalBill?.customerName || '',
+            oldCode: originalBill?.customerCode || '',
+            newName: editBill.customerName,
+            newCode: editBill.customerCode || '',
+            newAddress: editBill.address,
+            newContact: editBill.contactNumber,
+            matchingBills: matching,
+          });
+        }
+      }
+
       showSuccess('Bill and associated stock records updated successfully!');
       setShowEditModal(false);
       setEditBill(null);
@@ -863,6 +911,32 @@ const Records: React.FC = () => {
       showError('Failed to update bill. Please try again.');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  // Apply bulk customer rename to all matched bills
+  const handleBulkRename = async () => {
+    if (!bulkRenamePrompt || !activeUid) return;
+    setBulkRenameLoading(true);
+    try {
+      await Promise.all(
+        bulkRenamePrompt.matchingBills.map(b =>
+          updateBill(activeUid, b.id, {
+            customerName:  bulkRenamePrompt.newName,
+            customerCode:  bulkRenamePrompt.newCode || '',
+            address:       bulkRenamePrompt.newAddress,
+            contactNumber: bulkRenamePrompt.newContact,
+          })
+        )
+      );
+      showSuccess(`Updated customer name on ${bulkRenamePrompt.matchingBills.length} bill(s).`);
+      setBulkRenamePrompt(null);
+      loadBills();
+    } catch (err) {
+      console.error('Bulk rename error:', err);
+      showError('Some bills could not be updated. Please try again.');
+    } finally {
+      setBulkRenameLoading(false);
     }
   };
 
@@ -1567,6 +1641,74 @@ const Records: React.FC = () => {
         )}
 
       </div>
+
+      {/* Bulk Rename Confirmation Dialog */}
+      {bulkRenamePrompt && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: 520 }}>
+            <div className="modal-header">
+              <h2>Update Customer on Other Bills?</h2>
+              <button
+                onClick={() => setBulkRenamePrompt(null)}
+                className="modal-close"
+                disabled={bulkRenameLoading}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>
+                You renamed <strong>"{bulkRenamePrompt.oldName}"</strong> to{' '}
+                <strong>"{bulkRenamePrompt.newName}"</strong>.
+              </p>
+              <div
+                style={{
+                  background: 'var(--bg-secondary)',
+                  padding: '0.875rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-color)',
+                  fontSize: '0.9rem',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                There {bulkRenamePrompt.matchingBills.length === 1 ? 'is' : 'are'}{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>
+                  {bulkRenamePrompt.matchingBills.length} other bill{bulkRenamePrompt.matchingBills.length === 1 ? '' : 's'}
+                </strong>{' '}
+                still using the old customer details. Would you like to update all of them as well?
+              </div>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setBulkRenamePrompt(null)}
+                disabled={bulkRenameLoading}
+              >
+                Keep Other Bills Unchanged
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleBulkRename}
+                disabled={bulkRenameLoading}
+              >
+                {bulkRenameLoading ? (
+                  <>
+                    <span className="loading-spinner-small" style={{ marginRight: '8px' }}></span>
+                    Updating...
+                  </>
+                ) : (
+                  `Update All (${bulkRenamePrompt.matchingBills.length})`
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pinPrompt}
       <ToastContainer toasts={toasts} onRemove={removeToast} />

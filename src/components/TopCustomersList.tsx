@@ -17,53 +17,137 @@ interface CustomerStats {
   lastPurchaseDate: Date | string;
 }
 
+interface CustomerEntry extends CustomerStats {
+  code: string;
+  names: Set<string>;
+}
+
 const TopCustomersList: React.FC<TopCustomersListProps> = ({ bills }) => {
   const [showAll, setShowAll] = useState(false);
 
   const topCustomers = useMemo(() => {
-    const customerMap = new Map<string, CustomerStats>();
+    const isCashCustomer = (n: string) => {
+      const norm = (n || '').trim().toLowerCase();
+      return norm === 'cash' || norm === 'cash sale' || norm === 'cash sales';
+    };
+
+    // ── Phase 1: build two maps in parallel ──────────────────────────────
+    // codeMap : bills that carry a customerCode  (key = normalised code)
+    // nameMap : bills that have no customerCode  (key = normalised name)
+    const codeMap = new Map<string, CustomerEntry>();
+    const nameMap = new Map<string, CustomerStats>();
 
     for (const bill of bills) {
-      const name = (bill.customerName || 'Unknown').trim();
-      let phone = (bill.contactNumber || '').trim();
+      let   name    = (bill.customerName || 'Unknown').trim();
+      let   phone   = (bill.contactNumber || '').trim();
       if (phone === '0' || phone === '-') phone = '';
-      const address = (bill.address || '').trim();
-      const code = (bill.customerCode || '').trim();
-      
-      // Use customerCode if available, otherwise name + normalized phone
-      const key = code ? `code|${code.toLowerCase()}` : `fallback|${name.toLowerCase()}|${phone.toLowerCase()}`;
-      
-      const amount = Number(bill.totalAmount || 0);
-      const qty = Number(bill.totalQty || bill.items.reduce((sum, item) => sum + Number(item.qty || 0), 0));
-      
-      const existing = customerMap.get(key);
-      
-      if (existing) {
-        existing.totalAmount += amount;
-        existing.totalQty += qty;
-        existing.billCount += 1;
-        
-        const billDate = new Date(bill.date || bill.createdAt);
-        const existingDate = new Date(existing.lastPurchaseDate);
-        if (!isNaN(billDate.getTime()) && (!isNaN(existingDate.getTime()) || billDate > existingDate)) {
-          existing.lastPurchaseDate = billDate;
+      let   address = (bill.address || '').trim();
+      let   code    = (bill.customerCode || '').trim();
+
+      // Normalize Cash sales — Cash is always a standalone aggregate, never linked to a customer code
+      if (isCashCustomer(name)) {
+        name = 'Cash';
+        code = '';
+        phone = '';
+        address = '';
+      }
+
+      const amount  = Number(bill.totalAmount || 0);
+      const qty     = Number(
+        bill.totalQty ||
+        bill.items.reduce((s: number, i: any) => s + Number(i.qty || 0), 0)
+      );
+
+      const updateDate = (entry: CustomerStats, rawDate: string | Date) => {
+        const d = new Date(rawDate as string);
+        const e = new Date(entry.lastPurchaseDate as string);
+        if (!isNaN(d.getTime()) && (isNaN(e.getTime()) || d > e)) {
+          entry.lastPurchaseDate = d;
+        }
+      };
+
+      if (code) {
+        const codeKey = code.toLowerCase();
+        const existing = codeMap.get(codeKey);
+        if (existing) {
+          existing.totalAmount += amount;
+          existing.totalQty   += qty;
+          existing.billCount  += 1;
+          if (!isCashCustomer(name)) {
+            existing.names.add(name.toLowerCase());
+          }
+          if (isCashCustomer(existing.name) && !isCashCustomer(name)) {
+            existing.name = name;
+          }
+          updateDate(existing, bill.date || bill.createdAt);
+        } else {
+          codeMap.set(codeKey, {
+            name, phone, address,
+            totalAmount: amount, totalQty: qty, billCount: 1,
+            lastPurchaseDate: bill.date || bill.createdAt,
+            code: codeKey,
+            names: new Set(isCashCustomer(name) ? [] : [name.toLowerCase()]),
+          });
         }
       } else {
-        customerMap.set(key, {
-          name,
-          phone,
-          address,
-          totalAmount: amount,
-          totalQty: qty,
-          billCount: 1,
-          lastPurchaseDate: bill.date || bill.createdAt,
+        const nameKey = name.toLowerCase();
+        const existing = nameMap.get(nameKey);
+        if (existing) {
+          existing.totalAmount += amount;
+          existing.totalQty   += qty;
+          existing.billCount  += 1;
+          updateDate(existing, bill.date || bill.createdAt);
+        } else {
+          nameMap.set(nameKey, {
+            name, phone, address,
+            totalAmount: amount, totalQty: qty, billCount: 1,
+            lastPurchaseDate: bill.date || bill.createdAt,
+          });
+        }
+      }
+    }
+
+    // ── Phase 2: merge name-only buckets into matching code buckets ───────
+    // If a customer has some bills with a code and some without, their
+    // name-only totals get folded into the code bucket so nothing is split.
+    for (const [nameKey, nameEntry] of nameMap) {
+      if (isCashCustomer(nameKey)) {
+        // Cash is always a standalone customer
+        codeMap.set('name|cash', {
+          ...nameEntry,
+          name: 'Cash',
+          code: '',
+          names: new Set(['cash']),
+        });
+        continue;
+      }
+
+      let merged = false;
+      for (const codeEntry of codeMap.values()) {
+        if (!isCashCustomer(nameKey) && codeEntry.names.has(nameKey)) {
+          codeEntry.totalAmount += nameEntry.totalAmount;
+          codeEntry.totalQty   += nameEntry.totalQty;
+          codeEntry.billCount  += nameEntry.billCount;
+          const d = new Date(nameEntry.lastPurchaseDate as string);
+          const e = new Date(codeEntry.lastPurchaseDate as string);
+          if (!isNaN(d.getTime()) && (isNaN(e.getTime()) || d > e)) {
+            codeEntry.lastPurchaseDate = nameEntry.lastPurchaseDate;
+          }
+          merged = true;
+          break;
+        }
+      }
+      if (!merged) {
+        // No matching code bucket — keep as standalone
+        codeMap.set(`name|${nameKey}`, {
+          ...nameEntry,
+          code: '',
+          names: new Set([nameKey]),
         });
       }
     }
 
-    // Sort by total amount descending
-    const sorted = Array.from(customerMap.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-    return sorted;
+    return Array.from(codeMap.values()).sort((a, b) => b.totalAmount - a.totalAmount);
   }, [bills]);
 
   if (topCustomers.length === 0) {
