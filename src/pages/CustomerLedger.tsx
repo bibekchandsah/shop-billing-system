@@ -37,6 +37,9 @@ const CustomerLedger: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [ledger, setLedger] = useState<CustomerLedgerEntry[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [addressSearch, setAddressSearch] = useState('');
+  const [idSearch, setIdSearch] = useState('');
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [isCustomersCollapsed, setIsCustomersCollapsed] = useState(false);
@@ -547,19 +550,69 @@ const CustomerLedger: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCustomer]);
 
+  // ── Parse ID search string into a set of matched numeric codes ──────────
+  const matchedIdSet = useMemo(() => {
+    const raw = idSearch.trim();
+    if (!raw) return null; // no ID filter active
+    const matched = new Set<number>();
+    const tokens = raw.split(',').map(t => t.trim()).filter(Boolean);
+    for (const token of tokens) {
+      if (token.includes('-')) {
+        const [from, to] = token.split('-').map(s => parseInt(s.trim(), 10));
+        if (!isNaN(from) && !isNaN(to)) {
+          for (let i = Math.min(from, to); i <= Math.max(from, to); i++) matched.add(i);
+        }
+      } else {
+        const n = parseInt(token, 10);
+        if (!isNaN(n)) matched.add(n);
+      }
+    }
+    return matched;
+  }, [idSearch]);
+
+  // ── Parse address search string into individual address tokens ────────────
+  const addressTokens = useMemo(() => {
+    const raw = addressSearch.trim();
+    if (!raw) return null; // no address filter active
+    return raw.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+  }, [addressSearch]);
+
   const filteredCustomers = useMemo(() => {
-    const lower = searchTerm.trim().toLowerCase();
-    if (!lower) return customers;
+    const nameLower = searchTerm.trim().toLowerCase();
+    const hasName    = !!nameLower;
+    const hasAddress = !!addressTokens;
+    const hasId      = !!matchedIdSet;
+
+    if (!hasName && !hasAddress && !hasId) return customers;
+
     return customers.filter((customer) => {
       const customerCode = (customer.customerCode || '').toLowerCase();
-      return (
-        customer.name.toLowerCase().includes(lower) ||
-        customerCode.includes(lower) ||
-        customer.address.toLowerCase().includes(lower) ||
-        customer.contactNumber.toLowerCase().includes(lower)
-      );
+      const addr         = (customer.address || '').toLowerCase();
+      const codeNum      = parseInt(customer.customerCode || '', 10);
+
+      // Name filter: matches name, customerCode text, contact number
+      if (hasName) {
+        const nameMatch =
+          customer.name.toLowerCase().includes(nameLower) ||
+          customerCode.includes(nameLower) ||
+          customer.contactNumber.toLowerCase().includes(nameLower);
+        if (!nameMatch) return false;
+      }
+
+      // Address filter: customer must match AT LEAST ONE of the comma-separated addresses
+      if (hasAddress) {
+        const addrMatch = addressTokens!.some(token => addr.includes(token));
+        if (!addrMatch) return false;
+      }
+
+      // ID filter: customer's numeric code must be in the parsed set
+      if (hasId) {
+        if (isNaN(codeNum) || !matchedIdSet!.has(codeNum)) return false;
+      }
+
+      return true;
     });
-  }, [customers, searchTerm]);
+  }, [customers, searchTerm, addressTokens, matchedIdSet]);
 
   const filteredLedger = useMemo(() => {
     return ledger
@@ -1086,6 +1139,7 @@ const CustomerLedger: React.FC = () => {
               </button>
             </div>
 
+            {/* ── Search area ── */}
             <div className="search-bar">
               <span className="search-icon">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1098,37 +1152,102 @@ const CustomerLedger: React.FC = () => {
                 className="input customer-search"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search by name, ID, contact, or address"
-                style={{ paddingRight: searchTerm ? '2rem' : undefined }}
+                placeholder="Search name, contact…"
+                style={{ paddingRight: (searchTerm || showAdvancedSearch) ? '3.5rem' : '2.5rem' }}
               />
+              {/* Advanced-filter toggle button */}
+              <button
+                type="button"
+                className={`adv-search-toggle${(addressSearch || idSearch) ? ' adv-active' : ''}`}
+                onClick={() => setShowAdvancedSearch(v => !v)}
+                title="Advanced filters"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="4" y1="6" x2="20" y2="6" />
+                  <line x1="8" y1="12" x2="16" y2="12" />
+                  <line x1="11" y1="18" x2="13" y2="18" />
+                </svg>
+              </button>
               {searchTerm && (
-                <button 
-                  type="button" 
-                  className="clear-search-btn" 
+                <button
+                  type="button"
+                  className="clear-search-btn"
                   onClick={() => setSearchTerm('')}
-                  title="Clear search"
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '2px'
-                  }}
+                  title="Clear name search"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
               )}
             </div>
+
+            {/* ── Advanced search panel ── */}
+            {showAdvancedSearch && (
+              <div className="adv-search-panel">
+                <div className="adv-search-row">
+                  <label className="adv-search-label">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '5px', flexShrink: 0 }}>
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    Address
+                  </label>
+                  <div className="adv-search-input-wrap">
+                    <input
+                      type="text"
+                      className="input adv-search-input"
+                      value={addressSearch}
+                      onChange={e => setAddressSearch(e.target.value)}
+                      placeholder="e.g. Kathmandu, Lalitpur"
+                    />
+                    {addressSearch && (
+                      <button type="button" className="adv-clear-btn" onClick={() => setAddressSearch('')} title="Clear">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    )}
+                  </div>
+                  <span className="adv-search-hint">Separate multiple with comma</span>
+                </div>
+
+                <div className="adv-search-row">
+                  <label className="adv-search-label">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '5px', flexShrink: 0 }}>
+                      <rect x="3" y="4" width="18" height="16" rx="2" />
+                      <line x1="8" y1="10" x2="16" y2="10" />
+                      <line x1="8" y1="14" x2="12" y2="14" />
+                    </svg>
+                    Customer ID
+                  </label>
+                  <div className="adv-search-input-wrap">
+                    <input
+                      type="text"
+                      className="input adv-search-input"
+                      value={idSearch}
+                      onChange={e => setIdSearch(e.target.value)}
+                      placeholder="e.g. 1-5, 8, 10, 15"
+                    />
+                    {idSearch && (
+                      <button type="button" className="adv-clear-btn" onClick={() => setIdSearch('')} title="Clear">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    )}
+                  </div>
+                  <span className="adv-search-hint">Range (1-5), list (8, 10), or mix</span>
+                </div>
+
+                {(addressSearch || idSearch) && (
+                  <button
+                    type="button"
+                    className="adv-clear-all-btn"
+                    onClick={() => { setAddressSearch(''); setIdSearch(''); }}
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="customer-list">
               {loadingCustomers ? (

@@ -227,6 +227,129 @@
   box-shadow: 0 0 0 3px var(--accent-light);
 }
 
+/* ── Advanced search toggle button ── */
+.adv-search-toggle {
+  position: absolute;
+  right: 34px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.adv-search-toggle:hover {
+  color: var(--accent-primary);
+  background: var(--accent-light);
+}
+.adv-search-toggle.adv-active {
+  color: var(--accent-primary);
+}
+
+/* Clear-search X button */
+.clear-search-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+/* ── Advanced search panel ── */
+.adv-search-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 14px 10px;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: adv-fade-in 0.15s ease;
+}
+@keyframes adv-fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.adv-search-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adv-search-label {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.adv-search-input-wrap {
+  position: relative;
+}
+
+.adv-search-input {
+  width: 100%;
+  height: 34px;
+  font-size: 0.825rem;
+  padding-right: 2rem !important;
+  border-radius: 6px;
+}
+
+.adv-clear-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+}
+.adv-clear-btn:hover { color: var(--text-primary); }
+
+.adv-search-hint {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.adv-clear-all-btn {
+  align-self: flex-end;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.adv-clear-all-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
 /* ── Particulars Scrollable List ── */
 .customer-list {
   flex: 1;
