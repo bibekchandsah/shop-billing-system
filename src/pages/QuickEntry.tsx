@@ -518,11 +518,10 @@ const QuickEntry: React.FC = () => {
 
       showSuccess(`Particular "${newPartName}" added successfully.`);
       
-      // Reset Form
+      // Reset Form (keep newPartDate for next entry)
       setNewPartName('');
       setNewPartInitialStock(0);
       setNewPartUnit(defaultUnit);
-      setNewPartDate(getCurrentNepaliDate());
       setNewPartBillNo('');
 
       await loadAllData();
@@ -578,12 +577,11 @@ const QuickEntry: React.FC = () => {
 
       showSuccess('Transaction added to stock ledger.');
 
-      // Reset Form
+      // Reset Form (keep txDate for next entry)
       setTxQty(0);
       setTxUnit('');
       setTxBillNo('');
       setTxNote('');
-      setTxDate(getCurrentNepaliDate());
       setTxType('debit');
       setSelectedParticularId('');
       setStockTxResetKey(k => k + 1); // remount SearchableSelect -> auto-focus
@@ -648,13 +646,12 @@ const QuickEntry: React.FC = () => {
 
       showSuccess('Customer added successfully.');
 
-      // Reset Form
+      // Reset Form (keep newCustomerOpeningDate for next entry)
       setNewCustomerName('');
       setNewCustomerAddress('');
       setNewCustomerContact('');
       setNewCustomerCode('');
       setNewCustomerOpeningAmount(0);
-      setNewCustomerOpeningDate(getCurrentNepaliDate());
       setNewCustomerOpeningParticular('');
       setNewCustomerOpeningBillNo('');
 
@@ -704,12 +701,11 @@ const QuickEntry: React.FC = () => {
 
       showSuccess('Transaction added to customer ledger.');
 
-      // Reset Form
+      // Reset Form (keep custTxDate for next entry)
       setCustTxParticular('');
       setCustTxBillNo('');
       setCustTxAmount(0);
       setCustTxNote('');
-      setCustTxDate(getCurrentNepaliDate());
       setCustTxType('credit');
       setSelectedCustomerId('');
       setCustTxResetKey(k => k + 1); // remount SearchableSelect -> auto-focus
@@ -806,11 +802,10 @@ const QuickEntry: React.FC = () => {
 
       showSuccess('Transaction added to party ledger.');
 
-      // Reset Form
+      // Reset Form (keep partyTxDate for next entry)
       setPartyTxParticular('');
       setPartyTxAmount(0);
       setPartyTxNote('');
-      setPartyTxDate(getCurrentNepaliDate());
       setPartyTxType('debit');
       setSelectedPartyId('');
       setPartyTxResetKey(k => k + 1); // remount SearchableSelect -> auto-focus
