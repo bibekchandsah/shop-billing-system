@@ -214,6 +214,10 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
     useEffect(() => {
       let cancelled = false;
 
+      // Tracks WHY the picker closed so handleClose can decide whether to refocus.
+      let dateWasSelected = false; // true when user clicked a date cell
+      let tabWasPressed   = false; // true when user pressed Tab to dismiss
+
       const handleDateSelect = (date: NDPDateResult | null) => {
         if (!date || !date.bs) {
           onChange('', '');
@@ -221,6 +225,21 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
         }
         const { bs, ad } = toStrings(date);
         onChange(bs, ad);
+        dateWasSelected = true; // picker will close next; handleClose will refocus
+      };
+
+      const handleClose = () => {
+        const shouldRefocus = dateWasSelected && !tabWasPressed;
+        dateWasSelected = false;
+        tabWasPressed   = false;
+
+        if (!shouldRefocus) return; // user clicked outside or pressed Tab — leave focus where it landed
+
+        // Date was selected via mouse click → restore focus to input so the
+        // user can press Tab to advance to the next field.
+        requestAnimationFrame(() => {
+          instanceRef.current?.inputElement?.focus();
+        });
       };
 
       const init = () => {
@@ -239,6 +258,7 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
           placeholderEn: resolvedEnglishPlaceholder,
           onSelect: handleDateSelect,
           onChange: handleDateSelect,
+          onClose: handleClose,
         });
 
         isReadyRef.current = true;
@@ -258,6 +278,17 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
             }
           };
           inputEl.addEventListener('input', handleInput);
+
+          // On Tab: set the tabWasPressed flag so handleClose skips refocusing,
+          // close the popup, then let the browser's native Tab move focus forward.
+          const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Tab') {
+              tabWasPressed = true;
+              instanceRef.current?.close();
+              // Do NOT preventDefault — browser Tab navigation handles the rest.
+            }
+          };
+          inputEl.addEventListener('keydown', handleKeyDown);
         }
 
         // Set initial value without triggering onChange
