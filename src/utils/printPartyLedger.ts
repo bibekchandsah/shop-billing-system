@@ -162,9 +162,9 @@ export const printPartyLedger = (
       <tr>
         <th class="left" style="width:100px;">Date (BS)</th>
         <th class="left">Particular</th>
-        <th class="right" style="width:90px;">Debit</th>
-        <th class="right" style="width:90px;">Credit</th>
-        <th class="right" style="width:110px;">Running Bal.</th>
+        <th class="right" style="width:95px;">Debit</th>
+        <th class="right" style="width:95px;">Credit</th>
+        <th class="right" style="width:105px;">Running Bal.</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
@@ -180,8 +180,8 @@ export const printPartyLedger = (
       <span class="summary-value">${formatCurrency(totalCredit)}</span>
     </div>
     <div class="summary-row">
-      <span class="summary-label">Current Balance:</span>
-      <span class="summary-value">${formatCurrency(currentBal.amount)} <span class="balance-tag ${currentBal.label === 'CR' ? 'cr' : 'dr'}">${currentBal.label}</span></span>
+      <span class="summary-label">Current Balance: <span class="balance-tag ${currentBal.label === 'CR' ? 'cr' : 'dr'}">${currentBal.label}</span></span>
+      <span class="summary-value">${formatCurrency(currentBal.amount)} </span>
     </div>
   </div>
 

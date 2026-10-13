@@ -177,9 +177,9 @@ export const printStockLedger = (
         <th class="left" style="width:100px;">Date (BS)</th>
         <th class="left">Note / Description</th>
         <th class="center" style="width:90px;">Bill No</th>
-        <th class="right" style="width:90px;">Stock (+ In)</th>
-        <th class="right" style="width:90px;">Stock (- Out)</th>
-        <th class="right" style="width:100px;">Running Bal.</th>
+        <th class="right" style="width:95px;">Stock (+ In)</th>
+        <th class="right" style="width:95px;">Stock (- Out)</th>
+        <th class="right" style="width:105px;">Running Bal.</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
