@@ -625,8 +625,34 @@ const CustomerLedger: React.FC = () => {
         if (filterEndDate && entry.date > filterEndDate) return false;
         return true;
       })
-      .sort((a, b) => a.date.localeCompare(b.date)); // oldest → newest (UI reverses for newest-first display)
+      .sort((a, b) => {
+        const dateCmp = a.date.localeCompare(b.date);
+        if (dateCmp !== 0) return dateCmp;
+        const ca = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+        const cb = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+        return ca - cb;
+      }); // oldest → newest (UI reverses for newest-first display)
   }, [ledger, filterStartDate, filterEndDate, isInActiveFY]);
+
+  // Compute running balances dynamically from the full ledger sorted by date.
+  // This fixes backdated-transaction display: stored entry.currentBalance is calculated
+  // at insertion time (createdAt order), so it is wrong for entries entered on past dates.
+  const runningBalanceMap = useMemo(() => {
+    const sorted = [...ledger].sort((a, b) => {
+      const dateCmp = a.date.localeCompare(b.date);
+      if (dateCmp !== 0) return dateCmp;
+      const ca = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const cb = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return ca - cb;
+    });
+    let running = 0;
+    const map = new Map<string, number>();
+    for (const entry of sorted) {
+      running += (entry.debit || 0) - (entry.credit || 0);
+      map.set(entry.id, running);
+    }
+    return map;
+  }, [ledger]);
 
   const selectedBalance = ledger.length > 0 ? ledger[ledger.length - 1].currentBalance : (selectedCustomer?.currentBalance || 0);
   const totalDebit = filteredLedger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
@@ -1494,7 +1520,7 @@ const CustomerLedger: React.FC = () => {
                             <td className="text-right text-danger">{entry.credit > 0 ? formatCurrency(entry.credit) : '—'}</td>
                             <td className="text-right">
                               {(() => {
-                                const balance = formatBalanceDisplay(entry.currentBalance);
+                                const balance = formatBalanceDisplay(runningBalanceMap.get(entry.id) ?? 0);
                                 return (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <strong>{formatCurrency(balance.amount)}</strong>

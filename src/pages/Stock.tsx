@@ -879,6 +879,28 @@ const Stock: React.FC = () => {
     });
   };
 
+  // Compute running balances dynamically from the full ledger sorted by date.
+  // This fixes backdated-transaction display: stored entry.currentStock is calculated
+  // at insertion time using the then-current stock, so it is wrong when a transaction
+  // is entered for a past date.  Instead we sort every entry by date and accumulate.
+  const runningBalanceMap = useMemo(() => {
+    const sorted = [...ledger].sort((a, b) => {
+      const dateCmp = a.date.localeCompare(b.date);
+      // Secondary sort by createdAt so same-date entries are stable
+      if (dateCmp !== 0) return dateCmp;
+      const ca = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const cb = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return ca - cb;
+    });
+    let running = 0;
+    const map = new Map<string, number>();
+    for (const entry of sorted) {
+      running += (entry.debit || 0) - (entry.credit || 0);
+      map.set(entry.id, running);
+    }
+    return map;
+  }, [ledger]);
+
   // Filter ledger based on date range and active fiscal year
   const filteredLedger = ledger
     .filter(entry => {
@@ -890,7 +912,13 @@ const Stock: React.FC = () => {
       if (filterEndDate && entry.date > filterEndDate) return false;
       return true;
     })
-    .sort((a, b) => a.date.localeCompare(b.date)); // oldest → newest (UI reverses for newest-first display)
+    .sort((a, b) => {
+      const dateCmp = a.date.localeCompare(b.date);
+      if (dateCmp !== 0) return dateCmp;
+      const ca = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const cb = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return ca - cb;
+    }); // oldest → newest (UI reverses for newest-first display)
 
   // Calculate quick metrics for ledger panel summary card
   const totalDebit = filteredLedger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
@@ -1340,7 +1368,7 @@ const Stock: React.FC = () => {
                                 {entry.credit > 0 ? formatCurrency(entry.credit) : '—'}
                               </td>
                               <td className="text-right text-bold" style={{ color: 'var(--text-primary)' }}>
-                                {formatCurrency(entry.currentStock)}
+                                {formatCurrency(runningBalanceMap.get(entry.id) ?? 0)}
                               </td>
                               <td className="text-center">
                                 <div className="ledger-row-actions">

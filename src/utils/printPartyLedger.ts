@@ -28,11 +28,20 @@ export const printPartyLedger = (
   const totalCredit = ledger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
   const currentBal = formatBalanceDisplay(party.currentBalance || 0);
 
-  const rows = [...ledger]
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const sortedLedger = [...ledger].sort((a, b) => a.date.localeCompare(b.date));
+
+  // Compute running balances dynamically (fixes backdated-entry display)
+  let runningBal = 0;
+  const runningBalMap = new Map<string, number>();
+  for (const entry of sortedLedger) {
+    runningBal += (entry.debit || 0) - (entry.credit || 0);
+    runningBalMap.set(entry.id, runningBal);
+  }
+
+  const rows = sortedLedger
     .map(
     (entry) => {
-      const balance = formatBalanceDisplay(entry.currentBalance);
+      const balance = formatBalanceDisplay(runningBalMap.get(entry.id) ?? 0);
       return `<tr>
         <td>${entry.date}</td>
         <td>${entry.particular || '—'}</td>

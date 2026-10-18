@@ -28,18 +28,29 @@ export const printCustomerLedger = (
   const totalCredit = ledger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
   const currentBal = formatBalanceDisplay(customer.currentBalance || 0);
 
-  const rows = [...ledger]
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const sortedLedger = [...ledger].sort((a, b) => a.date.localeCompare(b.date));
+
+  // Compute running balances dynamically (fixes backdated-entry display)
+  let runningBal = 0;
+  const runningBalMap = new Map<string, number>();
+  for (const entry of sortedLedger) {
+    runningBal += (entry.debit || 0) - (entry.credit || 0);
+    runningBalMap.set(entry.id, runningBal);
+  }
+
+  const rows = sortedLedger
     .map(
-    (entry) =>
-      `<tr>
+    (entry) => {
+      const bal = formatBalanceDisplay(runningBalMap.get(entry.id) ?? 0);
+      return `<tr>
         <td>${entry.date}</td>
         <td>${entry.particular || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
         <td class="right">${entry.debit > 0 ? `${formatCurrency(entry.debit)}` : '—'}</td>
         <td class="right">${entry.credit > 0 ? `${formatCurrency(entry.credit)}` : '—'}</td>
-        <td class="right">${formatCurrency(formatBalanceDisplay(entry.currentBalance).amount)} <span class="balance-tag ${formatBalanceDisplay(entry.currentBalance).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(entry.currentBalance).label}</span></td>
-      </tr>`
+        <td class="right">${formatCurrency(bal.amount)} <span class="balance-tag ${bal.label === 'CR' ? 'cr' : 'dr'}">${bal.label}</span></td>
+      </tr>`;
+    }
   ).join('');
 
   const html = `<!DOCTYPE html>

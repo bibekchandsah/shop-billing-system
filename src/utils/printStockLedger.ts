@@ -24,8 +24,17 @@ export const printStockLedger = (
   const totalStockOut = ledger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
   const currentStock = particular.currentStock || 0;
 
-  const rows = [...ledger]
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const sortedLedger = [...ledger].sort((a, b) => a.date.localeCompare(b.date));
+
+  // Compute running balances dynamically (fixes backdated-entry display)
+  let runningBal = 0;
+  const runningBalMap = new Map<string, number>();
+  for (const entry of sortedLedger) {
+    runningBal += (entry.debit || 0) - (entry.credit || 0);
+    runningBalMap.set(entry.id, runningBal);
+  }
+
+  const rows = sortedLedger
     .map(
     (entry) =>
       `<tr>
@@ -34,7 +43,7 @@ export const printStockLedger = (
         <td class="center">${entry.billNo || '—'}</td>
         <td class="right">${entry.debit > 0 ? `${formatCurrency(entry.debit)}` : '—'}</td>
         <td class="right">${entry.credit > 0 ? `${formatCurrency(entry.credit)}` : '—'}</td>
-        <td class="right">${formatCurrency(entry.currentStock)}</td>
+        <td class="right">${formatCurrency(runningBalMap.get(entry.id) ?? 0)}</td>
       </tr>`
   ).join('');
 
