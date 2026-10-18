@@ -16,7 +16,7 @@ import Stock from './pages/Stock';
 import QuickEntry from './pages/QuickEntry';
 
 function AppRoutes() {
-  const { loading } = useAuth();
+  const { loading, activeUid } = useAuth();
 
   if (loading) {
     return (
@@ -39,14 +39,15 @@ function AppRoutes() {
             <AppLayout>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/customers" element={<CustomerLedger />} />
-                <Route path="/parties" element={<PartyLedger />} />
-                <Route path="/create-bill" element={<CreateBill />} />
-                <Route path="/quick-entry" element={<QuickEntry />} />
-                <Route path="/records" element={<Records />} />
-                <Route path="/stock" element={<Stock />} />
-                <Route path="/settings" element={<Settings />} />
+                {/* key={activeUid} forces full remount on user switch so stale data is cleared */}
+                <Route path="/dashboard" element={<Dashboard key={activeUid ?? 'self'} />} />
+                <Route path="/customers" element={<CustomerLedger key={activeUid ?? 'self'} />} />
+                <Route path="/parties" element={<PartyLedger key={activeUid ?? 'self'} />} />
+                <Route path="/create-bill" element={<CreateBill key={activeUid ?? 'self'} />} />
+                <Route path="/quick-entry" element={<QuickEntry key={activeUid ?? 'self'} />} />
+                <Route path="/records" element={<Records key={activeUid ?? 'self'} />} />
+                <Route path="/stock" element={<Stock key={activeUid ?? 'self'} />} />
+                <Route path="/settings" element={<Settings key={activeUid ?? 'self'} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppLayout>
