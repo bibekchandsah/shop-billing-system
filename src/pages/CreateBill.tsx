@@ -300,6 +300,17 @@ const CreateBill: React.FC = () => {
     }, 0);
   };
 
+  const focusItemQty = (index: number) => {
+    window.setTimeout(() => {
+      const input = itemQtyRefs.current[index];
+      if (!input) return;
+      input.focus();
+      input.select?.();
+      input.classList.add('input-flash');
+      window.setTimeout(() => input.classList.remove('input-flash'), 900);
+    }, 0);
+  };
+
   const handleQtyTab = (event: React.KeyboardEvent<HTMLInputElement>, index: number) => {
     if (event.key !== 'Tab' || event.shiftKey) return;
     event.preventDefault();
@@ -314,7 +325,7 @@ const CreateBill: React.FC = () => {
       focusItemParticular(nextIndex);
       return;
     }
-    addItemButtonRef.current?.focus();
+    addItem();
   };
 
   const getNextCustomerCode = (list: Customer[]) => {
@@ -352,6 +363,7 @@ const CreateBill: React.FC = () => {
     handleItemChange(index, 'particulars', name);
     setFocusedRowIndex(null);
     setHighlightedSuggestionIndex(-1);
+    focusItemQty(index);
   };
 
   const addItem = () => {
@@ -1094,9 +1106,9 @@ const CreateBill: React.FC = () => {
                               setHighlightedSuggestionIndex(prev =>
                                 prev > 0 ? prev - 1 : matches.length - 1
                               );
-                            } else if (e.key === 'Enter') {
-                              e.preventDefault();
+                            } else if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
                               if (highlightedSuggestionIndex >= 0 && highlightedSuggestionIndex < matches.length) {
+                                e.preventDefault();
                                 handleSelectSuggestion(index, matches[highlightedSuggestionIndex].name);
                               }
                             } else if (e.key === 'Escape') {

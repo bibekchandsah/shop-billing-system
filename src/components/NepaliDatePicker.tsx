@@ -94,6 +94,8 @@ export interface NepaliDatePickerHandle {
   toggle?: () => void;
   /** Access the input element */
   getInputElement?: () => HTMLInputElement | null;
+  /** Focus the input */
+  focus?: () => void;
 }
 
 // ── Component props ───────────────────────────────────────────────────────────
@@ -208,6 +210,13 @@ const NepaliDatePickerComponent = forwardRef<NepaliDatePickerHandle, NepaliDateP
       close: () => instanceRef.current?.close(),
       toggle: () => instanceRef.current?.toggle(),
       getInputElement: () => instanceRef.current?.inputElement || null,
+      focus: () => {
+        const el = instanceRef.current?.inputElement || (containerId ? document.querySelector<HTMLInputElement>(`#${containerId} input`) : null);
+        if (el) {
+          el.focus();
+          el.select?.();
+        }
+      },
     }));
 
     // ── Init ────────────────────────────────────────────────────────────────

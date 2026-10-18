@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { useFiscalYear } from '../context/FiscalYearContext';
 import ToastContainer from '../components/ToastContainer';
-import NepaliDatePickerComponent from '../components/NepaliDatePicker';
+import NepaliDatePickerComponent, { type NepaliDatePickerHandle } from '../components/NepaliDatePicker';
 import { getCurrentNepaliDate } from '../utils/nepaliDate';
 import { formatCurrency, formatNumberInputValue } from '../utils/numberToWords';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
@@ -51,6 +51,7 @@ interface SearchableSelectProps {
   label: string;
   required?: boolean;
   autoFocus?: boolean;
+  onSelectNext?: () => void;
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -61,6 +62,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   label,
   required = false,
   autoFocus = false,
+  onSelectNext,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,6 +137,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     setIsOpen(false);
     setSearchQuery('');
     setHighlightedIndex(0);
+    if (onSelectNext) {
+      setTimeout(() => {
+        onSelectNext();
+      }, 50);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -159,12 +166,16 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         );
         break;
       case 'Enter':
-        e.preventDefault();
-        if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
-          handleSelect(filteredOptions[highlightedIndex].id);
-        } else if (filteredOptions.length === 1) {
-          // Auto-select single match on Enter
-          handleSelect(filteredOptions[0].id);
+      case 'Tab':
+        if (!e.shiftKey) {
+          if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
+            e.preventDefault();
+            handleSelect(filteredOptions[highlightedIndex].id);
+          } else if (filteredOptions.length === 1) {
+            // Auto-select single match on Enter or Tab
+            e.preventDefault();
+            handleSelect(filteredOptions[0].id);
+          }
         }
         break;
       case 'Escape':
@@ -220,6 +231,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   key={opt.id}
                   className={`searchable-select-option ${selectedValue === opt.id ? 'selected' : ''} ${highlightedIndex === idx ? 'highlighted' : ''}`}
                   onMouseEnter={() => setHighlightedIndex(idx)}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(opt.id)}
                 >
                   <div className="option-primary">
@@ -290,6 +302,11 @@ const QuickEntry: React.FC = () => {
   const [stockTxResetKey, setStockTxResetKey] = useState(0);
   const [custTxResetKey, setCustTxResetKey] = useState(0);
   const [partyTxResetKey, setPartyTxResetKey] = useState(0);
+
+  // Focus refs for automatic advancement after selection
+  const stockTxQtyInputRef = useRef<HTMLInputElement>(null);
+  const custTxDatePickerRef = useRef<NepaliDatePickerHandle>(null);
+  const partyTxDatePickerRef = useRef<NepaliDatePickerHandle>(null);
 
   // Form 1: Stock -> Add New Particular
   const [newPartName, setNewPartName] = useState('');
@@ -1037,6 +1054,10 @@ const QuickEntry: React.FC = () => {
                       const p = particulars.find(item => item.id === value);
                       if (p) setTxUnit(p.defaultUnit || '');
                     }}
+                    onSelectNext={() => {
+                      stockTxQtyInputRef.current?.focus();
+                      stockTxQtyInputRef.current?.select?.();
+                    }}
                     required
                   />
                   <div className="form-group">
@@ -1062,6 +1083,7 @@ const QuickEntry: React.FC = () => {
                     <label className="label">Quantity *</label>
                     <div className="qty-unit-row">
                       <input
+                        ref={stockTxQtyInputRef}
                         type="text"
                         inputMode="decimal"
                         className="input"
@@ -1274,6 +1296,9 @@ const QuickEntry: React.FC = () => {
                     }))}
                     selectedValue={selectedCustomerId}
                     onChange={setSelectedCustomerId}
+                    onSelectNext={() => {
+                      custTxDatePickerRef.current?.focus?.();
+                    }}
                     required
                   />
                   <div className="form-group">
@@ -1297,6 +1322,7 @@ const QuickEntry: React.FC = () => {
                   </div>
                   <div className="form-group">
                     <NepaliDatePickerComponent
+                      ref={custTxDatePickerRef}
                       label="Transaction Date (BS) *"
                       value={custTxDate}
                       onChange={(bs) => setCustTxDate(bs)}
@@ -1460,6 +1486,9 @@ const QuickEntry: React.FC = () => {
                     }))}
                     selectedValue={selectedPartyId}
                     onChange={setSelectedPartyId}
+                    onSelectNext={() => {
+                      partyTxDatePickerRef.current?.focus?.();
+                    }}
                     required
                   />
                   <div className="form-group">
@@ -1483,6 +1512,7 @@ const QuickEntry: React.FC = () => {
                   </div>
                   <div className="form-group">
                     <NepaliDatePickerComponent
+                      ref={partyTxDatePickerRef}
                       label="Transaction Date (BS) *"
                       value={partyTxDate}
                       onChange={(bs) => setPartyTxDate(bs)}
