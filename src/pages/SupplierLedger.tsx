@@ -43,6 +43,8 @@ const SupplierLedger: React.FC = () => {
   const [loadingSuppliers, setLoadingSuppliers] = useState(true);
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [isSuppliersCollapsed, setIsSuppliersCollapsed] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const rightCtrlDownRef = useRef(false);
 
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
@@ -646,6 +648,105 @@ const SupplierLedger: React.FC = () => {
   const totalDebit = filteredLedger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
   const totalCredit = filteredLedger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
 
+  const handlersRef = useRef({
+    handleAddTransaction: () => {},
+    handleNewItem: () => {},
+    handlePrintList: () => {},
+    handlePrintLedger: () => {},
+  });
+
+  useEffect(() => {
+    handlersRef.current = {
+      handleAddTransaction: () => {
+        if (!selectedSupplier) {
+          showError('Please select a party first to add a transaction.');
+          return;
+        }
+        openAddTransaction();
+      },
+      handleNewItem: () => {
+        openAddSupplier();
+      },
+      handlePrintList: () => {
+        printPartyList();
+      },
+      handlePrintLedger: () => {
+        if (!selectedSupplier) {
+          showError('Please select a party first to print ledger.');
+          return;
+        }
+        printPartyLedger(
+          selectedSupplier,
+          filteredLedger,
+          settings?.businessName || 'Party Ledger',
+          settings?.businessAddress || '',
+          filterStartDate,
+          filterEndDate
+        );
+      },
+    };
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'ControlRight') {
+        rightCtrlDownRef.current = true;
+      } else if (e.code === 'ControlLeft') {
+        rightCtrlDownRef.current = false;
+      }
+
+      const key = e.key.toLowerCase();
+
+      // Alt+T / Ctrl+T for transaction, Alt+N / Ctrl+N for new party
+      if ((e.altKey || e.ctrlKey) && (key === 't' || key === 'n')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (key === 't') {
+          handlersRef.current.handleAddTransaction();
+        } else {
+          handlersRef.current.handleNewItem();
+        }
+        return;
+      }
+
+      if (!e.ctrlKey && !e.metaKey) return;
+
+      if (key === 'p') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (rightCtrlDownRef.current) {
+          handlersRef.current.handlePrintLedger();
+        } else {
+          handlersRef.current.handlePrintList();
+        }
+      } else if (key === 'k') {
+        e.preventDefault();
+        e.stopPropagation();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select?.();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'ControlRight') {
+        rightCtrlDownRef.current = false;
+      }
+    };
+
+    const handleBlur = () => {
+      rightCtrlDownRef.current = false;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
   const [cleaningUpDuplicates, setCleaningUpDuplicates] = useState(false);
 
   const duplicateOpeningEntries = useMemo(() => {
@@ -1121,7 +1222,7 @@ const SupplierLedger: React.FC = () => {
                     type="button"
                     onClick={printPartyList}
                     className="btn-icon-action"
-                    title="Print party list"
+                    title="Print party list (Left Ctrl+P)"
                     aria-label="Print party list"
                     style={{ width: '34px', height: '34px', borderRadius: '8px' }}
                   >
@@ -1147,6 +1248,7 @@ const SupplierLedger: React.FC = () => {
               <button
                 onClick={openAddSupplier}
                 className="btn btn-primary btn-sm btn-add-part"
+                title="New Party (Alt+N)"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}>
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -1165,11 +1267,13 @@ const SupplierLedger: React.FC = () => {
                 </svg>
               </span>
               <input
+                ref={searchInputRef}
                 type="text"
                 className="input customer-search"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search name, contact…"
+                title="Search name, contact (Ctrl+K)"
                 style={{ paddingRight: (searchTerm || showAdvancedSearch) ? '3.5rem' : '2.5rem' }}
               />
               <button
@@ -1405,6 +1509,7 @@ const SupplierLedger: React.FC = () => {
                         className="btn btn-primary"
                         style={{ height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
                         disabled={filteredLedger.length === 0}
+                        title="Print Ledger (Right Ctrl+P)"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="6 9 6 2 18 2 18 9" />
@@ -1413,7 +1518,13 @@ const SupplierLedger: React.FC = () => {
                         </svg>
                         Print
                       </button>
-                      <button className="btn btn-success customer-add-transaction" onClick={openAddTransaction} disabled={!selectedSupplier} style={{ height: '36px', display: 'flex', alignItems: 'center', padding: '0 1.25rem' }}>
+                      <button
+                        className="btn btn-success customer-add-transaction"
+                        onClick={openAddTransaction}
+                        disabled={!selectedSupplier}
+                        style={{ height: '36px', display: 'flex', alignItems: 'center', padding: '0 1.25rem' }}
+                        title="Add Transaction (Alt+T)"
+                      >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}>
                           <line x1="12" y1="5" x2="12" y2="19" />
                           <line x1="5" y1="12" x2="19" y2="12" />

@@ -27,6 +27,7 @@ const Records: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [importLoading, setImportLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   type SortKey = 'billNo' | 'date' | 'customerName' | 'address' | 'contactNumber' | 'totalQty' | 'totalAmount';
   type SortDirection = 'asc' | 'desc' | null;
@@ -180,6 +181,20 @@ const Records: React.FC = () => {
       console.error('Error fetching count:', e);
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        e.stopPropagation();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (isSearchMode) {
@@ -991,9 +1006,11 @@ const Records: React.FC = () => {
               <path d="m21 21-4.35-4.35" />
             </svg>
             <input
+              ref={searchInputRef}
               type="text"
               className="input search-input-inside"
-              placeholder="Search by Bill No, Name, Address, Contact, or Date..."
+              placeholder="Search by Bill No, Name, Address, Contact, or Date... (Ctrl+K)"
+              title="Search records (Ctrl+K)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ paddingRight: searchTerm ? '2.5rem' : undefined }}
@@ -1170,33 +1187,51 @@ const Records: React.FC = () => {
                   className="btn btn-secondary" 
                   onClick={() => loadPageForward(0)} 
                   disabled={currentPage === 0}
-                  style={{ padding: '0.25rem 0.75rem' }}
+                  style={{ padding: '0.25rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="First Page"
                 >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="11 17 6 12 11 7" />
+                    <polyline points="18 17 13 12 18 7" />
+                  </svg>
                   First
                 </button>
                 <button 
                   className="btn btn-secondary" 
                   onClick={handlePrevPage} 
                   disabled={currentPage === 0}
-                  style={{ padding: '0.25rem 0.75rem' }}
+                  style={{ padding: '0.25rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="Previous Page"
                 >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
                   Previous
                 </button>
                 <button 
                   className="btn btn-secondary" 
                   onClick={handleNextPage} 
                   disabled={currentPage >= totalPages - 1}
-                  style={{ padding: '0.25rem 0.75rem' }}
+                  style={{ padding: '0.25rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="Next Page"
                 >
                   Next
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                 </button>
                 <button 
                   className="btn btn-secondary" 
                   onClick={handleLastPage} 
                   disabled={currentPage >= totalPages - 1}
-                  style={{ padding: '0.25rem 0.75rem' }}
+                  style={{ padding: '0.25rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="Last Page"
                 >
                   Last
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="13 17 18 12 13 7" />
+                    <polyline points="6 17 11 12 6 7" />
+                  </svg>
                 </button>
               </div>
             </div>

@@ -43,6 +43,8 @@ const CustomerLedger: React.FC = () => {
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [isCustomersCollapsed, setIsCustomersCollapsed] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const rightCtrlDownRef = useRef(false);
   
   // Settings come from FiscalYearContext
   const [filterStartDate, setFilterStartDate] = useState('');
@@ -657,6 +659,105 @@ const CustomerLedger: React.FC = () => {
   const selectedBalance = ledger.length > 0 ? ledger[ledger.length - 1].currentBalance : (selectedCustomer?.currentBalance || 0);
   const totalDebit = filteredLedger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
   const totalCredit = filteredLedger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
+
+  const handlersRef = useRef({
+    handleAddTransaction: () => {},
+    handleNewItem: () => {},
+    handlePrintList: () => {},
+    handlePrintLedger: () => {},
+  });
+
+  useEffect(() => {
+    handlersRef.current = {
+      handleAddTransaction: () => {
+        if (!selectedCustomer) {
+          showError('Please select a customer first to add a transaction.');
+          return;
+        }
+        openAddTransaction();
+      },
+      handleNewItem: () => {
+        openAddCustomer();
+      },
+      handlePrintList: () => {
+        printCustomerList();
+      },
+      handlePrintLedger: () => {
+        if (!selectedCustomer) {
+          showError('Please select a customer first to print ledger.');
+          return;
+        }
+        printCustomerLedger(
+          selectedCustomer,
+          filteredLedger,
+          settings?.businessName || 'Customer Ledger',
+          settings?.businessAddress || '',
+          filterStartDate,
+          filterEndDate
+        );
+      },
+    };
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'ControlRight') {
+        rightCtrlDownRef.current = true;
+      } else if (e.code === 'ControlLeft') {
+        rightCtrlDownRef.current = false;
+      }
+
+      const key = e.key.toLowerCase();
+
+      // Alt+T / Ctrl+T for transaction, Alt+N / Ctrl+N for new customer
+      if ((e.altKey || e.ctrlKey) && (key === 't' || key === 'n')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (key === 't') {
+          handlersRef.current.handleAddTransaction();
+        } else {
+          handlersRef.current.handleNewItem();
+        }
+        return;
+      }
+
+      if (!e.ctrlKey && !e.metaKey) return;
+
+      if (key === 'p') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (rightCtrlDownRef.current) {
+          handlersRef.current.handlePrintLedger();
+        } else {
+          handlersRef.current.handlePrintList();
+        }
+      } else if (key === 'k') {
+        e.preventDefault();
+        e.stopPropagation();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select?.();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'ControlRight') {
+        rightCtrlDownRef.current = false;
+      }
+    };
+
+    const handleBlur = () => {
+      rightCtrlDownRef.current = false;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
   const formatBalanceDisplay = (balance: number) => {
     const isCredit = balance < 0;
     return {
@@ -1130,7 +1231,7 @@ const CustomerLedger: React.FC = () => {
                     type="button"
                     onClick={printCustomerList}
                     className="btn-icon-action"
-                    title="Print customer list"
+                    title="Print customer list (Left Ctrl+P)"
                     aria-label="Print customer list"
                     style={{ width: '34px', height: '34px', borderRadius: '8px' }}
                   >
@@ -1156,6 +1257,7 @@ const CustomerLedger: React.FC = () => {
               <button
                 onClick={openAddCustomer}
                 className="btn btn-primary btn-sm btn-add-part"
+                title="New Customer (Alt+N)"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}>
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -1174,11 +1276,13 @@ const CustomerLedger: React.FC = () => {
                 </svg>
               </span>
               <input
+                ref={searchInputRef}
                 type="text"
                 className="input customer-search"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search name, contact…"
+                title="Search name, contact (Ctrl+K)"
                 style={{ paddingRight: (searchTerm || showAdvancedSearch) ? '3.5rem' : '2.5rem' }}
               />
               {/* Advanced-filter toggle button */}
@@ -1415,6 +1519,7 @@ const CustomerLedger: React.FC = () => {
                         className="btn btn-primary"
                         style={{ height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
                         disabled={filteredLedger.length === 0}
+                        title="Print Ledger (Right Ctrl+P)"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="6 9 6 2 18 2 18 9" />
@@ -1423,7 +1528,13 @@ const CustomerLedger: React.FC = () => {
                         </svg>
                         Print
                       </button>
-                      <button className="btn btn-success customer-add-transaction" onClick={openAddTransaction} disabled={!selectedCustomer} style={{ height: '36px', display: 'flex', alignItems: 'center', padding: '0 1.25rem' }}>
+                      <button
+                        className="btn btn-success customer-add-transaction"
+                        onClick={openAddTransaction}
+                        disabled={!selectedCustomer}
+                        style={{ height: '36px', display: 'flex', alignItems: 'center', padding: '0 1.25rem' }}
+                        title="Add Transaction (Alt+T)"
+                      >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}>
                           <line x1="12" y1="5" x2="12" y2="19" />
                           <line x1="5" y1="12" x2="19" y2="12" />

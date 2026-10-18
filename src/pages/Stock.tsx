@@ -42,6 +42,8 @@ const Stock: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [idSearch, setIdSearch] = useState('');
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const rightCtrlDownRef = useRef(false);
   
   // App Settings — loaded from FiscalYearContext
   const appSettings = settings;
@@ -924,6 +926,111 @@ const Stock: React.FC = () => {
   const totalDebit = filteredLedger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
   const totalCredit = filteredLedger.reduce((sum, entry) => sum + (entry.credit || 0), 0);
 
+  const handlersRef = useRef({
+    handleAddTransaction: () => {},
+    handleNewItem: () => {},
+    handlePrintList: () => {},
+    handlePrintLedger: () => {},
+  });
+
+  useEffect(() => {
+    handlersRef.current = {
+      handleAddTransaction: () => {
+        if (!selectedParticular) {
+          showError('Please select a particular first to add a transaction.');
+          return;
+        }
+        setTxDate(getCurrentNepaliDate());
+        setTxUnit(getParticularDefaultUnit(selectedParticular));
+        setShowAddTransaction(true);
+      },
+      handleNewItem: () => {
+        setNewPartDate(getCurrentNepaliDate());
+        setNewPartUnit(defaultUnit);
+        setNewPartCode(getNextParticularCode());
+        setShowAddParticular(true);
+      },
+      handlePrintList: () => {
+        printStockList();
+      },
+      handlePrintLedger: () => {
+        if (!selectedParticular) {
+          showError('Please select a particular first to print its ledger.');
+          return;
+        }
+        printStockLedger(
+          selectedParticular,
+          filteredLedger,
+          appSettings?.businessName || 'Stock Management',
+          appSettings?.businessAddress || '',
+          appSettings?.businessContact || '',
+          filterStartDate,
+          filterEndDate
+        );
+      },
+    };
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'ControlRight') {
+        rightCtrlDownRef.current = true;
+      } else if (e.code === 'ControlLeft') {
+        rightCtrlDownRef.current = false;
+      }
+
+      const key = e.key.toLowerCase();
+
+      // Alt+T / Ctrl+T for transaction, Alt+N / Ctrl+N for new particular
+      if ((e.altKey || e.ctrlKey) && (key === 't' || key === 'n')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (key === 't') {
+          handlersRef.current.handleAddTransaction();
+        } else {
+          handlersRef.current.handleNewItem();
+        }
+        return;
+      }
+
+      if (!e.ctrlKey && !e.metaKey) return;
+
+      if (key === 'p') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (rightCtrlDownRef.current) {
+          handlersRef.current.handlePrintLedger();
+        } else {
+          handlersRef.current.handlePrintList();
+        }
+      } else if (key === 'k') {
+        e.preventDefault();
+        e.stopPropagation();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select?.();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'ControlRight') {
+        rightCtrlDownRef.current = false;
+      }
+    };
+
+    const handleBlur = () => {
+      rightCtrlDownRef.current = false;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
   return (
     <div className="stock-page fade-in">
       <div className="container-fluid">
@@ -1019,7 +1126,7 @@ const Stock: React.FC = () => {
                     type="button"
                     onClick={printStockList}
                     className="btn-icon-action"
-                    title="Print stock list"
+                    title="Print stock list (Left Ctrl+P)"
                     aria-label="Print stock list"
                     style={{ width: '34px', height: '34px', borderRadius: '8px' }}
                   >
@@ -1049,6 +1156,7 @@ const Stock: React.FC = () => {
                   setShowAddParticular(true);
                 }}
                 className="btn btn-primary btn-sm btn-add-part"
+                title="New Particular (Alt+N)"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}>
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -1067,8 +1175,10 @@ const Stock: React.FC = () => {
                 </svg>
               </span>
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search particulars…"
+                title="Search particulars (Ctrl+K)"
                 className="input search-input"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -1274,6 +1384,7 @@ const Stock: React.FC = () => {
                         className="btn btn-primary"
                         style={{ height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
                         disabled={filteredLedger.length === 0}
+                        title="Print Ledger (Right Ctrl+P)"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="6 9 6 2 18 2 18 9" />
@@ -1291,6 +1402,7 @@ const Stock: React.FC = () => {
                       }}
                       className="btn btn-success"
                       style={{ height: '36px', display: 'flex', alignItems: 'center' }}
+                      title="Add Transaction (Alt+T)"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}>
                         <line x1="12" y1="5" x2="12" y2="19" />

@@ -815,6 +815,71 @@ const CreateBill: React.FC = () => {
   const unitOptions = settings?.unitCategories ?? DEFAULT_SETTINGS.unitCategories;
   const isLoading = loadingAction !== null;
 
+  const handlersRef = useRef({
+    handlePrint,
+    handleSaveBill,
+    handleGeneratePDF,
+    handleClearForm,
+    handlePrimaryAction,
+    isPrimaryAction,
+  });
+
+  useEffect(() => {
+    handlersRef.current = {
+      handlePrint,
+      handleSaveBill,
+      handleGeneratePDF,
+      handleClearForm,
+      handlePrimaryAction,
+      isPrimaryAction,
+    };
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      const key = e.key.toLowerCase();
+
+      if (key === 'p') {
+        e.preventDefault();
+        e.stopPropagation();
+        const { isPrimaryAction, handlePrimaryAction, handlePrint } = handlersRef.current;
+        if (isPrimaryAction('print')) {
+          handlePrimaryAction();
+        } else {
+          handlePrint();
+        }
+      } else if (key === 's') {
+        e.preventDefault();
+        e.stopPropagation();
+        const { isPrimaryAction, handlePrimaryAction, handleSaveBill } = handlersRef.current;
+        if (isPrimaryAction('save')) {
+          handlePrimaryAction();
+        } else {
+          handleSaveBill();
+        }
+      } else if (key === 'd') {
+        e.preventDefault();
+        e.stopPropagation();
+        const { isPrimaryAction, handlePrimaryAction, handleGeneratePDF } = handlersRef.current;
+        if (isPrimaryAction('pdf')) {
+          handlePrimaryAction();
+        } else {
+          handleGeneratePDF();
+        }
+      } else if (key === 'o') {
+        e.preventDefault();
+        e.stopPropagation();
+        handlersRef.current.handleClearForm();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   const getFilteredCustomers = (queryText: string) => {
     const query = queryText.trim().toLowerCase();
     if (!query) return customers;
@@ -1305,6 +1370,7 @@ const CreateBill: React.FC = () => {
               onClick={isPrimaryAction('save') ? handlePrimaryAction : handleSaveBill}
               className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
               disabled={isLoading}
+              title={loadingAction === 'save' ? 'Saving...' : 'Save Bill (Ctrl+S)'}
             >
               {saved ? (
                 <>
@@ -1329,6 +1395,7 @@ const CreateBill: React.FC = () => {
               onClick={isPrimaryAction('pdf') ? handlePrimaryAction : handleGeneratePDF}
               className="btn btn-primary"
               disabled={isLoading}
+              title={loadingAction === 'pdf' ? 'Generating...' : 'Generate PDF (Ctrl+D)'}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -1342,6 +1409,7 @@ const CreateBill: React.FC = () => {
               onClick={isPrimaryAction('print') ? handlePrimaryAction : handlePrint}
               className="btn btn-info"
               disabled={isLoading}
+              title={loadingAction === 'print' ? 'Printing...' : 'Print (Ctrl+P)'}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 6 2 18 2 18 9" />
@@ -1351,7 +1419,12 @@ const CreateBill: React.FC = () => {
               {loadingAction === 'print' ? 'Printing...' : 'Print'}
             </button>
 
-            <button onClick={handleClearForm} className={`btn btn-secondary ${cleared ? 'btn-feedback-clear' : ''}`} disabled={isLoading}>
+            <button
+              onClick={handleClearForm}
+              className={`btn btn-secondary ${cleared ? 'btn-feedback-clear' : ''}`}
+              disabled={isLoading}
+              title="Clear Form (Ctrl+O)"
+            >
               {cleared ? (
                 <>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1382,7 +1455,7 @@ const CreateBill: React.FC = () => {
                   onClick={handleSaveBill}
                   className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
                   disabled={isLoading}
-                  title={loadingAction === 'save' ? 'Saving...' : 'Save Bill'}
+                  title={loadingAction === 'save' ? 'Saving...' : 'Save Bill (Ctrl+S)'}
                 >
                   {saved ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1403,7 +1476,7 @@ const CreateBill: React.FC = () => {
                   onClick={handleGeneratePDF}
                   className="btn btn-primary"
                   disabled={isLoading}
-                  title={loadingAction === 'pdf' ? 'Generating PDF...' : 'Generate PDF'}
+                  title={loadingAction === 'pdf' ? 'Generating PDF...' : 'Generate PDF (Ctrl+D)'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -1418,7 +1491,7 @@ const CreateBill: React.FC = () => {
                   onClick={handlePrint}
                   className="btn btn-info"
                   disabled={isLoading}
-                  title={loadingAction === 'print' ? 'Printing...' : 'Print Bill'}
+                  title={loadingAction === 'print' ? 'Printing...' : 'Print Bill (Ctrl+P)'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="6 9 6 2 18 2 18 9" />
@@ -1432,7 +1505,7 @@ const CreateBill: React.FC = () => {
                 onClick={handleClearForm}
                 className={`btn btn-secondary ${cleared ? 'btn-feedback-clear' : ''}`}
                 disabled={isLoading}
-                title="Clear Form"
+                title="Clear Form (Ctrl+O)"
               >
                 {cleared ? (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1454,7 +1527,7 @@ const CreateBill: React.FC = () => {
                   onClick={handlePrimaryAction}
                   className={`btn btn-success ${saved ? 'btn-feedback' : ''}`}
                   disabled={isLoading}
-                  title={loadingAction === 'save' ? 'Saving...' : 'Save Bill (Primary)'}
+                  title={loadingAction === 'save' ? 'Saving...' : 'Save Bill (Primary) (Ctrl+S)'}
                 >
                   {saved ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1474,7 +1547,7 @@ const CreateBill: React.FC = () => {
                   onClick={handlePrimaryAction}
                   className="btn btn-primary"
                   disabled={isLoading}
-                  title={loadingAction === 'pdf' ? 'Generating PDF...' : 'Generate PDF (Primary)'}
+                  title={loadingAction === 'pdf' ? 'Generating PDF...' : 'Generate PDF (Primary) (Ctrl+D)'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -1488,7 +1561,7 @@ const CreateBill: React.FC = () => {
                   onClick={handlePrimaryAction}
                   className="btn btn-info"
                   disabled={isLoading}
-                  title={loadingAction === 'print' ? 'Printing...' : 'Print Bill (Primary)'}
+                  title={loadingAction === 'print' ? 'Printing...' : 'Print Bill (Primary) (Ctrl+P)'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="6 9 6 2 18 2 18 9" />
