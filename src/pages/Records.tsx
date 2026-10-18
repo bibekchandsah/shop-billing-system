@@ -24,6 +24,7 @@ const Records: React.FC = () => {
   const [bills, setBills] = useState<Bill[]>([]);
   const [allBills, setAllBills] = useState<Bill[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSearchHelp, setShowSearchHelp] = useState(false);
   const [loading, setLoading] = useState(true);
   const [importLoading, setImportLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -208,19 +209,201 @@ const Records: React.FC = () => {
     }
   }, [isSortedMode, isSearchMode]);
 
+  // ─── Advanced Search Parser ───────────────────────────────────────────────
+  // Supported formats (can combine with spaces between tokens):
+  //   #0010-0039, 0128          → bill number ranges / exact list
+  //   @Kathmandu, Lalitpur       → address list
+  //   name:bibek chand sah, ram  → name list
+  //   contact:9876543210         → contact list
+  //   date:2083-05-23 to 2083-06-30  → date range
+  //   date:2083-05-23, 2083-07   → exact dates / year-month prefixes
+  //   from 2083-05 to 2083-06    → date range shorthand
+  //   (plain text)               → cross-field search
+  const parseAdvancedSearch = (raw: string) => {
+    const s = raw.trim();
+    if (!s) return null;
+
+    // Helpers
+    const padBillNo = (n: string) => n.trim().padStart(4, '0');
+
+    const billNoRanges: Array<[string, string]> = []; // inclusive [from, to]
+    const billNoExact: string[] = [];
+    const addresses: string[] = [];
+    const names: string[] = [];
+    const contacts: string[] = [];
+    const dateExact: string[] = [];
+    let dateFrom = '';
+    let dateTo = '';
+    let plainText = '';
+
+    let remaining = s;
+
+    // 1. Extract prefixed tokens iteratively
+    // Match: key:value (greedy until next recognised prefix or end)
+    const prefixRe = /\b(name|contact|date|address):\s*([^#@]+?)(?=\s+(?:name|contact|date|address):|\s*#|\s*@|$)/gi;
+    const prefixMatches: RegExpMatchArray[] = [];
+    let pm: RegExpMatchArray | null;
+    const tempRe = new RegExp(prefixRe.source, 'gi');
+    while ((pm = tempRe.exec(s)) !== null) {
+      prefixMatches.push(pm);
+    }
+
+    // Process prefix matches in reverse order so we can slice remaining
+    const consumed = new Set<string>();
+
+    for (const match of prefixMatches) {
+      const key = match[1].toLowerCase();
+      const val = match[2].trim();
+      consumed.add(match[0]);
+      remaining = remaining.replace(match[0], '').trim();
+
+      if (key === 'name') {
+        names.push(...val.split(',').map(v => v.trim().toLowerCase()).filter(Boolean));
+      } else if (key === 'contact') {
+        contacts.push(...val.split(',').map(v => v.trim()).filter(Boolean));
+      } else if (key === 'address') {
+        addresses.push(...val.split(',').map(v => v.trim().toLowerCase()).filter(Boolean));
+      } else if (key === 'date') {
+        // Check for range within value: "2083-05-23 to 2083-06-30"
+        const rangeM = val.match(/^(.+?)\s+to\s+(.+)$/i);
+        if (rangeM) {
+          dateFrom = rangeM[1].trim();
+          dateTo = rangeM[2].trim();
+        } else {
+          dateExact.push(...val.split(',').map(v => v.trim()).filter(Boolean));
+        }
+      }
+    }
+
+    // 2. Extract # bill-number tokens
+    const billNoRe = /#([^#@]+)/g;
+    let bm: RegExpMatchArray | null;
+    while ((bm = billNoRe.exec(remaining)) !== null) {
+      const parts = bm[1].split(',').map(p => p.trim()).filter(Boolean);
+      for (const part of parts) {
+        const rangeM = part.match(/^(\d+)-(\d+)$/);
+        if (rangeM) {
+          billNoRanges.push([padBillNo(rangeM[1]), padBillNo(rangeM[2])]);
+        } else if (/^\d+$/.test(part)) {
+          billNoExact.push(padBillNo(part));
+        }
+      }
+      remaining = remaining.replace(bm[0], '').trim();
+    }
+
+    // 3. Extract @ address tokens
+    const addrRe = /@([^#@]+)/g;
+    let am: RegExpMatchArray | null;
+    while ((am = addrRe.exec(remaining)) !== null) {
+      addresses.push(...am[1].split(',').map(v => v.trim().toLowerCase()).filter(Boolean));
+      remaining = remaining.replace(am[0], '').trim();
+    }
+
+    // 4. Extract "from X to Y" date range shorthand
+    const fromToM = remaining.match(/\bfrom\s+(\S+)\s+to\s+(\S+)\b/i);
+    if (fromToM && !dateFrom) {
+      dateFrom = fromToM[1];
+      dateTo = fromToM[2];
+      remaining = remaining.replace(fromToM[0], '').trim();
+    }
+
+    // 5. Whatever remains is plain-text
+    plainText = remaining.trim();
+
+    // If nothing structured was found, return null to use legacy search
+    const hasStructured = billNoRanges.length || billNoExact.length ||
+      addresses.length || names.length || contacts.length ||
+      dateExact.length || dateFrom || dateTo;
+
+    if (!hasStructured && !plainText) return null;
+    if (!hasStructured) return null; // fall through to plain search
+
+    // Return a filter function
+    const matchDate = (bill: Bill): boolean => {
+      const bsDate = bill.nepaliDate || '';
+      const adDate = (bill.date || '').substring(0, 10);
+      const checkDate = bsDate || adDate;
+      if (!checkDate) return false;
+
+      if (dateFrom || dateTo) {
+        const from = dateFrom || '0000-00-00';
+        const to = dateTo || '9999-99-99';
+        return checkDate >= from && checkDate <= to;
+      }
+      if (dateExact.length) {
+        return dateExact.some(d => checkDate.startsWith(d));
+      }
+      return true;
+    };
+
+    return (bill: Bill): boolean => {
+      // Bill number check
+      if (billNoRanges.length || billNoExact.length) {
+        const bn = (bill.billNo || '').replace(/^0+/, '').padStart(4, '0');
+        const billMatches =
+          billNoExact.some(e => e === bn) ||
+          billNoRanges.some(([from, to]) => bn >= from && bn <= to);
+        if (!billMatches) return false;
+      }
+
+      // Address check
+      if (addresses.length) {
+        const addr = (bill.address || '').toLowerCase();
+        if (!addresses.some(a => addr.includes(a))) return false;
+      }
+
+      // Name check
+      if (names.length) {
+        const nm = (bill.customerName || '').toLowerCase();
+        if (!names.some(n => nm.includes(n))) return false;
+      }
+
+      // Contact check
+      if (contacts.length) {
+        const ct = (bill.contactNumber || '');
+        if (!contacts.some(c => ct.includes(c))) return false;
+      }
+
+      // Date check
+      if (dateFrom || dateTo || dateExact.length) {
+        if (!matchDate(bill)) return false;
+      }
+
+      // Plain text cross-field
+      if (plainText) {
+        const lower = plainText.toLowerCase();
+        const match =
+          (bill.billNo || '').toLowerCase().includes(lower) ||
+          (bill.customerName || '').toLowerCase().includes(lower) ||
+          (bill.address || '').toLowerCase().includes(lower) ||
+          (bill.contactNumber || '').includes(lower) ||
+          (bill.nepaliDate || '').includes(lower) ||
+          (bill.date || '').toLowerCase().includes(lower);
+        if (!match) return false;
+      }
+
+      return true;
+    };
+  };
+
   const handleSearchMode = async () => {
     try {
       setLoading(true);
       const data = await getAllBills(activeUid || '');
-      const lowerSearchTerm = searchTerm.toLowerCase();
+      const advancedFilter = parseAdvancedSearch(searchTerm);
+
       const filtered = data.filter(bill => {
+        if (advancedFilter) {
+          return advancedFilter(bill);
+        }
+        // Legacy plain-text search
+        const lowerSearchTerm = searchTerm.toLowerCase();
         return (
           (bill.billNo || '').toLowerCase().includes(lowerSearchTerm) ||
           (bill.customerName || '').toLowerCase().includes(lowerSearchTerm) ||
           (bill.customerCode || '').toLowerCase().includes(lowerSearchTerm) ||
           (bill.address || '').toLowerCase().includes(lowerSearchTerm) ||
           (bill.contactNumber || '').toLowerCase().includes(lowerSearchTerm) ||
-          (bill.items?.reduce((sum, item) => sum + item.qty, 0).toString() || '').includes(searchTerm) ||
           (bill.date || '').toLowerCase().includes(lowerSearchTerm) ||
           (bill.nepaliDate || '').toLowerCase().includes(lowerSearchTerm)
         );
@@ -1000,47 +1183,113 @@ const Records: React.FC = () => {
 
         <div className="table-container-card card fade-in">
           
-          <div className="table-search-bar" style={{ position: 'relative' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              ref={searchInputRef}
-              type="text"
-              className="input search-input-inside"
-              placeholder="Search by Bill No, Name, Address, Contact, or Date... (Ctrl+K)"
-              title="Search records (Ctrl+K)"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingRight: searchTerm ? '2.5rem' : undefined }}
-            />
-            {searchTerm && (
-              <button 
-                type="button" 
-                className="clear-search-btn" 
-                onClick={() => setSearchTerm('')}
-                title="Clear search"
-                style={{
-                  position: 'absolute',
-                  right: '1.5rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '4px'
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
+          <div className="table-search-bar">
+            {/* Single position:relative wrapper — all icons sit inside the input visually */}
+            <div style={{ position: 'relative', width: '100%' }}>
+              {/* Left: search icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none', zIndex: 1 }}>
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                className="input search-input-inside"
+                placeholder="Search: #0010-0039 | @Kathmandu | name:bibek | date:2083-05 to 2083-06 | contact:9876... (Ctrl+K)"
+                title="Advanced search (Ctrl+K) — click ⓘ for help"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {/* Right: clear + info icons absolutely inside the input */}
+              <div style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '2px', zIndex: 1 }}>
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    title="Clear search"
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '3px', borderRadius: '50%', lineHeight: 1 }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowSearchHelp(v => !v)}
+                  title="Search syntax help"
+                  style={{ background: 'none', border: 'none', color: showSearchHelp ? 'var(--accent-primary)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '3px', borderRadius: '50%', transition: 'color 0.2s', lineHeight: 1 }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            {/* Search Help Panel */}
+            {showSearchHelp && (
+              <div className="search-help-panel" onClick={e => e.stopPropagation()}>
+                <div className="search-help-header">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                  <strong>Advanced Search Syntax</strong>
+                  <button type="button" onClick={() => setShowSearchHelp(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: '2px' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </div>
+                <div className="search-help-body">
+                  <div className="search-help-section">
+                    <span className="search-help-label">📋 Bill Number</span>
+                    <div className="search-help-examples">
+                      <code>#0010-0039</code> <span>range</span>
+                      <code>#0128, 0156</code> <span>exact list</span>
+                      <code>#0010-0039, 0128, 0056-1068</code> <span>mixed</span>
+                    </div>
+                  </div>
+                  <div className="search-help-section">
+                    <span className="search-help-label">📍 Address</span>
+                    <div className="search-help-examples">
+                      <code>@Kathmandu</code> <span>single</span>
+                      <code>@Kathmandu, Lalitpur</code> <span>multiple (any match)</span>
+                    </div>
+                  </div>
+                  <div className="search-help-section">
+                    <span className="search-help-label">👤 Name</span>
+                    <div className="search-help-examples">
+                      <code>name:bibek chand sah</code> <span>partial match</span>
+                      <code>name:bibek chand sah, ram sah</code> <span>multiple</span>
+                    </div>
+                  </div>
+                  <div className="search-help-section">
+                    <span className="search-help-label">📞 Contact</span>
+                    <div className="search-help-examples">
+                      <code>contact:987654321</code> <span>single</span>
+                      <code>contact:987654321, 9876543456</code> <span>multiple</span>
+                    </div>
+                  </div>
+                  <div className="search-help-section">
+                    <span className="search-help-label">📅 Date (BS)</span>
+                    <div className="search-help-examples">
+                      <code>date:2083-05-23, 2083-07-30</code> <span>exact dates</span>
+                      <code>date:2083-05-23 to 2083-06-30</code> <span>date range</span>
+                      <code>from 2083-05 to 2083-06</code> <span>month range</span>
+                      <code>date:2083-05</code> <span>entire month</span>
+                    </div>
+                  </div>
+                  <div className="search-help-section">
+                    <span className="search-help-label">🔍 Plain Text</span>
+                    <div className="search-help-examples">
+                      <code>bibek</code> <span>search across all fields</span>
+                    </div>
+                  </div>
+                  <div className="search-help-tip">
+                    💡 You can combine multiple tokens: <code>#0010-0050 @Kathmandu date:2083-05</code>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
