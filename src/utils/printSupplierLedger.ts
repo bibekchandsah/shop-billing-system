@@ -50,7 +50,7 @@ export const printSupplierLedger = (
   <title>Party Ledger — ${supplier.name}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #111; background: #fff; padding: 2cm 2.5cm; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #111; background: #fff; padding: 2cm 1.5cm; }
     .header { text-align: center; margin-bottom: 14px; }
     .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
     .header .biz-name { font-size: 14px; font-weight: 600; margin-top: 4px; }
@@ -102,7 +102,7 @@ export const printSupplierLedger = (
       justify-content: space-between;
       align-items: baseline;
       gap: 16px;
-      padding: 5px 0;
+      padding: 5px 7px;
       border-bottom: 1px solid #000;
       font-size: 13.5px;
     }
@@ -161,9 +161,9 @@ export const printSupplierLedger = (
       <tr>
         <th class="left" style="width:100px;">Date (BS)</th>
         <th class="left">Particular</th>
-        <th class="right" style="width:95px;">Debit</th>
+        <th class="right" style="width:100px;">Debit</th>
         <th class="right" style="width:95px;">Credit</th>
-        <th class="right" style="width:105px;">Running Balance</th>
+        <th class="right" style="width:130px;">Running Balance</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>

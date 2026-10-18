@@ -36,8 +36,8 @@ export const printCustomerLedger = (
         <td>${entry.date}</td>
         <td>${entry.particular || '—'}</td>
         <td class="center">${entry.billNo || '—'}</td>
-        <td class="right">${entry.debit > 0 ? `Rs. ${formatCurrency(entry.debit)}` : '—'}</td>
-        <td class="right">${entry.credit > 0 ? `Rs. ${formatCurrency(entry.credit)}` : '—'}</td>
+        <td class="right">${entry.debit > 0 ? `${formatCurrency(entry.debit)}` : '—'}</td>
+        <td class="right">${entry.credit > 0 ? `${formatCurrency(entry.credit)}` : '—'}</td>
         <td class="right">${formatCurrency(formatBalanceDisplay(entry.currentBalance).amount)} <span class="balance-tag ${formatBalanceDisplay(entry.currentBalance).label === 'CR' ? 'cr' : 'dr'}">${formatBalanceDisplay(entry.currentBalance).label}</span></td>
       </tr>`
   ).join('');
@@ -54,7 +54,7 @@ export const printCustomerLedger = (
       font-size: 13px;
       color: #111;
       background: #fff;
-      padding: 2cm 2.5cm;
+      padding: 2cm 1.5cm;
     }
     .header { text-align: center; margin-bottom: 14px; }
     .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
@@ -124,7 +124,7 @@ export const printCustomerLedger = (
       justify-content: space-between;
       align-items: baseline;
       gap: 16px;
-      padding: 5px 0;
+      padding: 5px 7px;
       border-bottom: 1px solid #000;
       font-size: 13.5px;
     }
@@ -197,9 +197,9 @@ export const printCustomerLedger = (
         <th class="left" style="width:100px;">Date (BS)</th>
         <th class="left">Particular</th>
         <th class="center" style="width:90px;">Bill No</th>
-        <th class="right" style="width:95px;">Debit</th>
+        <th class="right" style="width:100px;">Debit</th>
         <th class="right" style="width:95px;">Credit</th>
-        <th class="right" style="width:105px;">Running Bal.</th>
+        <th class="right" style="width:130px;">Running Bal.</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>

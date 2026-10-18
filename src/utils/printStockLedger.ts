@@ -50,7 +50,7 @@ export const printStockLedger = (
       font-size: 13px;
       color: #111;
       background: #fff;
-      padding: 2cm 2.5cm;
+      padding: 2cm 1.5cm;
     }
     .header { text-align: center; margin-bottom: 14px; }
     .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
@@ -105,7 +105,7 @@ export const printStockLedger = (
       justify-content: space-between;
       align-items: baseline;
       gap: 16px;
-      padding: 5px 0;
+      padding: 5px 7px;
       border-bottom: 1px solid #000;
       font-size: 13.5px;
     }
@@ -177,9 +177,9 @@ export const printStockLedger = (
         <th class="left" style="width:100px;">Date (BS)</th>
         <th class="left">Note / Description</th>
         <th class="center" style="width:90px;">Bill No</th>
-        <th class="right" style="width:95px;">Stock (+ In)</th>
+        <th class="right" style="width:100px;">Stock (+ In)</th>
         <th class="right" style="width:95px;">Stock (- Out)</th>
-        <th class="right" style="width:105px;">Running Bal.</th>
+        <th class="right" style="width:130px;">Running Bal.</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>

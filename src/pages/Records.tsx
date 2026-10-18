@@ -200,14 +200,14 @@ const Records: React.FC = () => {
       const lowerSearchTerm = searchTerm.toLowerCase();
       const filtered = data.filter(bill => {
         return (
-          bill.billNo.toLowerCase().includes(lowerSearchTerm) ||
-          bill.customerName.toLowerCase().includes(lowerSearchTerm) ||
-          bill.address.toLowerCase().includes(lowerSearchTerm) ||
-          bill.contactNumber.includes(searchTerm) ||
-          (bill.paymentMethod?.toLowerCase().includes(lowerSearchTerm) ?? false) ||
+          (bill.billNo || '').toLowerCase().includes(lowerSearchTerm) ||
+          (bill.customerName || '').toLowerCase().includes(lowerSearchTerm) ||
+          (bill.customerCode || '').toLowerCase().includes(lowerSearchTerm) ||
+          (bill.address || '').toLowerCase().includes(lowerSearchTerm) ||
+          (bill.contactNumber || '').toLowerCase().includes(lowerSearchTerm) ||
           (bill.items?.reduce((sum, item) => sum + item.qty, 0).toString() || '').includes(searchTerm) ||
-          bill.date.includes(searchTerm) ||
-          bill.nepaliDate.includes(searchTerm)
+          (bill.date || '').toLowerCase().includes(lowerSearchTerm) ||
+          (bill.nepaliDate || '').toLowerCase().includes(lowerSearchTerm)
         );
       });
       setBills(filtered);
