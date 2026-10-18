@@ -34,6 +34,13 @@ export const printBill = (
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'PRINT_DONE') {
         cleanup();
+        try {
+          if (win && !win.closed) {
+            win.close();
+          }
+        } catch {
+          // ignore any cross-origin or closing errors
+        }
         resolve();
       }
     };

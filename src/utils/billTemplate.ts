@@ -330,6 +330,9 @@ export const getBillHtml = (
       if (window.opener) {
         window.opener.postMessage({ type: 'PRINT_DONE' }, '*');
       }
+      setTimeout(function () {
+        window.close();
+      }, 50);
     };
     // Also post message on unload/close just to be sure
     window.onunload = function () {
