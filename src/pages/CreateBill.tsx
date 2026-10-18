@@ -48,6 +48,7 @@ const CreateBill: React.FC = () => {
   // Ref to read the picker's current date directly — more reliable than state
   const datePickerRef = useRef<NepaliDatePickerHandle>(null);
   const customerNameRef = useRef<HTMLInputElement | null>(null);
+  const addressRef = useRef<HTMLInputElement | null>(null);
   const customerCodeRef = useRef<HTMLInputElement | null>(null);
   const billNoInputRef = useRef<HTMLInputElement | null>(null);
   const noteRef = useRef<HTMLInputElement | null>(null);
@@ -282,6 +283,7 @@ const CreateBill: React.FC = () => {
     window.setTimeout(() => {
       const input = itemParticularRefs.current[index];
       if (!input) return;
+      input.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       input.focus();
       input.select?.();
       input.classList.add('input-flash');
@@ -293,6 +295,7 @@ const CreateBill: React.FC = () => {
     window.setTimeout(() => {
       const input = itemRateRefs.current[index];
       if (!input) return;
+      input.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       input.focus();
       input.select?.();
       input.classList.add('input-flash');
@@ -304,6 +307,7 @@ const CreateBill: React.FC = () => {
     window.setTimeout(() => {
       const input = itemQtyRefs.current[index];
       if (!input) return;
+      input.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       input.focus();
       input.select?.();
       input.classList.add('input-flash');
@@ -456,18 +460,33 @@ const CreateBill: React.FC = () => {
       return null;
     }
 
+    const { bsDate, adDate } = getBillDates();
+    if (!bsDate) {
+      showError('Please select a valid Bill Date');
+      datePickerRef.current?.focus?.();
+      return null;
+    }
+
     if (!customerName.trim()) {
       showError('Please enter customer name');
+      flashAndScroll(customerNameRef);
       return null;
     }
 
     if (!address.trim()) {
       showError('Please enter address');
+      flashAndScroll(addressRef);
       return null;
     }
 
     if (!(await validateCustomerCode())) {
       flashAndScroll(customerCodeRef);
+      return null;
+    }
+
+    if (items.length === 0) {
+      showError('Please add at least one item');
+      addItem();
       return null;
     }
 
@@ -478,8 +497,19 @@ const CreateBill: React.FC = () => {
       const hasQty = Number(item.qty) > 0;
       const hasRate = Number(item.rate) > 0;
 
-      if (!hasParticulars || !hasQty || !hasRate) {
-        showError(`Item row ${i + 1} is empty or incomplete. Please fill in the description, quantity, and rate, or remove the row.`);
+      if (!hasParticulars) {
+        showError(`Please enter item description for item row ${i + 1}`);
+        focusItemParticular(i);
+        return null;
+      }
+      if (!hasQty) {
+        showError(`Please enter quantity for item row ${i + 1}`);
+        focusItemQty(i);
+        return null;
+      }
+      if (!hasRate) {
+        showError(`Please enter rate for item row ${i + 1}`);
+        focusItemRate(i);
         return null;
       }
     }
@@ -493,6 +523,7 @@ const CreateBill: React.FC = () => {
       
       if (!stockItem) {
         showError(`Item "${item.particulars}" at row ${i + 1} does not exist in stock. Please select a valid item from the suggestions dropdown.`);
+        focusItemParticular(i);
         return null;
       }
 
@@ -506,13 +537,13 @@ const CreateBill: React.FC = () => {
 
       if (item.qty > availableStock) {
         showError(`Insufficient stock for "${stockItem.name}" at row ${i + 1}. Only ${availableStock} Qty available.`);
+        focusItemQty(i);
         return null;
       }
     }
 
     const totalAmount = calculateTotal();
     const totalQty = validItems.reduce((sum, item) => sum + item.qty, 0);
-    const { bsDate, adDate } = getBillDates();
 
     const bill: Bill = {
       id: '',
@@ -1012,6 +1043,7 @@ const CreateBill: React.FC = () => {
             <div className="form-group">
               <label className="label">Address *</label>
               <input
+                ref={addressRef}
                 type="text"
                 className="input"
                 value={address}
