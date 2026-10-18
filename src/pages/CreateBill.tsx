@@ -161,6 +161,8 @@ const CreateBill: React.FC = () => {
     setCustomerCode(c.customerCode || '');
     setCustomerDropdownOpen(false);
     setHighlightedCustomerIndex(-1);
+    // Auto-focus the first particular input after selecting a customer
+    focusItemParticular(0);
   };
 
   const flashAndScroll = (elRef: React.RefObject<HTMLElement | null>) => {
